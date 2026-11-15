@@ -207,3 +207,15 @@ GNU `timeout`, so use perl's alarm):
 
 The page scrolls inside its main column, not the window, because headless Chrome renders a blank screenshot
 when the window itself is scrolled.
+
+## Choices for Han to confirm (from the v3.1 writer, 2026-11-15)
+1. Solid arrow = read in source OR seen at runtime; the evidence shape before the label says which (alternative: a fourth line style).
+2. The generate flow is 6 hops, not v3's 5: the per-token `GPT.forward(nxt, cache)` was missing; `sample` narrowed to engine.py:54-55.
+3. engine2: the `logits` edge moved after the attention hop, outside the per-layer loop (it read as flowing into `KVCache.append`).
+4. A one-hop repeat stays in its label (`Block.forward() × 12`), no frame.
+5. Return arrows are thin with an open chevron (dashed already means inferred).
+6. Entry/end tags aren't repeated on the diagram; the start dot and last row show them.
+7. With the panel open the diagram scales to ~0.8 (text ~10px); see shots/flow-panel-*.png.
+8. Graph start labels use hop labels; only train.py gets ENTRY POINT.
+9. View as diagram and graph clicks jump instantly.
+Designer's note: in the module graph, the train.py -> model.py and engine.py -> model.py lines arrive close together with two "2 calls" labels, so it's unclear which label belongs to which line. Fix in T7.4.
