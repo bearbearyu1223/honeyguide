@@ -26,12 +26,15 @@ READ_ONLY_TOOLS = {"Read", "Grep", "Glob", "Bash"}
 
 # The commands each file must name: the contract's loop, pinned so a rewrite can't silently drop a step.
 MUST_NAME = {
-    "cartographer": {"anchor resolve", "map validate", "claims save", "refresh-plan", "activity update"},
+    "cartographer": {"anchor resolve", "map validate", "claims save", "refresh-plan", "claims list",
+                     "activity update"},
     "investigator": {"anchor resolve", "answer record", "activity update"},
     "tracer": {"anchor resolve", "answer record", "activity update"},
-    "checker": {"export", "preview", "verdict set"},
+    "checker": {"claims list", "preview", "verdict set"},
+    # refresh apply logs the refresh itself (T7.5), so the skill no longer names refresh-log add.
     "honeyguide": {"status", "inbox", "question release", "question claim", "question show", "question fail",
-                   "activity start", "activity finish", "serve", "watch", "refresh-plan", "refresh-log add"},
+                   "activity start", "activity finish", "serve", "watch", "refresh-plan", "refresh apply",
+                   "memory state", "claims retire"},
 }
 
 

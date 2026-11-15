@@ -1,0 +1,109 @@
+Review fix (T8, suspected lost update in apply_plan): confirmed by a failing test, fixed.
+
+apply_plan(store, plan) applied a plan computed before it took the lock, and wrote the map and the answers in two
+separate lock holds. A claim the Checker re-anchored between planning and applying (now current at HEAD) was
+marked stale again and its verdict reset. Now apply_plan holds the lock once for both files, applies a claim's
+result only if the claim still has the anchors the plan classified (and isn't retired), returns the ids it
+skipped, and advances the map's commit only when no map claim was skipped. The CLI's `refresh apply` (T7.5) does
+not use apply_plan (it plans inside the lock), so this fixes the library call only. Adds
+tests/review/test_review_apply_plan.py (fails without the fix).
+
+Apply from the repo root: git apply docs/patches/review-apply-plan-lost-update.patch
+
+--- a/src/honeyguide/refresh.py
++++ b/src/honeyguide/refresh.py
+@@ -243,20 +243,38 @@
+     return out
+ 
+ 
+-def apply_plan(store, plan: RefreshPlan) -> None:
+-    """Save the plan's outcome: anchors updated, stale and retired claims marked, the map's commit advanced."""
++def apply_plan(store, plan: RefreshPlan) -> list[str]:
++    """Save the plan's outcome: anchors updated, stale and retired claims marked, the map's commit advanced.
++
++    One hold of the lock for both files. ``plan`` may be older than the store: a claim whose anchors changed
++    since it was planned (re-anchored by the Checker, say), or that was retired meanwhile, is left as it is and
++    its id returned; the map's commit advances only if no map claim was skipped. Re-plan to cover those.
++    """
+     by_id = {r.claim_id: r for r in plan.claims}
++    skipped: list[str] = []
+ 
+     def fix(claims: list[dict]) -> list[dict]:
+-        return [apply_result(c, by_id[c["id"]], plan.target) if c["id"] in by_id else c for c in claims]
+-
+-    def change_map(data: dict) -> None:
+-        data["claims"] = fix(data["claims"])
+-        data["commit"] = plan.target
+-
+-    def change_answers(data: dict) -> None:
+-        for response in data["responses"]:
++        out = []
++        for claim in claims:
++            result = by_id.get(claim["id"])
++            if result is None:
++                out.append(claim)
++            elif (claim.get("freshness") == "retired"
++                  or [CodeAnchor.from_dict(a) for a in claim.get("anchors", [])] != [a.old for a in result.anchors]):
++                skipped.append(claim["id"])
++                out.append(claim)
++            else:
++                out.append(apply_result(claim, result, plan.target))
++        return out
++
++    with store.locked():
++        map_layer, answers = store.load("map"), store.load("answers")
++        map_layer["claims"] = fix(map_layer["claims"])
++        map_skipped = bool(skipped)
++        for response in answers["responses"]:
+             response["claims"] = fix(response["claims"])
+-
+-    store.update("map", change_map)
+-    store.update("answers", change_answers)
++        if not map_skipped:
++            map_layer["commit"] = plan.target
++        store.write_held("answers", answers)
++        store.write_held("map", map_layer)
++    return skipped
+--- /dev/null
++++ b/tests/review/test_review_apply_plan.py
+@@ -0,0 +1,40 @@
++"""Review (T8): apply_plan applies a plan computed before it took the lock."""
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++from honeyguide.anchors import resolve  # noqa: E402
++from honeyguide.gitio import Repo  # noqa: E402
++from honeyguide.refresh import apply_plan, plan_refresh  # noqa: E402
++from honeyguide.store import Store, make_claim  # noqa: E402
++from test_core_fixtures import GitRepo  # noqa: E402
++
++A = "def f():\n    return 1\n"
++B = "def f():\n    return 2\n"
++
++
++def test_claim_reanchored_after_planning_is_not_marked_stale(tmp_path):
++    """The plan says f's claim is stale. Before apply_plan runs, the Checker re-anchors it at B (current).
++    apply_plan then marks it stale again from the old plan, and resets its check: a lost update."""
++    g = GitRepo(tmp_path / "r")
++    g.write("m.py", A)
++    a = g.commit()
++    repo = Repo.open(g.root)
++    claim = make_claim("f returns a number", "read_in_source",
++                       [resolve(repo.lines_at(a, "m.py"), "m.py", "def f():", a, extent="block").anchor.to_dict()])
++    store = Store("t", tmp_path / "hg")
++    store.save_map([claim], a)
++    g.write("m.py", B)
++    b = g.commit()
++    plan = plan_refresh(repo, [(None, claim)])
++    assert plan.claims[0].state == "stale"
++    fresh = resolve(repo.lines_at(b, "m.py"), "m.py", "def f():", b, extent="block").anchor.to_dict()
++
++    def recheck(data):
++        data["claims"][0].update(anchors=[fresh], check="supported", freshness="current")
++    store.update("map", recheck)
++    apply_plan(store, plan)
++    saved = store.load("map")["claims"][0]
++    assert (saved["freshness"], saved["check"], saved["anchors"]) == ("current", "supported", [fresh])

@@ -9,7 +9,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from . import activity, claims, inbox
+from . import activity, claims, inbox, memory
 from .contract import ContractError
 from .gitio import GitError, Repo
 from .preview import preview
@@ -42,6 +42,7 @@ def cmd_status(args) -> int:
             "checks": dict(Counter(c["check"] for c in claims)),
             "notes": {"shared": sum(1 for n in notes["notes"] if n.get("share_with_agents")),
                       "private": sum(1 for n in notes["notes"] if not n.get("share_with_agents"))},
+            "memory_state": memory.memory_state(repo, store),
         }
     if args.json:
         print(json.dumps(info, indent=1))
@@ -55,7 +56,9 @@ def cmd_status(args) -> int:
         return 0
     saved = info["map_commit"]
     print(f"map commit   {saved[:12] if saved else '-'}" +
-          ("" if saved is None else ("  (up to date)" if saved == head else "  (behind HEAD: run refresh-plan)")))
+          ("" if saved is None else ("  (up to date)" if saved == head else
+                                     "  (behind HEAD: run refresh-plan, then refresh apply)")))
+    print(f"state        {info['memory_state']['headline']}")
     print(f"map claims   {info['map_claims']}")
     print(f"questions    {info['questions']}   answers {info['answers']}")
     print("freshness    " + "  ".join(f"{k} {v}" for k, v in sorted(info["freshness"].items())))
@@ -77,16 +80,9 @@ def cmd_refresh_plan(args) -> int:
     plan = plan_refresh(repo, all_claims(map_layer, answers), target=args.to,
                         base=args.base or map_layer["commit"])
     if args.json:
-        print(json.dumps({
-            "base": plan.base, "target": plan.target, "warnings": plan.warnings, "counts": plan.counts(),
-            "claims": [{"id": c.claim_id, "response": c.response_id, "state": c.state, "reason": c.reason,
-                        "anchors": [{"from": _loc(a.old.path, a.old.start, a.old.end),
-                                     "to": _loc(a.path, a.reloc.start, a.reloc.end), "state": a.state,
-                                     "reason": a.reloc.reason} for a in c.anchors]} for c in plan.claims],
-            "uncovered": [vars(u) for u in plan.uncovered], "unoutlined": plan.unoutlined,
-        }, indent=1))
+        print(json.dumps(memory.plan_json(plan), indent=1))
         return 0
-    print(f"refresh plan {(plan.base or '-')[:12]} -> {plan.target[:12]} (dry run)")
+    print(f"refresh plan {(plan.base or '-')[:12]} -> {plan.target[:12]} (dry run; `refresh apply` saves it)")
     for warning in plan.warnings:
         print(f"warning: {warning}")
     print("claims       " + "  ".join(f"{k} {v}" for k, v in plan.counts().items()))
@@ -140,7 +136,11 @@ AGENT_COMMANDS = {
     # (group, name): (function(repo, store, data) -> dict, takes input)
     ("anchor", "resolve"): (lambda r, s, d: claims.resolve_call(r, d), True),
     ("claims", "save"): (lambda r, s, d: claims.save_claims(s, r, d), True),
-    ("verdict", "set"): (lambda r, s, d: claims.set_verdicts(s, d), True),
+    ("claims", "list"): (lambda r, s, d: memory.list_claims(s, d), True),
+    ("claims", "retire"): (lambda r, s, d: memory.retire(s, d), True),
+    ("verdict", "set"): (lambda r, s, d: claims.set_verdicts(s, d, r), True),
+    ("refresh", "apply"): (lambda r, s, d: memory.refresh_apply(r, s, d), True),
+    ("memory", "state"): (lambda r, s, d: memory.memory_state(r, s), False),
     ("inbox", None): (lambda r, s, d: inbox.inbox(s), False),
     ("question", "show"): (lambda r, s, d: inbox.show(s, d), True),
     ("question", "claim"): (lambda r, s, d: {"question": inbox.claim(s, d)}, True),

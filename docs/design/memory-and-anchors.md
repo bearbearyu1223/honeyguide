@@ -103,8 +103,17 @@ A claim's state combines its anchors: all unchanged -> unchanged; unchanged/move
 retired; anything else (any stale, or some retired beside live ones) -> stale. Claims with no code anchors are
 `unanchored` and untouched. Stale and retired claims are never served as fact: retrieval excludes them unless asked,
 and then marks them. Applying a plan (a pure function) rewrites anchors of unchanged/moved claims to commit B with
-new lines; stale claims keep the old anchor (what was checked) plus the candidate location, and reset `check` to
-`unchecked`.
+new lines; stale claims keep the old anchor (what was checked) plus the candidate location (with a hash of the
+candidate lines), and reset `check` to `unchecked`, except a claim already stale whose candidates are identical
+(it keeps the Checker's re-check verdict, so an unrelated commit doesn't re-queue it).
+
+**Applying it (T7.5)**: `honeyguide refresh apply` plans and applies in one hold of the store's lock, from the
+claims as saved at that moment, advances the map's commit to B, and logs `{base, target, counts}` in the
+session; the map is written after the answers, so a crash leaves it behind HEAD and a re-run finishes. The
+Checker then re-checks each stale claim at HEAD: still true -> `verdict set` with new anchors, and the claim is
+current again; not true -> it stays stale (flagged) and the Cartographer rewrites stale map claims, retiring the
+old ones (`claims retire`, or `retire` in the same `claims save`). Retired claims stay in the store, shown struck
+through, and are never retrieved. Contract details: `agent-contract.md`.
 
 **Uncovered code**: in every added/modified/renamed `.py` file, the outline at B is module-level functions,
 classes and methods of top-level classes (a class's own unit excludes its methods' lines). A unit is *new or
@@ -141,5 +150,5 @@ merges by record id, keeps the local record on a clash and reports counts.
 
 Embeddings; non-Python outlines (other files are refreshed by hash and anchor text only); following code moved
 *between* files without a git rename (it shows as retired + uncovered); refresh of the working tree's uncommitted
-edits; network checks for "pushed"; multi-user merge beyond "local wins"; the refresh *apply* command in the CLI
-(the library has it; T7 decides when the Guide runs it); the map's document structure (`document` is opaque here).
+edits; network checks for "pushed"; multi-user merge beyond "local wins"; the map's document structure
+(`document` is opaque here; see `agent-contract.md`).

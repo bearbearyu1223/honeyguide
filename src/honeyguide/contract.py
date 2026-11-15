@@ -66,9 +66,14 @@ def load_side(store: Store, name: str) -> dict:
     return data
 
 
+def write_side_held(store: Store, name: str, data: dict) -> None:
+    """Write a side file; the caller holds ``store.locked()``."""
+    atomic_write_text(store.dir / f"{name}.json", json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+
+
 def update_side(store: Store, name: str, change: Callable[[dict], Any]) -> Any:
     with store.locked():
         data = load_side(store, name)
         result = change(data)
-        atomic_write_text(store.dir / f"{name}.json", json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+        write_side_held(store, name, data)
     return result

@@ -165,9 +165,14 @@ class Store:
         with self.locked():
             data = self.load(layer)
             result = change(data)
-            data["version"] = VERSION
-            atomic_write_text(self.path(layer), json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+            self.write_held(layer, data)
         return result
+
+    def write_held(self, layer: str, data: dict) -> None:
+        """Write a whole layer; the caller holds ``locked()`` (for changes spanning several files in one
+        hold of the lock, e.g. refresh, which writes answers, map and the session log)."""
+        data["version"] = VERSION
+        atomic_write_text(self.path(layer), json.dumps(data, indent=1, ensure_ascii=False) + "\n")
 
     # -- records ------------------------------------------------------------------------
 

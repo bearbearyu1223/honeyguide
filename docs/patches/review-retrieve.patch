@@ -1,0 +1,108 @@
+Review fix (T8, test_review_retrieve.py): retrieve() matched symbols across files; share-flag checks
+disagreed.
+
+1. 'Same symbol' (score 2) now needs the same file: asking about scripts/a.py main no longer pulls claims about
+   scripts/b.py main. Symbols *mentioned* in a question (no file) still match by name, as before.
+2. One rule for "shared with agents": share_with_agents is True (a real boolean), via store.is_shared(), used by
+   retrieve, export and status. Before, retrieve required True while export and status took any truthy value, so
+   a note with share_with_agents "yes" was exported as shared but never handed to an agent. Adds
+   tests/review/test_review_share_flag.py.
+
+Apply from the repo root: git apply docs/patches/review-retrieve.patch
+
+--- a/src/honeyguide/retrieve.py
++++ b/src/honeyguide/retrieve.py
+@@ -9,6 +9,8 @@
+ 
+ import re
+ from dataclasses import dataclass, field
++
++from .store import is_shared
+ 
+ SCORE_LINES, SCORE_SYMBOL, SCORE_FILE = 3, 2, 1
+ _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
+@@ -67,7 +69,7 @@
+         for c in ctx.anchors:
+             if c["path"] == a["path"] and c["start"] <= a["end"] and a["start"] <= c["end"]:
+                 score, why = SCORE_LINES, f"same lines {a['path']}:{a['start']}-{a['end']}"
+-            elif c.get("symbol") and c.get("symbol") == a.get("symbol"):
++            elif c.get("symbol") and c.get("symbol") == a.get("symbol") and c["path"] == a["path"]:
+                 score, why = SCORE_SYMBOL, f"same symbol {a['symbol']}"
+             elif c["path"] == a["path"]:
+                 score, why = SCORE_FILE, f"same file {a['path']}"
+@@ -137,7 +139,7 @@
+     words = keywords(ctx.text)
+     notes = []
+     for note in notes_layer["notes"]:
+-        if note.get("share_with_agents") is not True:
++        if not is_shared(note):
+             continue  # personal: never handed to an agent
+         anchor = note.get("anchor") or {}
+         if (set(note.get("claim_ids", [])) & hit_claims or anchor.get("doc") in hit_docs
+--- a/src/honeyguide/store.py
++++ b/src/honeyguide/store.py
+@@ -244,6 +244,11 @@
+             raise KeyError(claim_id)
+ 
+ 
++def is_shared(note: dict) -> bool:
++    """The one rule for "share with agents": a real ``True``, nothing merely truthy."""
++    return note.get("share_with_agents") is True
++
++
+ def make_claim(text: str, evidence: str, anchors: list[dict], **extra: Any) -> dict:
+     claim = {"id": new_id("c"), "text": text, "evidence": evidence, "anchors": anchors,
+              "check": "unchecked", "freshness": "current", "freshness_reason": "", **extra}
+@@ -280,7 +285,7 @@
+ def export_bundle(store: Store, include_private_notes: bool = False) -> dict:
+     notes = store.load("notes")
+     if not include_private_notes:
+-        notes["notes"] = [n for n in notes["notes"] if n.get("share_with_agents")]
++        notes["notes"] = [n for n in notes["notes"] if is_shared(n)]
+     return {"schema": "honeyguide/export", "version": VERSION, "exported_at": now_iso(),
+             "repo": store.identity(), "map": store.load("map"), "answers": store.load("answers"),
+             "notes": notes}
+--- a/src/honeyguide/cli.py
++++ b/src/honeyguide/cli.py
+@@ -15,7 +15,7 @@
+ from .preview import preview
+ from .refresh import plan_refresh
+ from .repoid import identify
+-from .store import Store, StoreError, all_claims, export_bundle, import_bundle
++from .store import Store, StoreError, all_claims, export_bundle, import_bundle, is_shared
+ 
+ 
+ def _open(args) -> tuple[Repo, dict, Store]:
+@@ -40,8 +40,8 @@
+             "questions": len(answers["questions"]), "answers": len(answers["responses"]),
+             "freshness": dict(Counter(c["freshness"] for c in claims)),
+             "checks": dict(Counter(c["check"] for c in claims)),
+-            "notes": {"shared": sum(1 for n in notes["notes"] if n.get("share_with_agents")),
+-                      "private": sum(1 for n in notes["notes"] if not n.get("share_with_agents"))},
++            "notes": {"shared": sum(1 for n in notes["notes"] if is_shared(n)),
++                      "private": sum(1 for n in notes["notes"] if not is_shared(n))},
+             "memory_state": memory.memory_state(repo, store),
+         }
+     if args.json:
+--- /dev/null
++++ b/tests/review/test_review_share_flag.py
+@@ -0,0 +1,19 @@
++"""Review (T8): one rule for "shared with agents" across retrieve and export."""
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
++from honeyguide.retrieve import Context, retrieve  # noqa: E402
++from honeyguide.store import Store, export_bundle  # noqa: E402
++
++
++def test_export_and_retrieve_agree_on_a_truthy_non_boolean_flag(tmp_path):
++    store = Store("t", tmp_path)
++    store.add_note("about the engine loop", None, share_with_agents=True)
++    store.update("notes", lambda d: d["notes"].append(
++        {"id": "n_odd", "kind": "note", "text": "engine loop too", "anchor": None, "share_with_agents": "yes"}))
++    exported = {n["id"] for n in export_bundle(store)["notes"]["notes"]}
++    got = retrieve(store.load("map"), store.load("answers"), store.load("notes"), Context(text="engine loop"))
++    assert exported == {n["id"] for n in got.notes}
++    assert "n_odd" not in exported

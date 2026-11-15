@@ -14,7 +14,7 @@ from typing import Iterable
 
 from .anchors import CodeAnchor, Relocation, relocate
 from .gitio import Repo
-from .outline import Unit, python_units
+from .outline import Unit, line_hash, python_units
 
 LIVE = ("unchanged", "moved", "stale")
 CLAIM_STATES = ("unchanged", "moved", "stale", "retired", "unanchored")
@@ -25,6 +25,7 @@ class AnchorResult:
     old: CodeAnchor
     path: str                 # path at the target (renames followed)
     reloc: Relocation
+    candidate_hash: str | None = None   # hash of the candidate lines at the target, when stale with a location
 
     @property
     def state(self) -> str:
@@ -127,7 +128,11 @@ def refresh_anchor(repo: Repo, diffs: _Diffs, anchor: CodeAnchor,
     key = (diffs.target, new_path)
     if key not in units_cache:
         units_cache[key] = python_units(lines) if lines is not None and new_path.endswith(".py") else []
-    return AnchorResult(anchor, new_path, relocate(anchor, lines, new_path, units_cache[key]))
+    reloc = relocate(anchor, lines, new_path, units_cache[key])
+    cand = None
+    if reloc.state == "stale" and reloc.start is not None and reloc.end is not None and lines is not None:
+        cand = line_hash(lines[reloc.start - 1:reloc.end])
+    return AnchorResult(anchor, new_path, reloc, cand)
 
 
 def plan_refresh(repo: Repo, claims: Iterable[tuple[str | None, dict]], target: str = "HEAD",
@@ -227,10 +232,14 @@ def apply_result(claim: dict, result: ClaimResult, target: str) -> dict:
     out["freshness_reason"] = result.reason
     out["refreshed_to"] = target
     if result.state == "stale":
-        out["check"] = "unchecked"
-        out["candidates"] = [{"path": a.path, "start": a.reloc.start, "end": a.reloc.end,
-                              "symbol": a.reloc.symbol, "state": a.state}
-                             for a in result.anchors if a.reloc.start is not None]
+        candidates = [{"path": a.path, "start": a.reloc.start, "end": a.reloc.end,
+                       "symbol": a.reloc.symbol, "state": a.state, "hash": a.candidate_hash}
+                      for a in result.anchors if a.reloc.start is not None]
+        # A claim already stale, re-checked by the Checker against the same candidate lines, keeps that
+        # verdict; anything newly stale, or whose candidates moved, waits for a re-check again.
+        if claim.get("freshness") != "stale" or claim.get("candidates") != candidates:
+            out["check"] = "unchecked"
+        out["candidates"] = candidates
     return out
 
 

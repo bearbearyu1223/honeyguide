@@ -13,7 +13,7 @@ research-content-assistant/plans/agent-that-learns-a-codebase.md.
 | plugin: the Guide skill and four subagents (`skills/`, `agents/`) | written (T7.2), not yet run end to end |
 | the map page | step 3 (T7.3); `serve` shows a placeholder until then |
 | flow swimlane diagrams and the module graph | step 4 (T7.4) |
-| refresh applied to saved memory | step 5 (T7.5); `refresh-plan` is a dry run until then |
+| refresh applied to saved memory: `refresh apply`, stale re-check, `claims retire`, memory state for the page | built (T7.5) |
 | runtime confirmation of flow hops in the product | not built; the trace script in `eval/trace/` is the eval's |
 
 ## Install
@@ -54,10 +54,13 @@ In a Claude Code session inside the repo you want to learn (plugin skills are na
 - `/honeyguide open`: serves the map on `127.0.0.1:8780`, opens it, and starts the watcher. Highlight
   anything and ask; the question goes to this session, an Investigator (or the Tracer, for "what happens
   when ..." questions) answers, and the answer appears beside your highlight. The page never starts Claude.
-- `/honeyguide refresh`: after the code changes, shows what happened to each saved claim.
+- `/honeyguide refresh`: after the code changes, `honeyguide refresh apply` moves claims whose lines only
+  moved, marks the ones whose lines changed **stale** (never served as fact) and the ones whose code is gone
+  **retired**; the Checker re-checks the stale ones at HEAD and the Cartographer maps only new code. The page
+  reads "Refreshing · N claims being re-checked" until the re-check is done, then "Up to date at <sha>".
 
 Memory lives in `~/.honeyguide/<repo id>/` (or `$HONEYGUIDE_HOME`), never in the checkout.
-`honeyguide status`, `honeyguide export` and `honeyguide import` inspect and move it.
+`honeyguide status`, `honeyguide memory state`, `honeyguide export` and `honeyguide import` inspect and move it.
 
 ## Folders
 

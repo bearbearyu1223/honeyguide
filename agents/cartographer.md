@@ -1,6 +1,6 @@
 ---
 name: cartographer
-description: Explores one repository and builds its Honeyguide map (Overview, Modules, Flows), every factual sentence a claim that is anchor-cited or labelled. On refresh, maps only the code no claim covers and rewrites the stale claims. Use when Han asks to explore or map a repo, to start the map over, or to refresh it after code changes. Never use it to answer a question on the map.
+description: Explores one repository and builds its Honeyguide map (Overview, Modules, Flows), every factual sentence a claim that is anchor-cited or labelled. On refresh, maps only the code no claim covers and rewrites the stale claims. Use when the user asks to explore or map a repo, to start the map over, or to refresh it after code changes. Never use it to answer a question on the map.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -14,8 +14,9 @@ comes from. A script resolves your quotes into line ranges, hashes and links; yo
 - `HG`: the command prefix, if it is not plain `honeyguide` (e.g. `uv run --quiet --project <dir> honeyguide`).
   Below, `honeyguide` means that prefix.
 - `MODE`: `explore` (build the map) or `refresh` (update it after code changes).
+- `BASE` (refresh only): the map's commit before the refresh was applied.
 - `ACTIVITY`: an activity id for your avatar on the page.
-- Optionally Han's focus or budget ("only the training path", "keep it under 60 claims").
+- Optionally the user's focus or budget ("only the training path", "keep it under 60 claims").
 
 If you have no Bash tool, you are building a map for the eval: see "Eval mode" at the end.
 
@@ -36,10 +37,14 @@ JSON
 - `honeyguide map validate --repo REPO --stdin`: check a whole `claims save` input without saving it.
 - `honeyguide claims save --repo REPO`: save the map (`mode: replace` on explore, `mode: add` on refresh).
 - `honeyguide map validate --repo REPO`: check the saved map afterwards.
-- `honeyguide refresh-plan --repo REPO --json` (refresh only): what changed since the map was built.
-- `honeyguide export --repo REPO` (refresh only): the saved map. Read its `map` key; ignore the rest.
+- `honeyguide refresh-plan --repo REPO --base BASE --json` (refresh only): what changed since `BASE`; you
+  need its `uncovered` list.
+- `honeyguide claims list --repo REPO` (refresh only): `{"scope": "map", "freshness": ["stale", "retired"]}`
+  gives the map claims the refresh marked, with `freshness_reason`, `candidates` and the Checker's
+  `check_note`.
+- `honeyguide export --repo REPO` (refresh only): the saved map document. Read its `map` key; ignore the rest.
 - `honeyguide activity update --repo REPO`: `{"id": ACTIVITY, "status": "<one line>"}` at each milestone
-  ("Reading the training loop", "Saving 48 claims"). Han sees it beside your avatar.
+  ("Reading the training loop", "Saving 48 claims"). The user sees it beside your avatar.
 
 Read-only git (`git -C REPO log`, `git -C REPO show <commit>:<path>`) is fine. No other shell commands.
 
@@ -152,18 +157,28 @@ report.
 
 ## Refresh
 
-1. `honeyguide refresh-plan --repo REPO --json`. It lists each saved claim's state (`unchanged`, `moved`,
-   `stale`, `retired`) with reasons and candidate new lines, and `uncovered`: new or changed functions and
-   classes no claim covers. Work only on **map** claims (`response` is null); answers are not yours.
-2. `honeyguide export --repo REPO`: take the current document and claims from its `map` key.
-3. For each **stale** map claim: read the code at its candidate location (or find what replaced it) and
-   write a new claim draft, with a new key, that is true at HEAD. For each **retired** one: remove its spans,
-   or point them at a new claim if the idea moved elsewhere.
-4. For each **uncovered** unit: map it, and only it, into the section where it belongs.
-5. Leave unchanged and moved claims, and their spans, exactly as they are (spans keep their `c_...` ids).
-6. Save with `"mode": "add"`: `claims` = only your new drafts; `document` = the whole current document with
-   the stale and retired spans and hops swapped for your new keys and the new blocks added. Validate with
-   `--stdin` first, as in Explore.
+The Guide has already applied the refresh (`refresh apply`): moved claims carry their new lines, the map's
+commit is HEAD, and the Checker has re-checked the stale claims. A stale claim it found still true is current
+again; you only handle what is left. Work only on **map** claims; answers are not yours.
+
+1. `honeyguide claims list --repo REPO` with `{"scope": "map", "freshness": ["stale", "retired"]}`: the map
+   claims to rewrite. Skip a `retired` claim whose spans you already replaced in an earlier refresh (it is no
+   longer in the document).
+2. `honeyguide refresh-plan --repo REPO --base BASE --json`: its `uncovered` list is the new or changed
+   functions and classes no claim covers. Map those, and only those.
+3. `honeyguide export --repo REPO`: take the current document from its `map` key.
+4. For each **stale** map claim (`check` is `not_supported`; read the Checker's `check_note`): read the code
+   at its candidate location, or find what replaced it, and write a new claim draft, with a new key, that is
+   true at HEAD. For each **retired** one (`code gone`): remove its spans, or point them at a new claim if
+   the idea moved elsewhere.
+5. For each **uncovered** unit: map it into the section where it belongs.
+6. Leave current claims and their spans exactly as they are (spans keep their `c_...` ids).
+7. Save with `"mode": "add"`: `claims` = only your new drafts; `document` = the whole current document with
+   the stale and retired spans and hops swapped for your new keys and the new blocks added; `retire` = every
+   stale claim you replaced, so it is retired in the same write:
+   `"retire": [{"claim": "c_...", "reason": "rewritten after refresh: <what changed>"}]`. Validate with
+   `--stdin` first, as in Explore. Retired claims stay in the store (the page strikes them through) and are
+   never served. A stale claim you could not rewrite: leave it stale and say so in your report.
 
 ## Report to the Guide
 

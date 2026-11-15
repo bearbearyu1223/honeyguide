@@ -1,0 +1,26 @@
+Review fix (T8, test_review_relocate.py): relocate() served a moved claim as current.
+
+The same-position hash check ran first, so when identical text landed at the anchor's old line inside another
+function (a function inserted above), the anchor read as 'unchanged' while pointing into the wrong function.
+Now the same-position match counts only when the enclosing symbol is still the anchor's symbol (or that symbol
+no longer exists); otherwise the search below finds it, narrowed to its own symbol.
+
+Apply from the repo root: git apply docs/patches/review-relocate.patch
+
+--- a/src/honeyguide/anchors.py
++++ b/src/honeyguide/anchors.py
+@@ -177,8 +177,12 @@
+         return unit.qualname if unit else None
+ 
+     if old.end <= len(new_lines) and line_hash(new_lines[old.start - 1:old.end]) == old.hash:
+-        return Relocation("moved" if path_moved else "unchanged", old.start, old.end,
+-                          symbol_at(old.start, old.end), "renamed" if path_moved else "")
++        here = symbol_at(old.start, old.end)
++        # Same text at the same place counts only inside the same definition: identical lines from another
++        # function that slid into the old position are not this anchor.
++        if not old.symbol or here == old.symbol or old.symbol not in by_name:
++            return Relocation("moved" if path_moved else "unchanged", old.start, old.end, here,
++                              "renamed" if path_moved else "")
+     same = span_hashes(new_lines, length, old.hash, first=_anchor_lines(old.anchor)[0] or None)
+     unit = by_name.get(old.symbol) if old.symbol else None
+     if len(same) > 1 and unit is not None:
