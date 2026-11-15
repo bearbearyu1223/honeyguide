@@ -3,27 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Honeyguide · tinytrain (mockup)</title>
+<title>Honeyguide · tinytrain (mockup v2)</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
   color-scheme:light;
   --bg:#fbfaf7; --surface:#ffffff; --sunken:#f3f1ec; --ink:#1f2328; --soft:#3d434b; --muted:#6c727b; --faint:#9aa0a8;
   --line:#e7e3da; --accent:#a0620e; --accent-soft:#f6ead8; --mark:#f3dfbf;
-  --e-read:#2f8a57; --e-test:#3b6ccc; --e-runtime:#0e8f9b; --e-docs:#8656c4; --e-inferred:#c48418; --e-none:#7d838c;
-  --flag:#b4473c; --flag-soft:#f8e6e3;
+  --e-read:#2f8a57; --e-test:#3b6ccc; --e-runtime:#0e8f9b; --e-docs:#8656c4; --e-inferred:#c48418; --e-none:#7d838c; --e-gk:#7a8394;
+  --ok:#5f7a66; --flag:#b4473c; --flag-soft:#f8e6e3;
   --k:#8a3ab9; --s:#1c7a42; --c:#8b919a; --n:#a0620e;
   --shadow:0 10px 30px rgba(30,25,15,.10),0 2px 6px rgba(30,25,15,.06);
   --sans:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --emoji:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  --side:212px; --pw:408px;
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#151619; --surface:#1d1f23; --sunken:#202328; --ink:#e8e6e1; --soft:#c9c7c1; --muted:#9a9fa7; --faint:#6f747c;
+  --bg:#151619; --surface:#1c1e22; --sunken:#23262b; --ink:#e8e6e1; --soft:#c9c7c1; --muted:#9a9fa7; --faint:#6f747c;
   --line:#2d3036; --accent:#e3a650; --accent-soft:#33291b; --mark:#4a3a20;
-  --e-read:#5cc58a; --e-test:#76a2f2; --e-runtime:#3cc5d0; --e-docs:#b48df0; --e-inferred:#e7ac45; --e-none:#80868f;
-  --flag:#ec8f84; --flag-soft:#3a2321;
+  --e-read:#5cc58a; --e-test:#76a2f2; --e-runtime:#3cc5d0; --e-docs:#b48df0; --e-inferred:#e7ac45; --e-none:#80868f; --e-gk:#9aa3b5;
+  --ok:#8fb59a; --flag:#ec8f84; --flag-soft:#3a2321;
   --k:#cf9bf0; --s:#8ed6a4; --c:#7c838d; --n:#e3a650;
   --shadow:0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
 }
@@ -34,14 +35,15 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 input,textarea{font:inherit;color:inherit}
 code{font:.86em var(--mono);background:var(--sunken);padding:.08em .32em;border-radius:4px}
 ::selection{background:var(--mark)}
+.em{font-family:var(--emoji);font-style:normal}
 
 /* mockup banner */
 .banner{position:fixed;top:0;left:0;right:0;z-index:50;height:26px;display:flex;align-items:center;justify-content:center;gap:8px;
   font-size:12px;letter-spacing:.02em;color:var(--muted);background:var(--sunken);border-bottom:1px solid var(--line)}
 .banner b{color:var(--accent);font-weight:600}
 
-/* sidebar */
-.side{position:fixed;top:26px;left:0;bottom:0;width:212px;padding:34px 22px 22px 30px;display:flex;flex-direction:column}
+/* sidebar: contents, layers, legend */
+.side{position:fixed;top:26px;left:0;bottom:0;width:var(--side);padding:34px 20px 22px 30px;display:flex;flex-direction:column}
 .brand{font-weight:650;font-size:15px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
 .brand i{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block}
 .repo{font:12.5px var(--mono);color:var(--muted);margin:3px 0 34px 17px}
@@ -49,17 +51,28 @@ code{font:.86em var(--mono);background:var(--sunken);padding:.08em .32em;border-
 .toc a{display:flex;align-items:center;justify-content:space-between;color:var(--muted);text-decoration:none;padding:4px 0 4px 14px;border-left:2px solid transparent;margin-left:-1px}
 .toc a:hover{color:var(--ink)}
 .toc a.on{color:var(--ink);border-left-color:var(--accent);font-weight:550}
-.toc .n{font-size:11px;color:var(--accent);font-weight:600}
-.legend{margin-top:auto;font-size:12px;color:var(--muted);line-height:1.95}
-.legend .lh{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:4px}
+.toc .n{font-size:11px;color:var(--accent);font-weight:600;min-width:14px;text-align:right}
+.layer{margin-top:22px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:9px;cursor:pointer;padding-left:15px}
+.layer input{display:none}
+.sw{width:24px;height:14px;border-radius:999px;background:var(--line);position:relative;transition:background .15s;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.layer input:checked+.sw{background:var(--accent)}
+.layer input:checked+.sw::after{transform:translateX(10px)}
+.layer .n{font-size:11px;color:var(--faint)}
+.legend{margin-top:auto;font-size:12px;color:var(--muted);line-height:1.9}
+.legend .lh{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin:0 0 3px}
+.legend .lh+div{margin-top:0}
 .legend div{display:flex;align-items:center;gap:9px}
-.theme{margin-top:18px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.legend .gap{height:8px}
+.legend .ok,.legend .flag{margin:0}
+.theme{margin-top:16px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
 .theme:hover{color:var(--ink)}
 .theme svg{width:14px;height:14px}
 
-/* reading column */
-.main{position:fixed;top:26px;left:212px;right:0;bottom:0;overflow-y:auto;scroll-behavior:smooth;scroll-padding-top:40px;padding:66px 0 180px}
-.col{position:relative;max-width:668px;margin:0 auto;padding:0 8px}
+/* reading column: same width with the panel open or closed */
+.main{position:fixed;top:26px;left:var(--side);right:0;bottom:0;overflow-y:auto;scroll-padding-top:40px;padding:66px 0 160px;transition:padding-right .28s cubic-bezier(.3,.7,.3,1)}
+body.popen .main{padding-right:var(--pw)}
+.col{position:relative;width:668px;margin:0 auto;padding:0 8px}
 h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;font-weight:680;margin:0}
 .sub{color:var(--muted);font-size:14.5px;margin:10px 0 0}
 .hint{color:var(--faint);font-size:13px;margin:6px 0 0}
@@ -73,152 +86,134 @@ p{margin:0 0 18px}
 .mod-h span{color:var(--muted);font-size:13.5px}
 .mod p{margin-bottom:14px}
 
-/* claims, evidence dots, anchor chips */
+/* claims: evidence dot, anchor chip, checker mark */
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 2px 0 5px;vertical-align:.12em;background:var(--ev);cursor:default;transition:opacity .4s,transform .4s}
-.dot.ev-read{--ev:var(--e-read)} .dot.ev-test{--ev:var(--e-test)} .dot.ev-docs{--ev:var(--e-docs)}
-.dot.ev-runtime{--ev:var(--e-runtime);box-shadow:0 0 0 2px var(--bg),0 0 0 3.2px var(--e-runtime);margin:0 4px 0 8px}
+.ev-read{--ev:var(--e-read)} .ev-test{--ev:var(--e-test)} .ev-docs{--ev:var(--e-docs)} .ev-runtime{--ev:var(--e-runtime)} .ev-inferred{--ev:var(--e-inferred)} .ev-none{--ev:var(--e-none)} .ev-gk{--ev:var(--e-gk)}
+.dot.ev-runtime{box-shadow:0 0 0 2px var(--bg),0 0 0 3.2px var(--e-runtime);margin:0 4px 0 8px}
+.panel .dot.ev-runtime{box-shadow:0 0 0 2px var(--surface),0 0 0 3.2px var(--e-runtime)}
 .dot.ev-inferred{background:transparent;box-shadow:inset 0 0 0 1.6px var(--e-inferred)}
 .dot.ev-none{background:transparent;box-shadow:none;border:1.6px dotted var(--e-none);width:8px;height:8px}
+.dot.ev-gk{border-radius:1.5px;transform:rotate(45deg);background:transparent;box-shadow:inset 0 0 0 1.5px var(--e-gk);width:7px;height:7px;margin:0 3px 0 7px}
 .dot.pending{opacity:0;transform:scale(.2);width:0;margin:0;box-shadow:none;border:0}
-.legend .dot{margin:0}
+.legend .dot{margin:0 1px}
+.legend .dot.ev-runtime{margin:0 2px;box-shadow:0 0 0 2px var(--bg),0 0 0 3.2px var(--e-runtime)}
 .chip{font:11px/1 var(--mono);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:5px;padding:3px 6px;margin-left:2px;vertical-align:.08em;white-space:nowrap}
-.chip:hover{color:var(--ink);border-color:var(--line)}
-.chip.open{color:var(--accent);border-color:var(--accent)}
-.flag{font-size:11.5px;color:var(--flag);background:var(--flag-soft);border-radius:5px;padding:2px 6px;margin-left:5px;vertical-align:.08em;white-space:nowrap;cursor:default}
+.chip:hover,.chip.pin{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 60%,transparent)}
+.ok{display:inline-block;font:600 11px/1 var(--sans);color:var(--ok);margin-left:5px;vertical-align:.1em;cursor:default;animation:pop .3s ease-out}
+.flag{font-size:11px;color:var(--flag);background:var(--flag-soft);border-radius:5px;padding:2px 6px;margin-left:5px;vertical-align:.08em;white-space:nowrap;cursor:default;animation:pop .3s ease-out}
+.gktag{font-size:10.5px;color:var(--e-gk);border:1px dashed color-mix(in srgb,var(--e-gk) 60%,transparent);border-radius:5px;padding:1px 6px;margin-left:2px;vertical-align:.1em;white-space:nowrap;cursor:default}
+.claim.gk{color:var(--muted)}
 .cite{white-space:nowrap}
 .claim.flagged{text-decoration:underline dotted var(--flag);text-underline-offset:4px;text-decoration-thickness:1px}
+@keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 
-/* inline code snippet */
-.snip{margin:4px 0 20px;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden;animation:drop .18s ease-out}
+/* code (preview card and in-path snippets) */
+.snip{border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
 .snip-h{display:flex;justify-content:space-between;align-items:center;font:12px var(--mono);color:var(--muted);padding:7px 12px;border-bottom:1px solid var(--line)}
-.snip-h button{color:var(--faint);font-size:15px;line-height:1}
-.snip-h button:hover{color:var(--ink)}
-.snip pre{margin:0;padding:8px 0;font:12.5px/1.65 var(--mono);overflow-x:auto}
+.snip pre{margin:0;padding:8px 0;font:12px/1.65 var(--mono);overflow-x:auto}
 .snip .ln{display:block;padding:0 14px 0 0;white-space:pre}
-.snip .ln i{display:inline-block;width:46px;padding-right:14px;text-align:right;color:var(--faint);font-style:normal;user-select:none}
+.snip .ln i{display:inline-block;width:44px;padding-right:12px;text-align:right;color:var(--faint);font-style:normal;user-select:none}
 .snip .ln.hl{background:var(--accent-soft)}
 .snip .ln.hl i{color:var(--accent)}
-.snip .more{color:var(--faint);padding-left:60px;font-style:italic}
-.snip .search{padding:10px 14px;font:12.5px/1.7 var(--mono);color:var(--soft)}
+.snip .more{color:var(--faint);padding-left:58px;font-style:italic}
+.snip .search{padding:10px 14px;font:12px/1.7 var(--mono);color:var(--soft)}
 .snip .search span{color:var(--faint)}
 .t-k{color:var(--k)} .t-s{color:var(--s)} .t-c{color:var(--c);font-style:italic} .t-n{color:var(--n)}
-@keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.prev{position:fixed;z-index:65;width:540px;display:none;box-shadow:var(--shadow);border-radius:9px}
+.prev .snip{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
 
-/* marks: threads and notes */
-.mk{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--accent) 55%,transparent);text-decoration-thickness:1.5px;text-underline-offset:4px;cursor:pointer;border-radius:2px;transition:background .2s}
-.mk:hover,.mk.active{background:var(--accent-soft)}
-.nt{text-decoration:underline dashed var(--faint);text-decoration-thickness:1px;text-underline-offset:4px;cursor:pointer}
-.mdot{position:absolute;left:calc(100% + 26px);width:9px;height:9px;border-radius:50%;background:var(--accent);opacity:.75;cursor:pointer;transition:transform .15s,opacity .15s}
-.mdot:hover,.mdot.active{opacity:1;transform:scale(1.25)}
-.mdot.note{background:transparent;box-shadow:inset 0 0 0 1.5px var(--faint);opacity:1}
-.mdot.busy{animation:breathe 1.2s ease-in-out infinite}
-@keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+/* marks on the map (overlay only; the text is never changed) and margin markers */
+.mk{text-decoration:underline dotted color-mix(in srgb,var(--accent) 55%,transparent);text-decoration-thickness:1.5px;text-underline-offset:4px;cursor:pointer;border-radius:2px;transition:background .2s}
+.mk:hover,.mk.active{background:var(--accent-soft);text-decoration-style:solid}
+.nt{cursor:pointer;border-radius:2px}
+.layer-notes .nt{text-decoration:underline dashed var(--faint);text-decoration-thickness:1px;text-underline-offset:4px}
+.nt.active{background:var(--sunken)}
+.mm{position:absolute;left:calc(100% + 18px);height:18px;min-width:18px;padding:0 5px;border-radius:9px;font:600 10.5px/18px var(--sans);text-align:center;color:var(--accent);
+  background:var(--surface);box-shadow:inset 0 0 0 1.2px color-mix(in srgb,var(--accent) 55%,transparent);transition:transform .15s,box-shadow .15s,background .15s}
+.mm:hover,.mm.active{background:var(--accent);color:var(--surface);box-shadow:none}
+.mm.busy{animation:breathe 1.3s ease-in-out infinite}
+.mm.note{min-width:0;width:11px;height:11px;padding:0;border-radius:3px;box-shadow:inset 0 0 0 1.4px var(--faint);background:transparent;margin-top:3.5px}
+.mm.note:hover,.mm.note.active{background:var(--faint)}
+body:not(.layer-notes) .mm.note{display:none}
+@keyframes breathe{0%,100%{opacity:.45}50%{opacity:1}}
 
-/* thread */
-.thread{margin:2px 0 26px;padding:2px 0 4px 20px;border-left:2px solid var(--accent);animation:drop .2s ease-out}
-.th-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
-.quote{font-size:13.5px;color:var(--muted);font-style:italic;line-height:1.5}
-.x{color:var(--faint);font-size:17px;line-height:1;padding:2px 2px}
+/* top-right: open the panel; doubles as the "agents at work" indicator */
+.top{position:fixed;z-index:45;top:40px;right:26px;display:flex;align-items:center;gap:9px;height:32px;padding:0 12px 0 10px;border-radius:999px;
+  font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--line);transition:opacity .2s,transform .2s}
+.top:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.top svg{width:15px;height:15px}
+.top .cnt{font-size:11px;font-weight:650;color:var(--accent)}
+.top .mini{display:flex;gap:3px}
+.top .mini .av{width:24px;height:24px}
+.top .mini .face{font-size:13.5px}
+.top.busy{color:var(--soft);padding-left:5px}
+body.popen .top{opacity:0;pointer-events:none;transform:translateX(10px)}
+
+/* discussion panel */
+.panel{position:fixed;z-index:44;top:26px;right:0;bottom:0;width:var(--pw);background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.3,.7,.3,1);font-size:14px;line-height:1.6}
+body.popen .panel{transform:none}
+.p-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0 20px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:18px}
+.tabs button{font-size:13px;color:var(--muted);padding:6px 0 10px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:560}
+.tabs .n{font-size:11px;color:var(--faint);margin-left:4px;font-weight:500}
+.x{color:var(--faint);font-size:19px;line-height:1;padding:2px 4px;margin-top:-6px}
 .x:hover{color:var(--ink)}
-.qa{margin-top:14px}
-.qa+.qa{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
-.q{font-weight:560;font-size:15.5px;line-height:1.5;margin-bottom:10px}
-.q .who{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600;margin-bottom:2px}
-.q .fq{display:block;font-weight:400;font-style:italic;color:var(--muted);font-size:13px;margin-bottom:4px}
-.ans{font-size:15px;line-height:1.7;color:var(--soft)}
-.ans p{margin:0 0 10px}
-.by{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
-.by .em{font:14px/1 var(--emoji)}
-.wait{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--muted);padding:4px 0 8px}
-.wait .em{font:16px/1 var(--emoji);display:inline-block;animation:sweep 1.4s ease-in-out infinite;transform-origin:30% 70%}
-.shim{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--sunken) 0%,var(--line) 50%,var(--sunken) 100%);background-size:200% 100%;animation:shim 1.4s linear infinite;margin:9px 0}
+.p-body{flex:1;overflow-y:auto;padding:16px 20px 28px;scroll-behavior:smooth}
+.empty{color:var(--muted);font-size:13.5px;padding:24px 4px}
+.crumbs{position:sticky;top:-16px;z-index:2;background:var(--surface);padding:12px 0 10px;margin:-16px 0 8px !important;display:flex;align-items:center;flex-wrap:nowrap;gap:5px;font-size:12px;color:var(--faint);margin:-2px 0 14px;min-width:0;white-space:nowrap}
+.crumbs button{color:var(--muted);overflow:hidden;text-overflow:ellipsis;max-width:130px;flex:0 1 auto}
+.crumbs button:hover{color:var(--accent)}
+.crumbs button.cur{color:var(--ink);font-weight:550}
+.crumbs .sep{flex:none}
+.anchor{padding:0 0 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.a-sec{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600}
+.a-sec .mod{text-transform:none;letter-spacing:0;font:12px var(--mono);color:var(--muted)}
+.a-sec button{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--accent)}
+.a-q{font-size:13.5px;color:var(--soft);font-style:italic;line-height:1.5;margin-top:4px;padding-left:10px;border-left:2px solid var(--accent)}
+
+/* thread tree */
+.nd{padding-top:12px}
+.nd-q{display:flex;gap:6px;align-items:flex-start}
+.car{flex:none;width:14px;color:var(--faint);font-size:10px;line-height:22px;transition:transform .15s;text-align:left}
+.car:hover{color:var(--ink)}
+.nd.closed>.nd-q .car{transform:rotate(-90deg)}
+.qt{font-weight:580;font-size:14.5px;line-height:1.45;padding-top:1px}
+.on-q{display:block;font-weight:400;font-style:italic;color:var(--muted);font-size:12.5px;margin-bottom:1px}
+.on-q b{font-weight:400;color:var(--accent);font-style:normal;margin-right:3px}
+.meta1{display:none;font-size:12px;color:var(--faint);margin-top:1px;font-weight:400}
+.nd.closed>.nd-q .meta1{display:block}
+.nd.closed>.nd-b,.nd.closed:not(.onpath)>.kids{display:none}
+.nd-b{padding-left:20px}
+.by{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:5px 0 4px;flex-wrap:wrap}
+.by .em{font-size:13px;line-height:1}
+.by .via{color:var(--faint)}
+.ans p{margin:0 0 7px;color:var(--soft)}
+.ans .fmk{background:var(--accent-soft);text-decoration:underline solid var(--accent);text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:2px}
+.ans .fmk.pend{background:var(--mark);text-decoration:none}
+.chk{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin:2px 0 0}
+.chk .em{font-size:12px;line-height:1}
+.acts{display:flex;gap:14px;font-size:12px;margin-top:6px}
+.acts button{color:var(--faint)}
+.acts button:hover{color:var(--accent)}
+.acts button.done{color:var(--ok)}
+.kids{margin-left:6px;padding-left:13px;border-left:1px solid var(--line)}
+.nd.cur>.nd-q .qt{color:var(--ink)}
+.nd.cur>.nd-q .car{color:var(--accent)}
+.kids .nd.cur{position:relative}
+.kids .nd.cur::before{content:"";position:absolute;left:-14px;top:14px;width:2px;height:22px;background:var(--accent);border-radius:1px}
+
+/* agents at work, beside the thread */
+.work{display:flex;align-items:center;gap:10px;margin:8px 0 6px;font-size:13px;color:var(--muted);line-height:1.4}
+.work b{color:var(--ink);font-weight:600;margin-right:3px}
+.work code{font-size:12px}
+.shim{height:8px;border-radius:5px;background:linear-gradient(90deg,var(--sunken) 0%,var(--line) 50%,var(--sunken) 100%);background-size:200% 100%;animation:shim 1.4s linear infinite;margin:9px 0}
 @keyframes shim{to{background-position:-200% 0}}
-.checked{font-size:12.5px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:7px}
-.checked .em{font:13px/1 var(--emoji)}
-.checked.going{color:var(--faint)}
-.ask{display:flex;align-items:center;gap:10px;margin-top:16px;border-bottom:1px solid var(--line);padding-bottom:4px}
-.ask:focus-within{border-color:var(--accent)}
-.ask input{flex:1;border:0;background:transparent;outline:none;font-size:14.5px;padding:4px 0}
-.ask input::placeholder{color:var(--faint)}
-.ask button{font-size:12.5px;color:var(--accent);font-weight:600}
-.tip-line{font-size:12px;color:var(--faint);margin-top:6px}
-
-/* notes */
-.note-ed{margin:0 0 22px;padding:10px 14px;border:1px dashed var(--line);border-radius:8px;animation:drop .18s ease-out}
-.note-ed textarea{width:100%;border:0;background:transparent;outline:none;resize:none;font-size:14.5px;height:46px}
-.note-ed .row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--faint)}
-.note-ed .row button{color:var(--accent);font-weight:600;font-size:12.5px}
-.notes-empty{color:var(--muted);font-size:14.5px}
-.notelist{list-style:none;padding:0;margin:0}
-.notelist li{padding:12px 0;border-top:1px solid var(--line);font-size:14.5px}
-.notelist li:first-child{border-top:0}
-.notelist .nq{display:block;color:var(--muted);font-style:italic;font-size:13px;cursor:pointer}
-
-/* flows and the Tracer path */
-.flow{border-top:1px solid var(--line);padding:16px 0}
-.flow:first-of-type{border-top:0;padding-top:0}
-.flow-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;width:100%;text-align:left}
-.flow-h .fq{font-weight:580;font-size:16px}
-.flow-h .meta{font-size:12.5px;color:var(--muted);white-space:nowrap}
-.flow-h .meta .em{font:13px/1 var(--emoji);margin-right:4px}
-.flow-h .car{color:var(--faint);font-size:12px;margin-left:6px;display:inline-block;transition:transform .15s}
-.flow.open .flow-h .car{transform:rotate(90deg)}
-.path{list-style:none;margin:20px 0 6px;padding:0;display:none}
-.flow.open .path{display:block}
-.hop{position:relative;padding:0 0 0 34px}
-.hop{padding-bottom:6px}
-.hop::before{content:"";position:absolute;left:8px;top:14px;bottom:0;width:2px;background:var(--line)}
-.hop:last-child::before{display:none}
-.node{position:absolute;left:2px;top:9px;z-index:1;width:14px;height:14px;border-radius:50%;background:var(--ev);box-shadow:0 0 0 4px var(--bg)}
-.node.ev-read{--ev:var(--e-read)} .node.ev-runtime{--ev:var(--e-runtime)} .node.ev-test{--ev:var(--e-test)}
-.node.ev-runtime::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--e-runtime)}
-.node.ev-inferred{background:var(--bg);box-shadow:inset 0 0 0 2px var(--e-inferred),0 0 0 4px var(--bg)}
-.node.end-pt{border-radius:3px}
-.hop-b{display:block;width:100%;text-align:left;padding:3px 10px 7px;margin-left:-10px;border-radius:8px;cursor:pointer}
-.hop-b:hover{background:var(--sunken)}
-.hop.open .hop-b{background:var(--sunken)}
-.hop-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.fn{font:600 14px var(--mono);color:var(--ink)}
-.tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-weight:650}
-.hop-t .chip{margin-left:auto}
-.hop-d{font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:1px}
-.lab{font-size:12px;color:var(--ev);font-weight:550}
-.lab.ev-read{--ev:var(--e-read)} .lab.ev-runtime{--ev:var(--e-runtime)} .lab.ev-inferred{--ev:var(--e-inferred)}
-.edge{position:relative;padding:0 0 8px 34px;line-height:1.4}
-.edge::before{content:"";position:absolute;left:8px;top:-8px;bottom:0;width:2px;background:var(--line)}
-.edge span{font:11.5px var(--mono);color:var(--soft);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
-.edge span b{font-weight:400;color:var(--faint);margin-right:6px}
-.hop .snip{margin:4px 0 14px}
-.path-foot{font-size:12.5px;color:var(--muted);margin:6px 0 0 34px;display:flex;gap:16px;flex-wrap:wrap}
-.path-foot span{display:inline-flex;align-items:center;gap:6px}
-.path-foot .dot{margin:0}
-
-/* selection popover and tooltip */
-.pop{position:fixed;z-index:60;display:none;background:var(--ink);color:var(--bg);border-radius:8px;box-shadow:var(--shadow);font-size:13px;font-weight:600;overflow:hidden}
-.pop button{padding:7px 14px;color:var(--bg)}
-.pop button:hover{background:color-mix(in srgb,var(--bg) 16%,transparent)}
-.pop button+button{border-left:1px solid color-mix(in srgb,var(--bg) 22%,transparent)}
-.pop::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--ink)}
-.pop{overflow:visible}
-.tip{position:fixed;z-index:70;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.45;padding:6px 10px;border-radius:6px;max-width:290px;opacity:0;transition:opacity .12s;box-shadow:var(--shadow)}
-.tip.on{opacity:1}
-.tip b{font-weight:600}
-
-/* status strip */
-.strip{position:fixed;z-index:40;bottom:22px;left:calc(212px + (100vw - 212px)/2);transform:translate(-50%,160%);transition:transform .35s cubic-bezier(.3,.7,.3,1),opacity .35s;opacity:0;
-  display:flex;align-items:center;gap:14px;padding:7px 18px 7px 9px;background:var(--surface);border:1px solid var(--line);border-radius:999px;box-shadow:var(--shadow);max-width:620px}
-.strip.on{transform:translate(-50%,0);opacity:1}
-.fade{position:fixed;z-index:39;left:212px;right:0;bottom:0;height:150px;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--bg) 55%);opacity:0;transition:opacity .35s}
-.fade.on{opacity:1}
-.static .fade{transition:none}
-.avs{display:flex;gap:4px}
-.av{position:relative;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avbg);transition:opacity .3s,width .3s,margin .3s}
-.av .face{font:19px/1 var(--emoji);display:inline-block}
-.av.off{width:0;margin:0 -2px;opacity:0;overflow:hidden}
+.av{position:relative;flex:none;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avbg)}
+.av .face{font:15px/1 var(--emoji);display:inline-block}
 .av.working{animation:halo 1.8s ease-out infinite}
-.line{font-size:13.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.line b{color:var(--ink);font-weight:600;margin-right:4px}
-.line code{font-size:12.5px}
 .a-guide{--avbg:#f6ead8} .a-cartographer{--avbg:#e2efe6} .a-investigator{--avbg:#fbf1cf} .a-tracer{--avbg:#f6e1ea} .a-checker{--avbg:#e0ecfa}
 :root[data-theme="dark"] .a-guide{--avbg:#3a2f20} :root[data-theme="dark"] .a-cartographer{--avbg:#22352a} :root[data-theme="dark"] .a-investigator{--avbg:#3a3420}
 :root[data-theme="dark"] .a-tracer{--avbg:#3a2530} :root[data-theme="dark"] .a-checker{--avbg:#22304a}
@@ -231,49 +226,171 @@ p{margin:0 0 18px}
 @keyframes unfold{0%,100%{transform:scaleX(1)}35%{transform:scaleX(.55) translateY(-1px)}60%{transform:scaleX(1.08)}}
 @keyframes sweep{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(22deg) translateX(1px)}}
 @keyframes spool{0%{transform:rotate(0)}70%{transform:rotate(330deg)}100%{transform:rotate(360deg)}}
-@keyframes tick{0%,50%,100%{transform:translateY(0) scale(1)}62%{transform:translateY(-5px) scale(1.12)}78%{transform:translateY(0) scale(.94,1.06)}}
-@keyframes halo{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 35%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
-.static .thread,.static .snip,.static .note-ed{animation:none}
-.static .strip,.static .av{transition:none}
+@keyframes tick{0%,50%,100%{transform:translateY(0) scale(1)}62%{transform:translateY(-4px) scale(1.12)}78%{transform:translateY(0) scale(.94,1.06)}}
+@keyframes halo{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 35%,transparent)}100%{box-shadow:0 0 0 6px transparent}}
+.elsewhere{border-top:1px solid var(--line);padding:8px 18px 6px 20px;background:var(--surface)}
+.elsewhere:empty{display:none}
+.elsewhere .lh2{margin-bottom:0}
+.elsewhere .work{margin:5px 0;font-size:12.5px;gap:9px}
+.elsewhere .work>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.elsewhere .av{width:22px;height:22px}
+.elsewhere .av .face{font-size:13px}
+.lh2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600;margin-bottom:2px}
+.work .wctx{color:var(--faint);margin-left:4px}
+
+/* Tracer path (map and panel) */
+.flow{border-top:1px solid var(--line);padding:16px 0}
+.flow:first-of-type{border-top:0;padding-top:0}
+.flow-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;width:100%;text-align:left}
+.flow-h .fq{font-weight:580;font-size:16px}
+.flow-h .meta{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.flow-h .meta .em{font-size:13px;margin-right:4px}
+.flow-h .fcar{color:var(--faint);font-size:12px;margin-left:6px;display:inline-block;transition:transform .15s}
+.flow.open .flow-h .fcar{transform:rotate(90deg)}
+.flow .path{display:none}
+.flow.open .path{display:block}
+.path{list-style:none;margin:18px 0 6px;padding:0}
+.hop{position:relative;padding:0 0 6px 34px}
+.hop::before{content:"";position:absolute;left:8px;top:14px;bottom:0;width:2px;background:var(--line)}
+.hop:last-child::before{display:none}
+.node{position:absolute;left:2px;top:9px;z-index:1;width:14px;height:14px;border-radius:50%;background:var(--ev);box-shadow:0 0 0 4px var(--pbg,var(--bg))}
+.panel .node{--pbg:var(--surface)}
+.node.ev-runtime::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--e-runtime)}
+.node.ev-inferred{background:var(--pbg,var(--bg));box-shadow:inset 0 0 0 2px var(--e-inferred),0 0 0 4px var(--pbg,var(--bg))}
+.node.end-pt{border-radius:3px}
+.hop-b{display:block;width:100%;text-align:left;padding:3px 10px 7px;margin-left:-10px;border-radius:8px;cursor:pointer}
+.hop-b:hover,.hop.open .hop-b{background:var(--sunken)}
+.hop-t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fn{font:600 14px var(--mono);color:var(--ink)}
+.tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-weight:650}
+.hop-t .chip{margin-left:auto}
+.hop-d{font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:1px}
+.lab{font-size:12px;color:var(--ev);font-weight:550}
+.edge{position:relative;padding:0 0 8px 34px;line-height:1.4}
+.edge::before{content:"";position:absolute;left:8px;top:-8px;bottom:0;width:2px;background:var(--line)}
+.edge span{font:11.5px var(--mono);color:var(--soft);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.edge span b{font-weight:400;color:var(--faint);margin-right:6px}
+.hop .snip{margin:4px 0 12px}
+.path-foot{font-size:12.5px;color:var(--muted);margin:4px 0 0 34px;display:flex;gap:6px 16px;flex-wrap:wrap}
+.path-foot span{display:inline-flex;align-items:center;gap:6px}
+.path-foot .dot{margin:0}
+.panel .path{margin:10px 0 4px}
+.panel .hop{padding-left:28px}
+.panel .fn{font-size:12.5px}
+.panel .hop-d{font-size:12.5px}
+.panel .hop-t{gap:7px}
+.panel .hop-t .chip{margin-left:0}
+.panel .hop-l{display:flex;align-items:center;gap:6px;margin-top:2px}
+.panel .edge{padding-left:28px}
+.panel .edge span{font-size:11px}
+.panel .path-foot{margin-left:0;font-size:12px}
+.panel .hop .ok{margin-left:0}
+.tsum{margin:8px 0 4px;color:var(--soft)}
+
+/* navigator and notes */
+.grp{margin:2px 0 18px}
+.grp-h{display:flex;justify-content:space-between;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600;margin-bottom:4px}
+.nv{display:block;width:100%;text-align:left;padding:9px 10px;margin:0 -10px;border-radius:8px;width:calc(100% + 20px)}
+.nv:hover{background:var(--sunken)}
+.nv-q{font-size:12.5px;font-style:italic;color:var(--muted);line-height:1.45}
+.nv-t{font-weight:560;font-size:13.5px;line-height:1.45;margin-top:2px}
+.nv-m{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--faint);margin-top:3px}
+.nv-m .av{width:20px;height:20px}
+.nv-m .av .face{font-size:11px}
+.nv-m .flagn{color:var(--flag)}
+.lay-note{font-size:12.5px;color:var(--muted);background:var(--sunken);border-radius:8px;padding:9px 12px;margin-bottom:16px;line-height:1.5}
+.note{padding:12px 0;border-top:1px solid var(--line)}
+.note:first-of-type{border-top:0;padding-top:2px}
+.note .src{font-size:11.5px;color:var(--faint);display:flex;justify-content:space-between;gap:10px}
+.note .src button{color:var(--accent);font-size:12px}
+.note .nq{font-size:12.5px;font-style:italic;color:var(--muted);margin:3px 0 4px;line-height:1.45}
+.note .nb{font-size:13.5px;color:var(--ink);line-height:1.55}
+.note .saved{font-size:13px;color:var(--soft);border-left:2px solid var(--line);padding-left:10px;margin-top:4px}
+.note .saved p{margin:0 0 4px}
+.note .saved{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.note.fresh{animation:fresh 1.6s ease-out}
+@keyframes fresh{from{background:var(--accent-soft)}to{background:transparent}}
+
+/* composer */
+.composer{border-top:1px solid var(--line);padding:12px 18px 14px 20px;background:var(--surface)}
+.composer.hide{display:none}
+.ctx{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:8px;line-height:1.4}
+.ctx .lbl{flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:650;margin-top:1px}
+.ctx .lbl.note{color:var(--muted)}
+.ctx .cq{font-style:italic;flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ctx .x{font-size:15px;margin:0}
+.qp{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.qp button{font-size:12px;color:var(--soft);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.qp button:hover{border-color:var(--accent);color:var(--accent)}
+.crow{display:flex;align-items:flex-end;gap:10px;border:1px solid var(--line);border-radius:9px;padding:7px 8px 7px 11px;background:var(--bg)}
+.crow:focus-within{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
+.crow textarea{flex:1;border:0;background:transparent;outline:none;resize:none;font-size:13.5px;line-height:1.5;height:21px;max-height:90px;padding:0}
+.crow textarea::placeholder{color:var(--faint)}
+.send{font-size:12.5px;font-weight:600;color:var(--surface);background:var(--accent);border-radius:6px;padding:2px 10px}
+.send.note{background:var(--muted)}
+.cfoot{font-size:11.5px;color:var(--faint);margin-top:6px}
+
+/* selection toolbar, tooltip, toast */
+.tb{position:fixed;z-index:60;display:none;background:var(--ink);color:var(--bg);border-radius:9px;box-shadow:var(--shadow);font-size:13px;font-weight:550}
+.tb button{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;color:var(--bg)}
+.tb button:first-child{border-radius:9px 0 0 9px}
+.tb button:last-child{border-radius:0 9px 9px 0}
+.tb button:hover{background:color-mix(in srgb,var(--bg) 16%,transparent)}
+.tb button+button{border-left:1px solid color-mix(in srgb,var(--bg) 20%,transparent)}
+.tb svg{width:13px;height:13px}
+.tb::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--ink)}
+.tip{position:fixed;z-index:70;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.45;padding:6px 10px;border-radius:6px;max-width:280px;opacity:0;transition:opacity .12s;box-shadow:var(--shadow)}
+.tip.on{opacity:1}
+.tip b{font-weight:600}
+.toast{position:fixed;z-index:70;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--bg);font-size:13px;padding:7px 14px;border-radius:8px;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+body.popen .toast{left:calc(100% - var(--pw)/2)}
+
+.static *,.static *::before,.static *::after{transition:none!important}
+.static .note.fresh{animation:none}
 @media (prefers-reduced-motion:reduce){*{animation-duration:6s!important}}
 </style>
 </head>
-<body>
-<div class="banner"><b>Mockup, sample content</b> · not a real map; nothing here is sent anywhere</div>
+<body class="layer-notes">
+<div class="banner"><b>Mockup v2, sample content</b> · not a real map; nothing here is sent anywhere</div>
 
 <aside class="side">
   <div class="brand"><i></i>Honeyguide</div>
   <div class="repo">tinytrain @ 3f9c1e2</div>
   <ul class="toc" id="toc">
-    <li><a href="#overview" class="on">Overview</a></li>
-    <li><a href="#modules">Modules</a></li>
-    <li><a href="#flows">Flows</a></li>
-    <li><a href="#notes">Notes <span class="n" id="notecount"></span></a></li>
+    <li><a href="#overview" class="on" data-sec="overview">Overview <span class="n"></span></a></li>
+    <li><a href="#modules" data-sec="modules">Modules <span class="n"></span></a></li>
+    <li><a href="#flows" data-sec="flows">Flows <span class="n"></span></a></li>
   </ul>
+  <label class="layer" data-tip="Your notes are a separate layer. Hiding them leaves the map as the Cartographer wrote it."><input type="checkbox" id="laynotes" checked><span class="sw"></span>My notes <span class="n" id="laycount"></span></label>
   <div class="legend">
     <div class="lh">Evidence</div>
     <div><span class="dot ev-read"></span>read in source</div>
     <div><span class="dot ev-test"></span>asserted by a test</div>
-    <div><span class="dot ev-runtime"></span>seen at runtime</div>
     <div><span class="dot ev-docs"></span>docs</div>
+    <div><span class="dot ev-runtime"></span>seen at runtime</div>
     <div><span class="dot ev-inferred"></span>inferred</div>
     <div><span class="dot ev-none"></span>searched, not found</div>
+    <div><span class="dot ev-gk"></span>general knowledge</div>
+    <div class="gap"></div>
+    <div><span class="ok">✓</span>checked by the Checker</div>
+    <div><span class="flag">not supported</span></div>
   </div>
   <button class="theme" id="theme" aria-label="Toggle theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 0 0 12z" fill="currentColor"/></svg><span id="themelabel">Dark</span></button>
 </aside>
 
-<main class="main">
+<main class="main" id="main">
 <div class="col" id="col">
   <header>
     <h1>tinytrain</h1>
-    <p class="sub">A small GPT pretraining repo · 9 files · 1,180 lines of Python · mapped by the Cartographer, checked by the Checker</p>
-    <p class="hint">Highlight any text to ask about it or keep a note.</p>
+    <p class="sub">A small GPT pretraining repo · 9 files · 1,180 lines of Python · mapped by the Cartographer, every claim checked by the Checker</p>
+    <p class="hint">Select any text to ask about it or annotate it.</p>
   </header>
 
   <section id="overview">
     <h2>Overview</h2>
     <p class="blk" data-topic="train" data-md>[[read|train.py:12|`train.py` is the only entry point]]. [[read|train.py:88-131|It builds the model, the data loader and the optimizer from one `Config`, then runs a fixed number of steps]].</p>
-    <p class="blk" data-topic="model" data-md>[[read|model.py:9|The model is a 12-layer decoder-only transformer]]. [[read|model.py:30-44|Positions are rotary, not learned]]. [[test|tests/test_model.py:21|The token embedding and the output head share one weight matrix]].</p>
+    <p class="blk" data-topic="model" data-md id="p-model">[[read|model.py:9|The model is a 12-layer decoder-only transformer]]. [[read|model.py:30-44|Positions are rotary, not learned]]. [[test|tests/test_model.py:21|The token embedding and the output head share one weight matrix]].</p>
     <p class="blk" data-topic="data" data-md id="p-data">[[read|data.py:18-26|Training data is pre-tokenized into `uint16` shards that the loader memory-maps, so no shard is ever loaded whole]]. [[inferred|data.py:52-55|Each GPU reads its own interleaved slice of every shard, so multi-GPU runs need no sampler]].</p>
     <p class="blk" data-topic="train" data-md>[[runtime|train.py:69-71|It trains in bf16 autocast on CUDA and in fp32 everywhere else]]. [[none|search:clip_grad|There is no gradient clipping]].</p>
     <p class="blk" data-topic="train" data-md>[[docs|README.md:31|The README reports 3.3 validation loss after about two hours on one H100]].</p>
@@ -282,7 +399,7 @@ p{margin:0 0 18px}
   <section id="modules">
     <h2>Modules</h2>
     <div class="mod"><div class="mod-h"><code>train.py</code><span>the training loop</span></div>
-      <p class="blk" data-topic="train" data-md>[[read|train.py:104-111|Gradients accumulate over `grad_accum` micro-batches before each optimizer step]]. [[read|train.py:125-126|Rank 0 saves a checkpoint every 500 steps]].</p></div>
+      <p class="blk" data-topic="train" data-md id="p-train">[[read|train.py:104-111|Gradients accumulate over `grad_accum` micro-batches before each optimizer step]]. [[read|train.py:125-126|Rank 0 saves a checkpoint every 500 steps]].</p></div>
     <div class="mod"><div class="mod-h"><code>model.py</code><span>GPT, blocks, attention</span></div>
       <p class="blk" data-topic="model" data-md>[[read|model.py:61|Attention is one call to `scaled_dot_product_attention` with `is_causal=True`]]. [[inferred|model.py:61|Which kernel runs (flash, memory-efficient or plain) is picked by PyTorch at run time]].</p></div>
     <div class="mod"><div class="mod-h"><code>data.py</code><span>the sharded token loader</span></div>
@@ -292,36 +409,53 @@ p{margin:0 0 18px}
     <div class="mod"><div class="mod-h"><code>optim.py</code><span>Muon, AdamW and the schedule</span></div>
       <p class="blk" data-topic="optim" data-md>[[read|optim.py:14-20|Muon updates the 2-D weight matrices; AdamW updates embeddings, norms and biases]]. [[test|tests/test_optim.py:8-9|The learning rate warms up linearly, then decays linearly to zero]].</p></div>
     <div class="mod"><div class="mod-h"><code>checkpoint.py</code><code>tokenizer.py</code><span>save, resume, encode</span></div>
-      <p class="blk" data-topic="model" data-md>[[read|checkpoint.py:12-15|A checkpoint holds the model, the optimizer state and the step]]. [[read|tokenizer.py:5|Tokenizing is tiktoken's `gpt2` encoding]].</p></div>
+      <p class="blk" data-topic="ckpt" data-md id="p-ckpt">[[read|checkpoint.py:12-15|A checkpoint holds the model, the optimizer state and the step]]. [[read|tokenizer.py:5|Tokenizing is tiktoken's `gpt2` encoding]].</p></div>
   </section>
 
   <section id="flows">
     <h2>Flows</h2>
     <div id="flowlist"></div>
   </section>
-
-  <section id="notes">
-    <h2>Notes</h2>
-    <p class="notes-empty" id="notes-empty">Highlight any text and choose Note. Notes stay in this browser and start nothing.</p>
-    <ul class="notelist" id="notelist"></ul>
-  </section>
 </div>
 </main>
 
-<div class="pop" id="pop"><button data-act="ask">Ask</button><button data-act="note">Note</button></div>
-<div class="tip" id="tip"></div>
+<button class="top" id="top" aria-label="Open discussions"></button>
 
-<div class="fade" id="fade"></div>
-<div class="strip" id="strip" aria-live="polite">
-  <div class="avs" id="avs"></div>
-  <div class="line" id="line"></div>
+<aside class="panel" id="panel" aria-label="Discussion panel">
+  <div class="p-head">
+    <div class="tabs" id="tabs">
+      <button data-tab="thread">Thread</button>
+      <button data-tab="nav">Discussions<span class="n" id="navcount"></span></button>
+      <button data-tab="notes">Notes<span class="n" id="notescount"></span></button>
+    </div>
+    <button class="x" id="pclose" aria-label="Close panel">×</button>
+  </div>
+  <div class="p-body" id="pbody"></div>
+  <div class="elsewhere" id="pelse"></div>
+  <form class="composer" id="composer" autocomplete="off">
+    <div class="ctx" id="ctx"></div>
+    <div class="qp" id="qp"><button type="button">Explain this</button><button type="button">Show an example</button><button type="button">Find the implementation</button></div>
+    <div class="crow"><textarea id="cin" rows="1"></textarea><button class="send" id="send">Ask</button></div>
+    <div class="cfoot" id="cfoot"></div>
+  </form>
+</aside>
+
+<div class="tb" id="tb">
+  <button data-act="ask"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Ask</button>
+  <button data-act="note"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3-7.5 7.5H3v-3z"/></svg>Annotate</button>
+  <button data-act="copy"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1 1 0 0 0 10 2.5H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy</button>
 </div>
+<div class="tip" id="tip"></div>
+<div class="prev" id="prev"></div>
+<div class="toast" id="toast"></div>
 
 <script>
 "use strict";
-const MAIN=document.querySelector(".main");
+const MAIN=document.getElementById("main");
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const after=(ms,f)=>setTimeout(f,ms);
+const clip=(s,n)=>s.length>n?s.slice(0,n-1).trimEnd()+"…":s;
 
 /* ---------- SAMPLE source, cited by the anchors (fake) ---------- */
 const SRC={
@@ -472,285 +606,122 @@ _enc = tiktoken.get_encoding("gpt2")`]],
 "checkpoint.py":[[12,`def save_checkpoint(model, opt, step, out_dir):
     path = Path(out_dir) / f"step_{step:06d}.pt"
     torch.save({"model": model.state_dict(),
-                "opt": opt.state_dict(), "step": step}, path)`]],
+                "opt": opt.state_dict(), "step": step}, path)`],
+[30,`def load_checkpoint(path, model, opt):
+    state = torch.load(path, map_location="cpu")
+    model.load_state_dict(state["model"])
+    opt.load_state_dict(state["opt"])
+    return state["step"] + 1`]],
 "README.md":[[29,`## Results
 
 The default config reaches 3.3 validation loss in about 2 hours on one H100.`]]
 };
-const SEARCHES={"search:clip_grad":{q:"clip_grad|clip_grad_norm|max_norm",files:9}};
+const SEARCHES={"search:clip_grad":{q:"clip_grad|clip_grad_norm|max_norm",files:9},"search:why":{q:"cache|reuse|_cache",files:9,note:"3 matches, none gives a reason"}};
 const LINES={};
 for(const [f,chunks] of Object.entries(SRC)){LINES[f]={};for(const [s,code] of chunks)code.split("\n").forEach((l,i)=>LINES[f][s+i]=l)}
 
-const EV={read:"Read in source",test:"Asserted by a test",runtime:"Seen at runtime",docs:"Docs",inferred:"Inferred",none:"Searched, not found"};
-const EVNOTE={runtime:"runtime trace of 3 training steps",inferred:"not stated in the code; reasoned from the cited lines",none:"looked for it and found no match"};
+const EV={read:"Read in source",test:"Asserted by a test",runtime:"Seen at runtime",docs:"Docs",inferred:"Inferred",none:"Searched, not found",gk:"General knowledge"};
+const EVNOTE={runtime:"runtime trace of 3 training steps",inferred:"not stated in the code; reasoned from the cited lines",none:"looked for it and found no match",gk:"not from this repo; the Checker skips it"};
 
 function hiPy(line){
   const h=esc(line);
-  return h.replace(/(#.*$)|("[^"]*"|'[^']*')|\b(def|class|return|for|in|if|else|import|from|with|as|not|and|or|is|None|True|False|self|assert)\b|\b(\d+(?:\.\d+)?)\b/g,
+  return h.replace(/(#.*$)|(&quot;[^&]*?&quot;|'[^']*')|\b(def|class|return|for|in|if|else|import|from|with|as|not|and|or|is|None|True|False|self|assert)\b|\b(\d+(?:\.\d+)?)\b/g,
     (m,c,s,k,n)=>c?`<span class="t-c">${c}</span>`:s?`<span class="t-s">${s}</span>`:k?`<span class="t-k">${k}</span>`:`<span class="t-n">${n}</span>`);
 }
 function parseAnchor(a){const m=a.match(/^(.+):(\d+)(?:-(\d+))?$/);return {file:m[1],a:+m[2],b:+(m[3]||m[2])}}
 function snippetHTML(anchor){
   if(SEARCHES[anchor]){const s=SEARCHES[anchor];
-    return `<div class="snip" data-for="${anchor}"><div class="snip-h"><span>searched ${s.files} files</span><button class="close-snip" aria-label="Close">×</button></div>
-      <div class="search">grep -rnE "${esc(s.q)}" .<br><span>no matches in ${s.files} files</span></div></div>`}
+    return `<div class="snip"><div class="snip-h"><span>searched ${s.files} files</span></div>
+      <div class="search">grep -rnE "${esc(s.q)}" .<br><span>${s.note||"no matches in "+s.files+" files"}</span></div></div>`}
   const {file,a,b}=parseAnchor(anchor), L=LINES[file]||{};
   const single=a===b, from=single?a-2:a, to=single?a+2:Math.min(b,a+7);
   let rows="";
   for(let n=from;n<=to;n++){if(L[n]===undefined)continue;rows+=`<span class="ln${n>=a&&n<=b?" hl":""}"><i>${n}</i>${hiPy(L[n])||" "}</span>`}
   const more=b>to?`<span class="ln more">… ${b-to} more lines</span>`:"";
-  return `<div class="snip" data-for="${anchor}"><div class="snip-h"><span>${file} · ${single?"line "+a:"lines "+a+"–"+b}</span><button class="close-snip" aria-label="Close">×</button></div><pre>${rows}${more}</pre></div>`;
+  return `<div class="snip"><div class="snip-h"><span>${file} · ${single?"line "+a:"lines "+a+"–"+b}</span></div><pre>${rows}${more}</pre></div>`;
 }
 
-/* ---------- mini markup: [[ev|anchor|text]] and [[!ev|anchor|text|checker note]] ---------- */
-function md(s,pending){
-  return s.replace(/\[\[(!?)(\w+)\|([^|\]]+)\|([^|\]]+)(?:\|([^\]]+))?\]\]/g,(m,bang,ev,anchor,text,note)=>{
-    const t=esc(text).replace(/`([^`]+)`/g,"<code>$1</code>");
-    const chip=`<button class="chip" data-a="${anchor}">${SEARCHES[anchor]?"searched":anchor}</button>`;
-    const dot=`<span class="dot ev-${ev}${pending?" pending":""}" data-a="${anchor}"></span>`;
-    return `<span class="claim" data-ev="${ev}"${bang?` data-flag="${esc(note)}"`:""}>${t}</span><span class="cite">${dot}${chip}</span>`;
-  }).replace(/<\/span>([.,;:])/g,(m,p)=>`<span class="pn">${p}</span></span>`).replace(/`([^`]+)`/g,"<code>$1</code>");
+/* ---------- claim markup ----------
+   [[ev|anchor|text]]            a claim with its evidence label and anchor
+   [[!ev|anchor|text|reason]]    a claim the Checker will flag "not supported"
+   [[gk|general|text]]           general knowledge, not from this repo (the Checker skips it) */
+const CLAIM=/\[\[(!?)(\w+)\|([^|\]]+)\|([^|\]]+)(?:\|([^\]]+))?\]\]/g;
+function inl(s){return esc(s).replace(/`([^`]+)`/g,"<code>$1</code>")}
+function claimsOf(s){const out=[];s.replace(CLAIM,(m,bang,ev,anchor,text,note)=>out.push({flag:bang?note:null,ev,anchor,text}));return out}
+/* mode: "map" (dots shown, no per-claim check), or {checked:bool} for answers */
+function claimHTML(c,mode){
+  const t=inl(c.text);
+  if(c.ev==="gk") return `<span class="claim gk">${t}</span><span class="cite"><span class="dot ev-gk" data-ev="gk"></span><span class="gktag" data-tip="<b>General knowledge</b> · not from this repo; the Checker skips it">general knowledge</span></span>`;
+  const chip=`<button class="chip" data-a="${c.anchor}">${SEARCHES[c.anchor]?"searched":c.anchor}</button>`;
+  if(mode==="map") return `<span class="claim">${t}</span><span class="cite"><span class="dot ev-${c.ev}" data-ev="${c.ev}" data-checked="1"></span>${chip}</span>`;
+  const done=mode.checked;
+  const dot=`<span class="dot ev-${c.ev}${done?"":" pending"}" data-ev="${c.ev}"></span>`;
+  const status=!done?"":c.flag?`<span class="flag" data-tip="<b>Not supported.</b> ${esc(c.flag)}">not supported</span>`:`<span class="ok" data-tip="<b>Checked</b> · the Checker re-read the cited lines: supported">✓</span>`;
+  return `<span class="claim${done&&c.flag?" flagged":""}">${t}</span><span class="cite">${dot}${chip}${status}</span>`;
 }
-$$("[data-md]").forEach(el=>el.innerHTML=md(el.textContent));
+function mdMap(s){
+  return s.replace(CLAIM,(m,bang,ev,anchor,text,note)=>claimHTML({ev,anchor,text,flag:bang?note:null},"map"))
+          .replace(/<\/span>([.,;:])/g,(m,p)=>`<span class="pn">${p}</span></span>`).replace(/`([^`]+)`/g,"<code>$1</code>");
+}
+$$("[data-md]").forEach(el=>el.innerHTML=mdMap(el.textContent));
 
-/* ---------- SAMPLE answers (the Investigator) ---------- */
+/* ---------- SAMPLE answers ---------- */
 const ANSWERS={
- engine:{q:"How big does the cache get, and when is it freed?",claims:[
-  "[[read|engine.py:12-17|It is allocated once, at full length: one bf16 tensor of shape (layers, 2, batch, heads, max_len, head_dim)]].",
+ engine:{q:"How big does the cache get, and when is it freed?",read:"engine.py 12–26",claims:[
+  "[[gk|general|A KV cache trades memory for speed: each new token reuses the keys and values already computed for the prefix]].",
+  "[[read|engine.py:12-17|Here it is allocated once, at full length: one bf16 tensor of shape (layers, 2, batch, heads, max_len, head_dim)]].",
   "[[read|engine.py:19-26|Each new token writes one position and advances a shared `pos` counter]].",
-  "[[inferred|model.py:9-13|At the default size and batch 1 that is about 38 MB]].",
-  "[[!read|engine.py:100-103|It is freed when `generate` returns; nothing keeps it between calls|Not supported. Checker: line 102 keeps the cache on self._cache, so the next call reuses it.]]"]},
- engine_f:{q:"Is pos reset between prompts?",claims:[
+  "[[inferred|model.py:7-13|At the default size and batch 1 that is about 38 MB]].",
+  "[[!read|engine.py:100-103|It is freed when `generate` returns; nothing keeps it between calls|Checker: line 102 keeps the cache on self._cache, so the next call reuses it.]]"]},
+ engine_pos:{q:"Is pos reset between prompts?",read:"engine.py 45–53",claims:[
   "[[read|engine.py:51|Yes: `generate` sets `cache.pos = 0` before the prefill]].",
-  "[[read|engine.py:52-53|The prefill writes every prompt position in one forward pass, then advances `pos` by the prompt length]]."]},
- data:{q:"Does this still hold when shards are reshuffled?",claims:[
+  "[[read|engine.py:52-53|The prefill writes every prompt position in one forward pass, then advances `pos` by the prompt length]].",
+  "[[inferred|engine.py:19-23|Old entries past `pos` stay in the buffer, but `append` only returns positions up to `pos`, so they are never read]]."]},
+ engine_mb:{q:"How is 38 MB computed?",read:"model.py 7–13",claims:[
+  "[[read|model.py:7-13|12 layers, 12 heads, head_dim 768 / 12 = 64, max_len 1024]].",
+  "[[gk|general|bf16 stores each value in 2 bytes]].",
+  "[[inferred|engine.py:15-16|12 × 2 × 1 × 12 × 1024 × 64 values × 2 bytes ≈ 37.7 MB]]."]},
+ data:{q:"Does this still hold when shards are reshuffled?",read:"data.py 18–55",claims:[
   "[[read|data.py:18-26|Yes: each shard is opened with `np.memmap`, which maps the file without reading it]].",
   "[[read|data.py:44|Reshuffling reorders the file list only; it never touches the token arrays]].",
   "[[inferred|data.py:52-55|Each batch reads one span of B × T + 1 tokens per GPU, not the shard]]."]},
- train:{q:"What does this mean for the logged loss?",claims:[
-  "[[read|train.py:104-111|The loss is divided by `grad_accum` before `backward()`, so the summed gradient is the gradient of the mean loss]].",
-  "[[read|train.py:110|The optimizer steps once per outer step, after all micro-batches]].",
-  "[[!read|train.py:123-124|The logged loss is the average over all micro-batches|Not supported. Checker: line 124 logs the last micro-batch's loss, rescaled; it is not an average.]]"]},
- model:{q:"How is the tie implemented?",claims:[
-  "[[read|model.py:150|It is one assignment: `lm_head.weight = wte.weight`]].",
-  "[[test|tests/test_model.py:21|A test asserts the two are the same tensor object]].",
-  "[[inferred|model.py:9-13|At the default size that saves 50,304 × 768 ≈ 38.6 M parameters]].",
-  "[[!read|checkpoint.py:12-15|Checkpoints store the shared matrix once|Not supported. Checker: the cited lines save state_dict(); they don't show the shared tensor being stored once.]]"]},
- optim:{q:"Where does the learning rate get set?",claims:[
-  "[[read|optim.py:50-54|`schedule()` returns the rate for a step: linear warmup, then linear decay]].",
-  "[[read|train.py:88-92|The loop calls it at the top of every step and sets it on every group]]."]},
- model_f:{q:"Which optimizer updates the tied matrix?",claims:[
-  "[[read|optim.py:14-20|It is named `wte`, so `build_optimizer` gives it to AdamW, not Muon]].",
-  "[[inferred|optim.py:14-20|The output head gets AdamW updates too, since it is the same tensor]]."]},
- data_f:{q:"Is the shuffle the same on every GPU?",claims:[
+ data_f:{q:"Is the shuffle the same on every GPU?",read:"data.py 44",claims:[
   "[[read|data.py:44|Yes: every rank seeds the shuffle with the same epoch number]].",
   "[[inferred|data.py:52-55|So all ranks read the same shard at once, each its own slice]]."]},
- train_f:{q:"Is the logged loss comparable across grad_accum settings?",claims:[
+ train:{q:"What does this mean for the logged loss?",read:"train.py 104–124",claims:[
+  "[[read|train.py:104-111|The loss is divided by `grad_accum` before `backward()`, so the summed gradient is the gradient of the mean loss]].",
+  "[[read|train.py:110|The optimizer steps once per outer step, after all micro-batches]].",
+  "[[!read|train.py:123-124|The logged loss is the average over all micro-batches|Checker: line 124 logs the last micro-batch's loss, rescaled; it is not an average.]]"]},
+ train_f:{q:"Is the logged loss comparable across grad_accum settings?",read:"train.py 123–124",claims:[
   "[[read|train.py:123-124|The logged value is multiplied back by `grad_accum`]].",
   "[[inferred|train.py:104-111|So its scale doesn't depend on `grad_accum`]]."]},
- optim_f:{q:"Does warmup apply to both optimizers?",claims:[
-  "[[read|train.py:88-92|`opt.set_lr` is called once per step on the combined optimizer]].",
-  "[[inferred|optim.py:42-45|It presumably sets every inner optimizer; the setter isn't in the cited lines]]."]},
- follow:{q:"Why is it done this way?",claims:[
-  "[[inferred|optim.py:42-45|`MultiOptimizer.step` calls each inner optimizer in turn, so which `step` runs depends on the config, not on this line]].",
-  "[[none|search:clip_grad|No comment or doc in the repo gives the reason]]."]}
+ model:{q:"How is the tie implemented?",read:"model.py 148–150",claims:[
+  "[[read|model.py:150|It is one assignment: `lm_head.weight = wte.weight`]].",
+  "[[test|tests/test_model.py:21|A test asserts the two are the same tensor object]].",
+  "[[gk|general|Tying is common in GPT-style models; it saves the parameters of one vocab × width matrix]].",
+  "[[!read|checkpoint.py:12-15|Checkpoints store the shared matrix once|Checker: the cited lines save state_dict(); they don't show the shared tensor being stored once.]]"]},
+ model_f:{q:"Which optimizer updates the tied matrix?",read:"optim.py 14–20",claims:[
+  "[[read|optim.py:14-20|It is named `wte`, so `build_optimizer` gives it to AdamW, not Muon]].",
+  "[[inferred|optim.py:14-20|The output head gets AdamW updates too, since it is the same tensor]]."]},
+ optim:{q:"Where does the learning rate get set?",read:"optim.py 50–54",claims:[
+  "[[read|optim.py:50-54|`schedule()` returns the rate for a step: linear warmup, then linear decay]].",
+  "[[read|train.py:88-92|The loop calls it at the top of every step and sets it on every group]]."]},
+ ckpt:{q:"What does a resume restore?",read:"checkpoint.py 30–34",claims:[
+  "[[read|checkpoint.py:30-34|The model weights, the optimizer state and the step, which resumes at step + 1]].",
+  "[[none|search:clip_grad|The data loader's position is not saved]]."]},
+ follow:{q:"Why is it done this way?",read:"the repo",claims:[
+  "[[none|search:why|No comment or doc in the repo gives the reason]].",
+  "[[gk|general|Reusing one buffer avoids a large allocation on every call]]."]}
 };
-
-/* ---------- status strip ---------- */
-const AG={guide:["🧭","Guide"],cartographer:["🗺️","Cartographer"],investigator:["🔦","Investigator"],tracer:["🧵","Tracer"],checker:["✅","Checker"]};
-const work={}; let hideT=null;
-$("#avs").innerHTML=Object.entries(AG).map(([k,[e,n]])=>`<span class="av off a-${k}" data-ag="${k}" data-tip="<b>${n}</b>"><span class="face">${e}</span></span>`).join("");
-function say(ag,what){
-  work[ag]=what; clearTimeout(hideT);
-  const av=$(`.av[data-ag="${ag}"]`); av.classList.remove("off"); av.classList.add("working");
-  av.dataset.tip=`<b>${AG[ag][1]}</b> · ${what}`;
-  $("#line").innerHTML=`<b>${AG[ag][1]}</b>${what}`;
-  $("#strip").classList.add("on"); $("#fade").classList.add("on");
-}
-function done(ag){
-  delete work[ag];
-  const av=$(`.av[data-ag="${ag}"]`); av.classList.remove("working"); av.classList.add("off");
-  const left=Object.keys(work);
-  if(left.length){const k=left[left.length-1];$("#line").innerHTML=`<b>${AG[k][1]}</b>${work[k]}`}
-  else hideT=setTimeout(()=>{$("#strip").classList.remove("on");$("#fade").classList.remove("on")},500);
-}
-const after=(ms,f)=>setTimeout(f,ms);
-
-/* ---------- snippets ---------- */
-function closeSnips(){$$(".snip").forEach(s=>s.remove());$$(".chip.open").forEach(c=>c.classList.remove("open"))}
-function toggleSnip(chip){
-  const a=chip.dataset.a, was=chip.classList.contains("open");
-  closeSnips(); if(was){layout();return}
-  chip.classList.add("open");
-  const hop=chip.closest(".hop");
-  const host=hop?hop:chip.closest(".blk, .ans p");
-  const html=snippetHTML(a);
-  if(hop) hop.insertAdjacentHTML("beforeend",html); else host.insertAdjacentHTML("afterend",html);
-  layout();
-}
-
-/* ---------- threads ---------- */
-let tid=0; const threads={};
-function blockOf(node){const el=node.nodeType===1?node:node.parentElement;return el.closest(".blk, .ans p, .hop-d, .q, .mod-h, .flow-h, p")}
-function wrapRange(range,cls){
-  const span=document.createElement("span"); span.className=cls;
-  try{range.surroundContents(span)}catch(e){span.appendChild(range.extractContents());range.insertNode(span)}
-  return span;
-}
-function threadHTML(id,quote){
-  return `<div class="thread" id="t${id}" data-id="${id}"><div class="th-top"><div class="quote">“${esc(quote)}”</div><button class="x" data-close="${id}" aria-label="Close">×</button></div><div class="qas"></div>
-    <form class="ask" data-ask="${id}"><input placeholder="Ask about this…" autocomplete="off"><button>Ask</button></form>
-    <div class="tip-line">Highlight a line of the answer to ask a follow-up.</div></div>`;
-}
-function newThread(range,{open=true}={}){
-  const id=++tid, quote=range.toString().trim();
-  const blk=blockOf(range.startContainer);
-  const mk=wrapRange(range,"mk"); mk.dataset.t=id;
-  const dot=document.createElement("span"); dot.className="mdot"; dot.dataset.t=id; dot.dataset.tip="Thread · click to open"; $("#col").appendChild(dot);
-  blk.insertAdjacentHTML("afterend",threadHTML(id,quote));
-  threads[id]={id,mk,dot,el:$("#t"+id),topic:(blk.closest("[data-topic]")||{}).dataset?.topic||"model",pendingQuote:null};
-  if(open) openThread(id); else threads[id].el.style.display="none";
-  layout(); return threads[id];
-}
-function openThread(id){
-  for(const t of Object.values(threads)){const on=t.id==id;t.el.style.display=on?"":"none";t.mk.classList.toggle("active",on);t.dot.classList.toggle("active",on)}
-  closeSnips(); layout();
-}
-function closeThread(id){const t=threads[id];t.el.style.display="none";t.mk.classList.remove("active");t.dot.classList.remove("active");layout()}
-function qaHTML(q,fq){return `<div class="qa"><div class="q"><span class="who">You</span>${fq?`<span class="fq">on “${esc(fq)}”</span>`:""}${esc(q)}</div><div class="ans"></div></div>`}
-function answerHTML(key,pending){
-  const A=ANSWERS[key];
-  return `<div class="by"><span class="em">🔦</span>Investigator</div>${A.claims.map(c=>`<p>${md(c,pending)}</p>`).join("")}`;
-}
-function checkedLine(qa){
-  const n=$$(".claim",qa).length, f=$$(".claim.flagged",qa).length;
-  return `<span class="em">✅</span>Checked ${n} claims · ${n-f} supported${f?` · ${f} not supported`:""}`;
-}
-function flagClaim(c){
-  c.classList.add("flagged"); const cite=c.nextElementSibling; $(".dot",cite).remove();
-  cite.insertAdjacentHTML("afterbegin",`<span class="flag" data-tip="${c.dataset.flag}">not supported</span>`);
-}
-function revealAll(qa){$$(".claim",qa).forEach(c=>{if(c.dataset.flag)flagClaim(c);else $(".dot",c.nextElementSibling)?.classList.remove("pending")});
-  const ck=$(".checked",qa); ck.className="checked"; ck.innerHTML=checkedLine(qa)}
-function ask(t,q,{key,fq}={}){
-  key=key||t.topic; if(!ANSWERS[key])key="model";
-  const qas=$(".qas",t.el); qas.insertAdjacentHTML("beforeend",qaHTML(q,fq));
-  const qa=qas.lastElementChild, ans=$(".ans",qa), file=(ANSWERS[key].claims[0].match(/\|([\w/.]+\.\w+):/)||[])[1]||"the repo";
-  ans.innerHTML=`<div class="wait"><span class="em">🔦</span>The Investigator is reading <code>${file}</code> …</div><div class="shim" style="width:92%"></div><div class="shim" style="width:70%"></div>`;
-  t.dot.classList.add("busy"); layout();
-  say("guide","routing your question to the Investigator");
-  after(500,()=>{say("investigator",`reading <code>${file}</code> …`)});
-  after(800,()=>done("guide"));
-  after(2100,()=>{
-    ans.innerHTML=answerHTML(key,true)+`<div class="checked going"><span class="em">✅</span>Checking claims against the cited lines …</div>`;
-    done("investigator"); say("checker",`checking ${ANSWERS[key].claims.length} claims against their cited lines`); layout();
-    const claims=$$(".claim",qa);
-    claims.forEach((c,i)=>after(2000+i*300,()=>{if(c.dataset.flag)flagClaim(c);else $(".dot",c.nextElementSibling).classList.remove("pending");layout()}));
-    after(2000+claims.length*300+200,()=>{const ck=$(".checked",qa);ck.className="checked";ck.innerHTML=checkedLine(qa);
-      done("checker"); say("guide","writing the answer back to the map"); after(700,()=>{done("guide");t.dot.classList.remove("busy")});});
-  });
-}
-
-/* ---------- notes ---------- */
-let nid=0; const notes=[];
-function newNote(range){
-  const id=++nid, quote=range.toString().trim(), blk=blockOf(range.startContainer);
-  const mk=wrapRange(range,"nt"); mk.dataset.n=id;
-  const dot=document.createElement("span"); dot.className="mdot note"; dot.dataset.n=id; dot.dataset.tip="Your note (local)"; $("#col").appendChild(dot);
-  const n={id,quote,text:"",mk,dot}; notes.push(n);
-  closeSnips(); $$(".note-ed").forEach(e=>e.remove());
-  blk.insertAdjacentHTML("afterend",`<div class="note-ed" data-n="${id}"><textarea placeholder="Your note…"></textarea><div class="row"><span>Stays in this browser. Starts nothing.</span><button data-save="${id}">Save</button></div></div>`);
-  $(`.note-ed[data-n="${id}"] textarea`).focus(); layout();
-}
-function saveNote(id){const ed=$(`.note-ed[data-n="${id}"]`),n=notes.find(x=>x.id==id);n.text=ed.querySelector("textarea").value.trim()||"(empty note)";ed.remove();renderNotes();layout()}
-function editNote(id){const n=notes.find(x=>x.id==id);$$(".note-ed").forEach(e=>e.remove());
-  blockOf(n.mk).insertAdjacentHTML("afterend",`<div class="note-ed" data-n="${id}"><textarea>${esc(n.text)}</textarea><div class="row"><span>Stays in this browser. Starts nothing.</span><button data-save="${id}">Save</button></div></div>`);layout()}
-function renderNotes(){
-  const saved=notes.filter(n=>n.text);
-  $("#notecount").textContent=saved.length||""; $("#notes-empty").style.display=saved.length?"none":"";
-  $("#notelist").innerHTML=saved.map(n=>`<li><span class="nq" data-goto="${n.id}">“${esc(n.quote)}”</span>${esc(n.text)}</li>`).join("");
-}
-
-/* ---------- margin dots follow their marks ---------- */
-function layout(){
-  const col=$("#col").getBoundingClientRect();
-  for(const t of Object.values(threads)){const r=t.mk.getClientRects()[0];if(r)t.dot.style.top=(r.top-col.top+r.height/2-4.5)+"px"}
-  for(const n of notes){const r=n.mk.getClientRects()[0];if(r)n.dot.style.top=(r.top-col.top+r.height/2-4.5)+"px"}
-}
-addEventListener("resize",layout);
-
-/* ---------- selection popover: Ask / Note, anywhere in the map or an answer ---------- */
-const pop=$("#pop"); let selRange=null;
-function hidePop(){pop.style.display="none";selRange=null}
-document.addEventListener("mouseup",e=>{
-  if(pop.contains(e.target))return;
-  setTimeout(()=>{
-    const s=getSelection(); if(!s.rangeCount||s.isCollapsed){hidePop();return}
-    let r=s.getRangeAt(0); const startEl=r.startContainer.parentElement;
-    if(!startEl||!$("#col").contains(startEl)||startEl.closest("input,textarea,.snip,.chip,button,h1,h2,.quote,.q")){hidePop();return}
-    const b1=blockOf(r.startContainer), b2=blockOf(r.endContainer);
-    if(b1&&b2&&b1!==b2){r=r.cloneRange();r.setEndAfter(b1.lastChild)}
-    if(!r.toString().trim()){hidePop();return}
-    selRange=r; const rect=r.getClientRects()[0]||r.getBoundingClientRect();
-    pop.style.display="flex";
-    pop.style.left=(rect.left+rect.width/2-pop.offsetWidth/2)+"px";
-    pop.style.top=(rect.top-pop.offsetHeight-10)+"px";
-  },0);
-});
-pop.addEventListener("mousedown",e=>e.preventDefault());
-pop.addEventListener("click",e=>{
-  const act=e.target.dataset.act; if(!act||!selRange)return;
-  const r=selRange; hidePop(); getSelection().removeAllRanges();
-  const inThread=r.startContainer.parentElement.closest(".thread");
-  if(act==="note"){newNote(r);return}
-  if(inThread){ // follow-up inside an answer
-    const t=threads[inThread.dataset.id], fq=r.toString().trim();
-    const m=wrapRange(r,"mk"); m.dataset.t=t.id; t.pendingQuote=fq;
-    const inp=$(".ask input",t.el); inp.placeholder=`Follow up on “${fq.length>40?fq.slice(0,40)+"…":fq}”`; inp.focus();
-    return;
-  }
-  const t=newThread(r); $(".ask input",t.el).focus();
-});
-
-/* ---------- clicks ---------- */
-document.addEventListener("click",e=>{
-  const el=e.target;
-  const chip=el.closest(".chip"); if(chip){e.stopPropagation();toggleSnip(chip);return}
-  if(el.closest(".close-snip")){closeSnips();layout();return}
-  const close=el.closest("[data-close]"); if(close){closeThread(close.dataset.close);return}
-  const mk=el.closest(".mk, .mdot:not(.note)");
-  if(mk&&!el.closest(".thread .mk")){const t=threads[mk.dataset.t];if(t){t.el.style.display==="none"?openThread(t.id):closeThread(t.id)}return}
-  const nt=el.closest(".nt, .mdot.note"); if(nt){editNote(nt.dataset.n);return}
-  const sv=el.closest("[data-save]"); if(sv){saveNote(sv.dataset.save);return}
-  const go=el.closest("[data-goto]"); if(go){const n=notes.find(x=>x.id==go.dataset.goto);n.mk.scrollIntoView({block:"center"});return}
-  const fh=el.closest(".flow-h"); if(fh){fh.parentElement.classList.toggle("open");layout();return}
-  const hb=el.closest(".hop-b"); if(hb){const c=$(".chip",hb.parentElement);toggleSnip(c);hb.parentElement.classList.toggle("open",c.classList.contains("open"));return}
-});
-document.addEventListener("submit",e=>{
-  e.preventDefault(); const f=e.target.closest("[data-ask]"); if(!f)return;
-  const t=threads[f.dataset.ask], inp=$("input",f), fq=t.pendingQuote;
-  const q=inp.value.trim()||(fq?ANSWERS[t.topic+"_f"]?.q||ANSWERS.follow.q:ANSWERS[t.topic]?.q||"What does this mean here?");
-  inp.value=""; inp.placeholder="Ask a follow-up…"; t.pendingQuote=null;
-  ask(t,q,{key:fq?(ANSWERS[t.topic+"_f"]?t.topic+"_f":"follow"):t.topic,fq});
-});
-
-/* ---------- tooltips for dots, flags, avatars ---------- */
-const tip=$("#tip");
-document.addEventListener("mouseover",e=>{
-  const d=e.target.closest(".dot[data-a], .flag, [data-tip], .node");
-  if(!d){tip.classList.remove("on");return}
-  let html=d.dataset.tip||"";
-  if(d.classList.contains("dot")){const ev=[...d.classList].find(c=>c.startsWith("ev-")).slice(3);html=`<b>${EV[ev]}</b>${EVNOTE[ev]?" · "+EVNOTE[ev]:""}`}
-  if(d.classList.contains("flag"))html=d.dataset.tip;
-  if(!html){tip.classList.remove("on");return}
-  tip.innerHTML=html; const r=d.getBoundingClientRect();
-  tip.style.left=Math.max(8,r.left+r.width/2-tip.offsetWidth/2)+"px";
-  tip.style.top=(r.top-tip.offsetHeight-8)+"px"; tip.classList.add("on");
-});
-
-/* ---------- Tracer paths (flows) ---------- */
-const FLOWS=[
- {q:"What happens in one training step?",hops:7,open:true,path:[
+const TRACES={
+ engine2:{q:"What happens when generate is called a second time?",sum:"So the cache is not freed: the second call reuses the same buffer and rewinds it.",path:[
+  {fn:"Engine.generate(prompt)",a:"engine.py:45-47",ev:"read",tag:"entry",d:"self._cache is set by the first call, so no new KVCache is made",edge:["cache","the same KVCache object"]},
+  {fn:"cache.pos = 0",a:"engine.py:51",ev:"read",d:"Rewinds the write position; old entries stay in the buffer"},
+  {fn:"GPT.forward(x, cache)",a:"engine.py:52",ev:"runtime",d:"Prefill: all prompt positions in one pass",edge:["logits","(1, P, 50304)"]},
+  {fn:"KVCache.append(layer, k, v)",a:"engine.py:19-23",ev:"runtime",d:"Overwrites positions 0 … P−1 in every layer"},
+  {fn:"attention over kv[: pos + t]",a:"engine.py:23",ev:"inferred",d:"Stale entries past pos are never read: append returns only the prefix"},
+  {fn:"self._cache = cache",a:"engine.py:100-103",ev:"read",tag:"end",d:"Keeps the buffer for the next call"}]},
+ step:{q:"What happens in one training step?",sum:"",path:[
   {fn:"main()",a:"train.py:12",ev:"read",tag:"entry",d:"Builds the model, loader and optimizer from one Config"},
   {fn:"ShardLoader.next_batch()",a:"data.py:61-66",ev:"read",d:"Slices one span from the memory-mapped shard",edge:["x, y","(B, T) int64"]},
   {fn:"GPT.forward(x, y)",a:"model.py:120-126",ev:"runtime",d:"Embeds the tokens, adds rotary positions",edge:["x","(B, T, 768) bf16"]},
@@ -758,110 +729,454 @@ const FLOWS=[
   {fn:"lm_head, F.cross_entropy",a:"model.py:126-139",ev:"read",d:"Projects to logits (B, T, 50304) and scores each next token",edge:["loss","scalar"]},
   {fn:"loss.backward()",a:"train.py:109",ev:"runtime",d:"Repeats for each of grad_accum micro-batches",edge:["grads","one per parameter"]},
   {fn:"opt.step()",a:"optim.py:44-45",ev:"inferred",tag:"end",d:"Dynamic dispatch: runs Muon, then AdamW; the classes come from the config"}]},
- {q:"How does generate turn a prompt into text?",hops:5,path:[
+ gen:{q:"How does generate turn a prompt into text?",sum:"",path:[
   {fn:"Engine.generate(prompt)",a:"engine.py:45-58",ev:"read",tag:"entry",d:"Reuses or allocates the KV cache"},
   {fn:"tok.encode(prompt)",a:"engine.py:49",ev:"read",d:"Prompt to token ids",edge:["ids","(1, P) int64"]},
   {fn:"GPT.forward(x, cache)",a:"engine.py:52",ev:"runtime",d:"Prefill: all prompt positions in one pass",edge:["logits","(1, P, 50304)"]},
   {fn:"sample(logits[:, -1])",a:"engine.py:55-57",ev:"read",d:"One token at a time, max_tokens times",edge:["next id","(1, 1)"]},
   {fn:"tok.decode(out)",a:"engine.py:100",ev:"read",tag:"end",d:"Token ids back to text"}]}
-];
-function pathHTML(f){
-  const counts={};f.path.forEach(h=>counts[h.ev]=(counts[h.ev]||0)+1);
-  return `<div class="flow${f.open?" open":""}"><button class="flow-h"><span class="fq">${esc(f.q)}<span class="car">▸</span></span><span class="meta"><span class="em">🧵</span>Tracer · ${f.path.length} hops</span></button>
-  <ol class="path">${f.path.map((h,i)=>`
-    <li class="hop"><span class="node ev-${h.ev}${h.tag==="end"?" end-pt":""}" data-tip="<b>${EV[h.ev]}</b>"></span><div class="hop-b" role="button" tabindex="0">
-      <div class="hop-t"><span class="fn">${esc(h.fn)}</span>${h.tag?`<span class="tag">${h.tag}</span>`:""}<span class="chip" data-a="${h.a}">${h.a}</span></div>
-      <div class="hop-d">${esc(h.d)} · <span class="lab ev-${h.ev}">${EV[h.ev].toLowerCase()}</span></div></div></li>${h.edge?`<li class="edge"><span><b>${h.edge[0]}</b>${h.edge[1]}</span></li>`:""}`).join("")}</ol>
-  <div class="path-foot path-only">${Object.entries(counts).map(([ev,n])=>`<span><span class="dot ev-${ev}"></span>${n} ${EV[ev].toLowerCase()}</span>`).join("")}<span>runtime hops confirmed by a trace of 3 steps</span></div></div>`;
+};
+
+/* ---------- agents ---------- */
+const AG={guide:["🧭","Guide"],cartographer:["🗺️","Cartographer"],investigator:["🔦","Investigator"],tracer:["🧵","Tracer"],checker:["✅","Checker"]};
+const avHTML=(ag,working=true,tip)=>`<span class="av a-${ag}${working?" working":""}"${tip?` data-tip="${esc(tip)}"`:""}><span class="face">${AG[ag][0]}</span></span>`;
+const workHTML=w=>`<div class="work">${avHTML(w.ag)}<div><b>${AG[w.ag][1]}</b>${w.text}${w.ctx?`<span class="wctx">${w.ctx}</span>`:""}</div></div>`;
+
+/* ---------- Tracer path view ---------- */
+function pathHTML(tr,{panel=false,checked=null,open=false}={}){
+  const counts={};tr.path.forEach(h=>counts[h.ev]=(counts[h.ev]||0)+1);
+  const nChecked=checked===null?tr.path.length:checked;
+  const hops=tr.path.map((h,i)=>{
+    const ok=panel&&i<nChecked?`<span class="ok" data-tip="<b>Checked</b> · the Checker re-read the cited lines: supported">✓</span>`:"";
+    const chip=`<button class="chip" data-a="${h.a}">${h.a}</button>`;
+    const body=panel
+      ?`<div class="hop-t"><span class="fn">${esc(h.fn)}</span>${h.tag?`<span class="tag">${h.tag}</span>`:""}</div><div class="hop-d sel-ok">${esc(h.d)}</div><div class="hop-l"><span class="lab ev-${h.ev}">${EV[h.ev].toLowerCase()}</span>${chip}${ok}</div>`
+      :`<div class="hop-t"><span class="fn">${esc(h.fn)}</span>${h.tag?`<span class="tag">${h.tag}</span>`:""}${chip}</div><div class="hop-d">${esc(h.d)} · <span class="lab ev-${h.ev}">${EV[h.ev].toLowerCase()}</span></div>`;
+    return `<li class="hop"><span class="node ev-${h.ev}${h.tag==="end"?" end-pt":""}" data-tip="<b>${EV[h.ev]}</b>${EVNOTE[h.ev]?" · "+EVNOTE[h.ev]:""}"></span><div class="hop-b">${body}</div></li>${h.edge?`<li class="edge"><span><b>${h.edge[0]}</b>${h.edge[1]}</span></li>`:""}`}).join("");
+  const foot=`<div class="path-foot">${Object.entries(counts).map(([ev,n])=>`<span><span class="dot ev-${ev}"></span>${n} ${EV[ev].toLowerCase()}</span>`).join("")}</div>`;
+  if(panel) return `<ol class="path">${hops}</ol>${foot}`;
+  return `<div class="flow${open?" open":""}"><button class="flow-h"><span class="fq">${esc(tr.q)}<span class="fcar">▸</span></span><span class="meta"><span class="em">🧵</span>Tracer · ${tr.path.length} hops</span></button><ol class="path">${hops}</ol>${open?foot:""}</div>`;
 }
-$("#flowlist").innerHTML=FLOWS.map(pathHTML).join("");
-const pathStyle=document.createElement("style");pathStyle.textContent=".flow:not(.open) .path-only{display:none}";document.head.appendChild(pathStyle);
+$("#flowlist").innerHTML=pathHTML(TRACES.step)+pathHTML(TRACES.gen);
+
+/* ---------- text ranges (search across element boundaries) ---------- */
+function findRange(root,phrase){
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const nodes=[]; let txt="";
+  while(w.nextNode()){nodes.push([w.currentNode,txt.length]);txt+=w.currentNode.data}
+  const i=txt.indexOf(phrase); if(i<0)return null;
+  const at=k=>{for(let j=nodes.length-1;j>=0;j--)if(nodes[j][1]<=k)return [nodes[j][0],k-nodes[j][1]]};
+  const r=document.createRange(); const [sn,so]=at(i); const [en,eo]=at(i+phrase.length-1);
+  r.setStart(sn,so); r.setEnd(en,eo+1); return r;
+}
+function wrapRange(range,cls){
+  const span=document.createElement("span"); span.className=cls;
+  try{range.surroundContents(span)}catch(e){span.appendChild(range.extractContents());range.insertNode(span)}
+  return span;
+}
+const norm=s=>s.replace(/\s+/g," ").trim();
+
+/* ---------- data model (mirrors the spec: anchors, annotations, responses, follow-ups) ---------- */
+const S={threads:[],nodes:{},notes:[],open:false,tab:"thread",cur:null,curNode:null,global:[],compose:null,nid:0,tid:0,noteid:0};
+const SECNAME={overview:"Overview",modules:"Modules",flows:"Flows"};
+function sectionOf(el){const s=el.closest("section");return s?s.id:"overview"}
+function moduleOf(el){const m=el.closest(".mod");return m?$(".mod-h code",m).textContent:null}
+/* Thread = a question anchored on the map (DocumentAnchor: doc id, revision, quote, offsets) */
+function newThread(range,{topic}={}){
+  const blk=(range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement).closest(".blk,.hop-d,.mod-h,.flow-h,p")||$("#p-model");
+  const quote=norm(range.toString()); const off=norm(blk.textContent).indexOf(quote);
+  const mk=wrapRange(range,"mk");
+  const t={id:++S.tid,anchor:{doc:"tinytrain-map",rev:"3f9c1e2",quote,offsets:[off,off+quote.length]},sec:sectionOf(blk),mod:moduleOf(blk),topic:topic||(blk.closest("[data-topic]")||{dataset:{}}).dataset.topic||"model",roots:[],mk,marker:null};
+  mk.dataset.t=t.id;
+  const m=document.createElement("button"); m.className="mm"; m.dataset.t=t.id; $("#col").appendChild(m); t.marker=m;
+  S.threads.push(t); return t;
+}
+/* Node = Annotation(question) + its Response; a FollowUp stores parent response id and the selected span */
+function newNode(t,{parent=null,span=null,q,key,agent="investigator",trace=null}){
+  const n={id:++S.nid,thread:t.id,parent,span,q,key,trace,agent,via:trace?"guide":null,kids:[],closed:false,
+           status:"done",checked:0,work:null,saved:false,meta:{model:"sample",at:"2026-11-15"}};
+  S.nodes[n.id]=n; (parent?S.nodes[parent].kids:t.roots).push(n.id); return n;
+}
+const claimsFor=n=>n.trace?TRACES[n.trace].path:claimsOf(ANSWERS[n.key].claims.join(" "));
+const checkable=n=>claimsFor(n).filter(c=>c.ev!=="gk").length;
+function finish(n){n.status="done";n.checked=checkable(n);n.work=null}
+
+/* ---------- rendering the panel ---------- */
+function nodeHTML(n,depth){
+  const kids=n.kids.map(k=>nodeHTML(S.nodes[k],depth+1)).join("");
+  const on=n.span?`<span class="on-q"><b>on</b>“${esc(clip(n.span.quote,60))}”</span>`:"";
+  const claims=n.status==="routing"||n.status==="reading"?[]:claimsFor(n);
+  const nC=claims.length, nK=n.kids.length;
+  let body="";
+  if(n.status==="routing"||n.status==="reading"){
+    body=workHTML(n.work)+`<div class="shim" style="width:92%"></div><div class="shim" style="width:64%"></div>`;
+  }else{
+    const by=n.trace
+      ?`<div class="by"><span class="em">🧵</span>Tracer<span class="via">· routed by 🧭 Guide as a flow question</span></div>`
+      :`<div class="by"><span class="em">${AG[n.agent][0]}</span>${AG[n.agent][1]}</div>`;
+    let ans;
+    if(n.trace){
+      const tr=TRACES[n.trace];
+      ans=`<div class="ans">${pathHTML(tr,{panel:true,checked:n.checked})}${tr.sum?`<p class="tsum sel-ok">${esc(tr.sum)}</p>`:""}</div>`;
+    }else{
+      let k=0;
+      ans=`<div class="ans sel-ok">${claims.map(c=>{const done=c.ev==="gk"||k++<n.checked;return `<p>${claimHTML(c,{checked:done})}</p>`}).join("")}</div>`;
+    }
+    const tot=checkable(n), flagged=n.trace?0:claims.filter(c=>c.flag).length, gk=claims.filter(c=>c.ev==="gk").length;
+    const chk=n.status==="checking"
+      ?workHTML(n.work)
+      :`<div class="chk" data-tip="${tot} ${n.trace?"hops":"claims"} checked against their cited lines${gk?`; ${gk} general-knowledge claim${gk>1?"s":""} skipped`:""}"><span class="em">✅</span>${tot-flagged} of ${tot} supported${gk?` · ${gk} general, not checked`:""}</div>`;
+    const acts=n.status==="done"?`<div class="acts"><button data-save="${n.id}" class="${n.saved?"done":""}">${n.saved?"Saved to notes ✓":"Save as note"}</button><button data-copyans="${n.id}">Copy</button></div>`:"";
+    body=by+ans+chk+acts;
+  }
+  const busy=n.status!=="done";
+  const meta=`${n.trace?"🧵 Tracer":AG[n.agent][0]+" "+AG[n.agent][1]} · ${busy?"working":nC+(n.trace?" hops":" claims")}${nK?` · ${nK} follow-up${nK>1?"s":""}`:""}`;
+  const onp=S.curNode&&n.id!==S.curNode&&pathTo(S.curNode).includes(n.id);
+  return `<div class="nd${n.closed?" closed":""}${onp?" onpath":""}${n.id===S.curNode?" cur":""}" data-id="${n.id}">
+    <div class="nd-q"><button class="car" data-tog="${n.id}" aria-label="Collapse">▼</button><div style="min-width:0"><button class="qt" data-act-node="${n.id}" style="text-align:left">${on}${esc(n.q)}</button><span class="meta1">${meta}</span></div></div>
+    <div class="nd-b">${body}</div>${kids?`<div class="kids">${kids}</div>`:""}</div>`;
+}
+function pathTo(id){const p=[];while(id){p.unshift(id);id=S.nodes[id].parent}return p}
+function crumbsHTML(t){
+  const sec=SECNAME[t.sec]+(t.mod?" · "+t.mod:"");
+  let h=`<button data-crumb="0" title="${esc(sec)}">${esc(t.mod||SECNAME[t.sec])}</button>`;
+  if(S.curNode){pathTo(S.curNode).forEach((id,i,a)=>{const n=S.nodes[id];const label=n.span?"“"+n.span.quote+"”":n.q;
+    h+=`<span class="sep">›</span><button data-crumb="${id}" class="${i===a.length-1?"cur":""}" title="${esc(n.q)}">${esc(label)}</button>`})}
+  return `<nav class="crumbs">${h}</nav>`;
+}
+function threadBusy(t){const all=[];const walk=id=>{const n=S.nodes[id];if(n.work)all.push(n);n.kids.forEach(walk)};t.roots.forEach(walk);return all}
+function allWork(){const w=[...S.global];for(const t of S.threads)for(const n of threadBusy(t))w.push({...n.work,t});return w}
+function renderThread(){
+  const t=S.threads.find(x=>x.id===S.cur);
+  if(!t)return `<div class="empty">Select any text in the map and choose <b>Ask</b>. Every answer can be selected and asked about in turn; follow-ups branch from the words you select.</div>`;
+  let h=crumbsHTML(t)+`<div class="anchor"><div class="a-sec"><span>${SECNAME[t.sec]}${t.mod?` · <span class="mod">${esc(t.mod)}</span>`:""}</span><button data-jump="${t.id}">Show in map</button></div><div class="a-q">“${esc(t.anchor.quote)}”</div></div>`;
+  h+=t.roots.map(id=>nodeHTML(S.nodes[id],0)).join("");
+  return h;
+}
+function renderNav(){
+  let h="";
+  const g=S.global.map(w=>workHTML({...w,ctx:null})).join("");
+  if(g)h+=`<div class="grp"><div class="grp-h"><span>The map</span></div>${g}</div>`;
+  for(const sec of ["overview","modules","flows"]){
+    const ts=S.threads.filter(t=>t.sec===sec&&t.roots.length); if(!ts.length)continue;
+    h+=`<div class="grp"><div class="grp-h"><span>${SECNAME[sec]}</span><span>${ts.length}</span></div>`+ts.map(t=>{
+      const r=S.nodes[t.roots[0]]; let n=0,fl=0; const walk=id=>{const x=S.nodes[id];n++;if(!x.trace&&x.status==="done")fl+=claimsFor(x).filter(c=>c.flag).length;x.kids.forEach(walk)}; t.roots.forEach(walk);
+      const busy=threadBusy(t);
+      const ags=[...new Set([].concat(...t.roots.map(function f(id){const x=S.nodes[id];return [x.trace?"tracer":x.agent].concat(...x.kids.map(f))})))];
+      return `<button class="nv" data-open="${t.id}"><div class="nv-q">“${esc(clip(t.anchor.quote,70))}”${t.mod?` · <span style="font-style:normal">${esc(t.mod)}</span>`:""}</div><div class="nv-t">${esc(r.q)}</div>
+        <div class="nv-m">${busy.length?busy.map(b=>avHTML(b.work.ag)).join("")+(busy.length>1?`<span>${busy.length} at work</span>`:`<span>${AG[busy[0].work.ag][1]} at work</span>`):`<span class="em">${ags.map(a=>AG[a][0]).join(" ")}</span><span>${n} question${n>1?"s":""}</span>${fl?`<span class="flagn">· ${fl} not supported</span>`:""}`}</div></button>`}).join("")+`</div>`;
+  }
+  return h||`<div class="empty">No discussions yet.</div>`;
+}
+function renderNotes(){
+  let h=`<div class="lay-note">Your notes are a separate layer. They stay in this browser and never change the map; hide them with <b>My notes</b> in the sidebar.</div>`;
+  if(!S.notes.length)return h+`<div class="empty">Select text and choose <b>Annotate</b>, or <b>Save as note</b> under an answer.</div>`;
+  return h+S.notes.slice().reverse().map(n=>{
+    const src=n.kind==="answer"?`Saved answer · ${n.agent}`:n.kind==="on-answer"?`On an answer · ${n.agent}`:`On the map · ${SECNAME[n.sec]}${n.mod?" · "+esc(n.mod):""}`;
+    return `<div class="note${n.fresh?" fresh":""}"><div class="src"><span>${src}</span><button data-gonote="${n.id}">Show</button></div><div class="nq">“${esc(clip(n.quote,110))}”</div>${n.text?`<div class="nb">${esc(n.text)}</div>`:""}${n.saved?`<div class="saved">${n.saved}</div>`:""}</div>`}).join("");
+}
+function render(){
+  document.body.classList.toggle("popen",S.open);
+  $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));
+  const nT=S.threads.filter(t=>t.roots.length).length;
+  $("#navcount").textContent=nT||""; $("#notescount").textContent=S.notes.length||""; $("#laycount").textContent=S.notes.filter(n=>n.kind==="map").length||"";
+  const body=$("#pbody"), keep=body.scrollTop;
+  body.innerHTML=S.tab==="thread"?renderThread():S.tab==="nav"?renderNav():renderNotes();
+  body.scrollTop=keep;
+  if(S.tab==="thread")markSpans();
+  const others=S.tab==="thread"&&S.cur?allWork().filter(w=>!w.t||w.t.id!==S.cur):[];
+  $("#pelse").innerHTML=others.length?`<div class="lh2">Also at work</div>${others.map(w=>workHTML({...w,ctx:w.t?"· "+esc(w.t.mod||SECNAME[w.t.sec]):"· "+(w.ctx||"")})).join("")}`:"";
+  renderComposer(); renderMap(); renderTop();
+}
+/* marks in answers where follow-ups branched (overlay; the answer text is unchanged) */
+function markSpans(){
+  for(const n of Object.values(S.nodes)){
+    if(!n.span||!n.parent)continue;
+    const host=$(`.nd[data-id="${n.parent}"] > .nd-b .ans`); if(!host)continue;
+    const r=findRange(host,n.span.quote); if(!r)continue;
+    const m=wrapRange(r,"fmk"); m.dataset.go=n.id;
+  }
+  if(S.compose&&S.compose.parent&&S.compose.quote){const host=$(`.nd[data-id="${S.compose.parent}"] > .nd-b .ans`);const r=host&&findRange(host,S.compose.quote);if(r)wrapRange(r,"fmk pend")}
+}
+
+/* ---------- composer: Ask (new thread or follow-up) or Annotate ---------- */
+function renderComposer(){
+  const c=S.compose, f=$("#composer");
+  const show=S.open&&(S.tab==="thread"&&(S.cur||c)||c&&c.mode==="note");
+  f.classList.toggle("hide",!show); if(!show)return;
+  const mode=c?c.mode:"follow";
+  const quote=c&&c.quote;
+  $("#ctx").innerHTML=quote?`<span class="lbl${mode==="note"?" note":""}">${mode==="note"?"Note on":mode==="root"?"Ask about":"Follow up on"}</span><span class="cq">“${esc(quote)}”</span><button type="button" class="x" data-cancel aria-label="Cancel">×</button>`:"";
+  $("#ctx").style.display=quote?"":"none";
+  $("#qp").style.display=quote&&mode!=="note"?"":"none";
+  const cin=$("#cin");
+  cin.placeholder=mode==="note"?"Write a note…":mode==="root"?"Ask about this passage…":quote?"Ask about the selected words…":"Ask a follow-up, or select words in an answer…";
+  $("#send").textContent=mode==="note"?"Save":"Ask"; $("#send").classList.toggle("note",mode==="note");
+  $("#cfoot").textContent=mode==="note"?"A note is yours: it stays in this browser, starts no agent and never changes the map.":"“What happens when …” questions go to the 🧵 Tracer.";
+}
+function submit(text){
+  const c=S.compose||{mode:"follow",parent:S.curNode};
+  if(c.mode==="note"){saveNote(c,text);return}
+  let t; if(c.mode==="root"){t=c.thread} else t=S.threads.find(x=>x.id===S.cur);
+  if(!t)return;
+  const parent=c.mode==="root"?null:(c.parent||S.curNode);
+  const flow=/what happens (when|if|in)/i.test(text);
+  let key;
+  if(c.mode==="root") key=ANSWERS[t.topic]?t.topic:"model";
+  else if(t.topic==="engine") key=/38 MB/.test(c.quote||"")?"engine_mb":/pos|counter|position/i.test(c.quote||"")?"engine_pos":"follow";
+  else key=ANSWERS[t.topic+"_f"]?t.topic+"_f":"follow";
+  const q=text||(flow?TRACES.engine2.q:ANSWERS[key].q);
+  const trace=flow?(t.topic==="engine"?"engine2":"step"):null;
+  const n=newNode(t,{parent,span:c.mode!=="root"&&c.quote?{quote:c.quote,offsets:c.offsets}:null,q,key,trace});
+  S.compose=null; S.curNode=n.id; $("#cin").value="";
+  run(n);
+}
+function run(n){
+  const tr=n.trace?TRACES[n.trace]:null;
+  const target=tr?"tracer":"investigator";
+  const read=tr?`following <code>${esc(tr.path[0].fn)}</code> …`:`reading <code>${esc(ANSWERS[n.key].read.split(" ")[0])}</code> ${esc(ANSWERS[n.key].read.split(" ").slice(1).join(" "))} …`;
+  n.status="routing"; n.work={ag:"guide",text:tr?"routing a flow question to the Tracer":"routing your question to the Investigator"}; render(); scrollToNode(n.id);
+  after(700,()=>{n.status="reading";n.work={ag:target,text:read};render()});
+  after(2400,()=>{
+    const tot=checkable(n); n.status="checking"; n.checked=0;
+    n.work={ag:"checker",text:`checking ${tot} ${tr?"hops":"claims"} against their cited lines`}; render(); scrollToNode(n.id);
+    for(let i=1;i<=tot;i++)after(i*480,()=>{n.checked=i;if(i<tot)n.work={ag:"checker",text:`checking ${tr?"hop":"claim"} ${i+1} of ${tot}`};render()});
+    after(tot*480+350,()=>{finish(n);render()});
+  });
+}
+function saveNote(c,text){
+  const n={id:++S.noteid,kind:c.target==="map"?"map":"on-answer",quote:c.quote,text:text||"",sec:c.sec,mod:c.mod,agent:c.agent,fresh:true,mk:null,marker:null,node:c.node};
+  if(n.kind==="map"&&c.range){n.mk=wrapRange(c.range,"nt");n.mk.dataset.n=n.id;const m=document.createElement("button");m.className="mm note";m.dataset.n=n.id;$("#col").appendChild(m);n.marker=m}
+  S.notes.push(n); S.compose=null; $("#cin").value="";
+  if(n.kind==="map"){S.tab="notes"} toast("Saved to your notes · the map is unchanged");
+  render(); after(1700,()=>{n.fresh=false});
+}
+function saveAnswer(id){
+  const n=S.nodes[id]; if(n.saved)return; n.saved=true;
+  const ag=n.trace?"🧵 Tracer":AG[n.agent][0]+" "+AG[n.agent][1];
+  const text=n.trace?TRACES[n.trace].path.map(h=>h.fn).join(" → "):claimsFor(n).map(c=>inl(c.text)).map(x=>`<p>${x}.</p>`).join("");
+  S.notes.push({id:++S.noteid,kind:"answer",quote:n.q,text:"",saved:text,agent:ag,node:id,fresh:true});
+  toast("Answer saved as a note · the map is unchanged"); render();
+}
+
+/* ---------- map overlay: marks, margin markers, section counts ---------- */
+function renderMap(){
+  $$(".mk").forEach(m=>m.classList.toggle("active",S.open&&+m.dataset.t===S.cur&&S.tab==="thread"));
+  for(const t of S.threads){
+    if(!t.roots.length&&!(S.compose&&S.compose.thread===t)){t.marker.style.display="none";continue}
+    t.marker.style.display=""; let n=0; const walk=id=>{n++;S.nodes[id].kids.forEach(walk)}; t.roots.forEach(walk);
+    t.marker.textContent=n||"·"; t.marker.dataset.tip=`<b>${n} question${n===1?"":"s"}</b> · open the discussion`;
+    t.marker.classList.toggle("busy",threadBusy(t).length>0);
+    t.marker.classList.toggle("active",S.open&&S.cur===t.id&&S.tab==="thread");
+  }
+  for(const n of S.notes)if(n.marker)n.marker.dataset.tip="<b>Your note</b> · only in this browser";
+  for(const a of $$("#toc a")){const c=S.threads.filter(t=>t.sec===a.dataset.sec&&t.roots.length).length;$(".n",a).textContent=c||""}
+  layout();
+}
+function layout(){
+  const col=$("#col").getBoundingClientRect(); const items=[];
+  for(const t of S.threads)if(t.marker.style.display!=="none"){const r=t.mk.getClientRects()[0];if(r)items.push([t.marker,r.top-col.top+r.height/2-9])}
+  for(const n of S.notes)if(n.marker){const r=n.mk.getClientRects()[0];if(r)items.push([n.marker,r.top-col.top+r.height/2-9])}
+  items.sort((a,b)=>a[1]-b[1]); let last=-99,shift=0;
+  for(const [el,top] of items){shift=Math.abs(top-last)<20?shift+24:0;el.style.top=top+"px";el.style.marginLeft=shift+"px";last=top}
+}
+addEventListener("resize",layout);
+$("#main").addEventListener("transitionend",layout);
+
+/* the one indicator at the top of the map: opens the panel; shows who is at work while it's closed */
+function renderTop(){
+  const w=allWork(), top=$("#top");
+  const nT=S.threads.filter(t=>t.roots.length).length;
+  if(w.length){
+    const ags=[...new Set(w.map(x=>x.ag))];
+    top.classList.add("busy");
+    top.innerHTML=`<span class="mini">${ags.map(a=>avHTML(a)).join("")}</span><span>${ags.length} at work</span>`;
+    top.dataset.tip=w.map(x=>`<b>${AG[x.ag][1]}</b> ${x.text}`).join("<br>");
+  }else{
+    top.classList.remove("busy");
+    top.innerHTML=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg><span>Discussions</span>${nT?`<span class="cnt">${nT}</span>`:""}`;
+    delete top.dataset.tip;
+  }
+}
+
+/* ---------- panel navigation ---------- */
+function openThread(id,{nodeId=null,scrollMap=true}={}){
+  const t=S.threads.find(x=>x.id===id); S.open=true; S.tab="thread"; S.cur=id;
+  S.curNode=nodeId||S.curNode&&S.nodes[S.curNode]&&S.nodes[S.curNode].thread===id&&S.curNode||lastLeaf(t);
+  pathTo(S.curNode).forEach(x=>S.nodes[x].closed=false);
+  if(S.compose&&S.compose.mode!=="note"&&S.compose.thread!==t)S.compose=null;
+  render(); if(scrollMap)scrollToEl(t.mk,180); scrollToNode(S.curNode);
+}
+function lastLeaf(t){if(!t.roots.length)return null;let id=t.roots[t.roots.length-1];return id}
+function scrollToNode(id){if(!id)return;const el=$(`.nd[data-id="${id}"]`);if(!el)return;const b=$("#pbody");b.style.scrollBehavior="auto";
+  const top=el.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop-56; if(id!==S.threads.find(t=>t.id===S.cur)?.roots[0])b.scrollTop=top; b.style.scrollBehavior=""}
+function scrollToEl(el,off){if(!el)return;const r=el.getBoundingClientRect(), m=MAIN.getBoundingClientRect();if(r.top>m.top+60&&r.bottom<m.bottom-60)return;MAIN.scrollTop=r.top-m.top+MAIN.scrollTop-off}
+function closePanel(){S.open=false;if(S.compose&&S.compose.mode==="root"&&!S.compose.thread.roots.length)dropThread(S.compose.thread);S.compose=null;render()}
+function dropThread(t){const p=t.mk.parentNode;while(t.mk.firstChild)p.insertBefore(t.mk.firstChild,t.mk);t.mk.remove();p.normalize();t.marker.remove();S.threads=S.threads.filter(x=>x!==t);if(S.cur===t.id){S.cur=null;S.curNode=null}}
+
+/* ---------- selection toolbar: Ask, Annotate, Copy (map and answers alike) ---------- */
+const TB=$("#tb"); let SEL=null;
+function hideTB(){TB.style.display="none";SEL=null}
+document.addEventListener("mouseup",e=>{
+  if(TB.contains(e.target))return;
+  setTimeout(()=>{
+    const s=getSelection(); if(!s.rangeCount||s.isCollapsed){hideTB();return}
+    let r=s.getRangeAt(0); const el=r.startContainer.nodeType===1?r.startContainer:r.startContainer.parentElement;
+    if(!el||el.closest("input,textarea,.snip,.chip,h1,h2,.crow,.ctx")){hideTB();return}
+    let kind=null;
+    if($("#col").contains(el)){kind="map";const b=el.closest(".blk,.hop-d,p");if(b&&!b.contains(r.endContainer)){r=r.cloneRange();r.setEndAfter(b.lastChild)}}
+    else if(el.closest(".panel .sel-ok")){const host=el.closest(".sel-ok");if(!host.contains(r.endContainer)){r=r.cloneRange();r.setEnd(host,host.childNodes.length)}kind="answer"}
+    if(!kind||!norm(r.toString())){hideTB();return}
+    SEL={kind,range:r,quote:norm(r.toString()),el};
+    const rect=r.getClientRects()[0]||r.getBoundingClientRect();
+    TB.style.display="flex";
+    TB.style.left=Math.min(innerWidth-TB.offsetWidth-8,Math.max(8,rect.left+rect.width/2-TB.offsetWidth/2))+"px";
+    TB.style.top=(rect.top-TB.offsetHeight-10)+"px";
+  },0);
+});
+TB.addEventListener("mousedown",e=>e.preventDefault());
+TB.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]"); if(!b||!SEL)return; const act=b.dataset.act, sel=SEL;
+  hideTB(); getSelection().removeAllRanges(); act==="copy"?doCopy(sel.quote):act==="ask"?askFrom(sel):annotateFrom(sel);
+});
+function doCopy(text){try{navigator.clipboard.writeText(text).catch(()=>{})}catch(e){} toast("Copied")}
+function askFrom(sel){
+  if(S.compose&&S.compose.mode==="root"&&!S.compose.thread.roots.length)dropThread(S.compose.thread);
+  if(sel.kind==="map"){
+    const t=newThread(sel.range); S.compose={mode:"root",thread:t,quote:t.anchor.quote};
+    S.open=true;S.tab="thread";S.cur=t.id;S.curNode=null;render();
+  }else{
+    const nd=sel.el.closest(".nd"), id=+nd.dataset.id, ans=$(".ans",nd);
+    const off=norm(ans.textContent).indexOf(sel.quote);
+    S.compose={mode:"follow",parent:id,quote:sel.quote,offsets:[off,off+sel.quote.length]}; render();
+  }
+  $("#cin").focus();
+}
+function annotateFrom(sel){
+  if(sel.kind==="map"){const blk=sel.el;S.compose={mode:"note",target:"map",quote:sel.quote,range:sel.range,sec:sectionOf(blk),mod:moduleOf(blk)};S.open=true;if(S.tab!=="thread"&&S.tab!=="notes")S.tab="notes"}
+  else{const nd=sel.el.closest(".nd"),n=S.nodes[+nd.dataset.id];S.compose={mode:"note",target:"answer",quote:sel.quote,node:n.id,agent:n.trace?"🧵 Tracer":AG[n.agent][0]+" "+AG[n.agent][1]}}
+  render(); $("#cin").focus();
+}
+
+/* ---------- clicks ---------- */
+document.addEventListener("click",e=>{
+  const el=e.target;
+  const chip=el.closest(".chip"); if(chip){e.stopPropagation();pinPreview(chip);return}
+  if(!el.closest(".prev"))unpin();
+  if(el.closest("#top")){S.open=true;if(!S.cur&&S.tab==="thread")S.tab="nav";render();return}
+  if(el.closest("#pclose")){closePanel();return}
+  const tab=el.closest("[data-tab]"); if(tab){S.tab=tab.dataset.tab;if(S.compose&&S.compose.mode!=="note")S.compose=null;render();return}
+  const mk=el.closest(".mk,.mm:not(.note)"); if(mk&&mk.dataset.t){const id=+mk.dataset.t;if(S.open&&S.cur===id&&S.tab==="thread")closePanel();else openThread(id,{scrollMap:false});return}
+  const nt=el.closest(".nt,.mm.note"); if(nt){S.open=true;S.tab="notes";render();return}
+  const tog=el.closest("[data-tog]"); if(tog){const n=S.nodes[+tog.dataset.tog];n.closed=!n.closed;render();return}
+  const an=el.closest("[data-act-node]"); if(an){const n=S.nodes[+an.dataset.actNode];if(n.closed)n.closed=false;S.curNode=n.id;render();return}
+  const fm=el.closest(".fmk[data-go]"); if(fm){const id=+fm.dataset.go;S.curNode=id;pathTo(id).forEach(x=>S.nodes[x].closed=false);render();scrollToNode(id);return}
+  const cr=el.closest("[data-crumb]"); if(cr){const id=+cr.dataset.crumb;if(id){S.curNode=id;pathTo(id).forEach(x=>S.nodes[x].closed=false);render();scrollToNode(id)}else{$("#pbody").scrollTop=0}return}
+  const jp=el.closest("[data-jump]"); if(jp){const t=S.threads.find(x=>x.id===+jp.dataset.jump);MAIN.scrollTop+=t.mk.getBoundingClientRect().top-MAIN.getBoundingClientRect().top-200;t.mk.animate([{background:"var(--mark)"},{background:"transparent"}],{duration:1400});return}
+  const op=el.closest("[data-open]"); if(op){const t=S.threads.find(x=>x.id===+op.dataset.open);S.curNode=null;openThread(t.id,{scrollMap:false});MAIN.scrollTop+=t.mk.getBoundingClientRect().top-MAIN.getBoundingClientRect().top-200;return}
+  const sv=el.closest("[data-save]"); if(sv){saveAnswer(+sv.dataset.save);return}
+  const ca=el.closest("[data-copyans]"); if(ca){const n=S.nodes[+ca.dataset.copyans];doCopy(n.trace?TRACES[n.trace].path.map(h=>h.fn).join(" -> "):claimsFor(n).map(c=>c.text.replace(/`/g,"")).join(". ")+".");return}
+  const gn=el.closest("[data-gonote]"); if(gn){const n=S.notes.find(x=>x.id===+gn.dataset.gonote);if(n.mk){MAIN.scrollTop+=n.mk.getBoundingClientRect().top-MAIN.getBoundingClientRect().top-200;n.mk.animate([{background:"var(--mark)"},{background:"transparent"}],{duration:1400})}else if(n.node){openThread(S.nodes[n.node].thread,{nodeId:n.node})}return}
+  if(el.closest("[data-cancel]")){if(S.compose&&S.compose.mode==="root")dropThread(S.compose.thread);S.compose=null;render();return}
+  const qp=el.closest("#qp button"); if(qp){submit(qp.textContent);return}
+  const fh=el.closest(".flow-h"); if(fh){fh.parentElement.classList.toggle("open");const f=fh.parentElement;if(f.classList.contains("open")&&!$(".path-foot",f)){const tr=Object.values(TRACES).find(x=>x.q===$(".fq",fh).firstChild.textContent);f.insertAdjacentHTML("beforeend",pathHTML(tr,{open:true}).match(/<div class="path-foot">.*<\/div>(?=<\/div>$)/s)[0])}layout();return}
+});
+$("#composer").addEventListener("submit",e=>{e.preventDefault();submit($("#cin").value.trim())});
+$("#cin").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit($("#cin").value.trim())}if(e.key==="Escape"){$("[data-cancel]")?.click()}});
+$("#laynotes").addEventListener("change",e=>{document.body.classList.toggle("layer-notes",e.target.checked);layout()});
+
+/* ---------- source previews (hover a chip; click to pin) ---------- */
+const PREV=$("#prev"); let pinned=null, hoverT=null;
+function showPreview(chip){
+  PREV.innerHTML=snippetHTML(chip.dataset.a); PREV.style.display="block";
+  const r=chip.getBoundingClientRect(), w=PREV.offsetWidth, h=PREV.offsetHeight;
+  if(chip.closest(".panel")){const pl=$("#panel").getBoundingClientRect().left;PREV.style.left=(pl-w-14)+"px";PREV.style.top=Math.min(innerHeight-h-12,Math.max(40,r.top+r.height/2-h/2))+"px";return}
+  PREV.style.left=Math.min(innerWidth-w-12,Math.max(12,r.left+r.width/2-w/2))+"px";
+  PREV.style.top=(r.bottom+8+h>innerHeight-10?r.top-h-8:r.bottom+8)+"px";
+}
+function pinPreview(chip){if(pinned===chip){unpin();return}unpin();pinned=chip;chip.classList.add("pin");showPreview(chip)}
+function unpin(){if(pinned)pinned.classList.remove("pin");pinned=null;PREV.style.display="none"}
+document.addEventListener("mouseover",e=>{
+  const chip=e.target.closest(".chip"); clearTimeout(hoverT);
+  if(chip&&!pinned){hoverT=setTimeout(()=>showPreview(chip),280)} else if(!pinned&&!e.target.closest(".prev"))PREV.style.display="none";
+  const d=e.target.closest("[data-tip],.dot[data-ev]"); if(!d){TIP.classList.remove("on");return}
+  let html=d.dataset.tip||"";
+  if(d.classList.contains("dot")&&d.dataset.ev){const ev=d.dataset.ev;html=`<b>${EV[ev]}</b>${EVNOTE[ev]?" · "+EVNOTE[ev]:""}${d.dataset.checked?" · checked":""}`}
+  showTip(d,html);
+});
+const TIP=$("#tip");
+function showTip(el,html){if(!html){TIP.classList.remove("on");return}TIP.innerHTML=html;const r=el.getBoundingClientRect();
+  TIP.style.left=Math.min(innerWidth-TIP.offsetWidth-10,Math.max(10,r.left+r.width/2-TIP.offsetWidth/2))+"px";
+  const above=r.top-TIP.offsetHeight-8; TIP.style.top=(above<34?r.bottom+8:above)+"px"; TIP.classList.add("on")}
+let toastT=null;
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1800)}
 
 /* ---------- contents highlight ---------- */
 const secs=$$("section");
-MAIN.addEventListener("scroll",()=>{hidePop();tip.classList.remove("on");let cur=secs[0];for(const s of secs)if(s.getBoundingClientRect().top<200)cur=s;
+let HOLD=false; /* screenshot states keep their tooltip/toolbar when the state itself scrolls */
+MAIN.addEventListener("scroll",()=>{if(!HOLD){hideTB();TIP.classList.remove("on")}if(!pinned)PREV.style.display="none";let cur=secs[0];for(const s of secs)if(s.getBoundingClientRect().top<200)cur=s;
   $$("#toc a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+cur.id))},{passive:true});
+$("#pbody").addEventListener("scroll",()=>{if(!HOLD){hideTB();TIP.classList.remove("on")}},{passive:true});
 
 /* ---------- theme ---------- */
 function setTheme(t){document.documentElement.dataset.theme=t;$("#themelabel").textContent=t==="dark"?"Light":"Dark";setTimeout(layout,0)}
 $("#theme").addEventListener("click",()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 const mq=matchMedia("(prefers-color-scheme: dark)");
 
-/* ---------- seeded SAMPLE threads (static, no timers) ---------- */
-function rangeOn(el,phrase){
-  const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
-  while(w.nextNode()){const i=w.currentNode.data.indexOf(phrase);if(i>=0){const r=document.createRange();r.setStart(w.currentNode,i);r.setEnd(w.currentNode,i+phrase.length);return r}}
-}
-function seedAnswered(t,key,{fq,pending}={}){
-  const qas=$(".qas",t.el); qas.insertAdjacentHTML("beforeend",qaHTML(ANSWERS[key].q,fq));
-  const qa=qas.lastElementChild; $(".ans",qa).innerHTML=answerHTML(key,true)+`<div class="checked going"><span class="em">✅</span>Checking claims against the cited lines …</div>`;
-  if(!pending) revealAll(qa);
-  return qa;
-}
-const tData=newThread(rangeOn($("#p-data"),"no shard is ever loaded whole"),{open:false});
-seedAnswered(tData,"data");
-const tEng=newThread(rangeOn($("#p-engine"),"caches keys and values per layer"),{open:false});
-const qaEng=seedAnswered(tEng,"engine");
+/* ---------- seeded SAMPLE discussions ---------- */
+const tData=newThread(findRange($("#p-data"),"no shard is ever loaded whole"));
+const nData=newNode(tData,{q:ANSWERS.data.q,key:"data"}); finish(nData);
+const tEng=newThread(findRange($("#p-engine"),"caches keys and values per layer"));
+const nEng=newNode(tEng,{q:ANSWERS.engine.q,key:"engine"}); finish(nEng);
+const tTrain=newThread(findRange($("#p-train"),"before each optimizer step"));
+const nTrain=newNode(tTrain,{q:ANSWERS.train.q,key:"train"}); finish(nTrain);
+const nTrainF=newNode(tTrain,{parent:nTrain.id,span:{quote:"after all micro-batches"},q:ANSWERS.train_f.q,key:"train_f"}); finish(nTrainF);
+const noteRot=(()=>{const r=findRange($("#p-model"),"Positions are rotary, not learned");const mk=wrapRange(r,"nt");const m=document.createElement("button");m.className="mm note";$("#col").appendChild(m);
+  const n={id:++S.noteid,kind:"map",quote:"Positions are rotary, not learned",text:"Compare with nanochat: is rotary applied before or after the QK norm?",sec:"overview",mod:null,mk,marker:m};mk.dataset.n=n.id;m.dataset.n=n.id;S.notes.push(n);return n})();
 
-/* ---------- states: #state=default|thread|path|working|select, &theme=light|dark ---------- */
+/* ---------- states: #state=…  &theme=light|dark ---------- */
 const H=new URLSearchParams(location.hash.slice(1));
 setTheme(H.get("theme")||(mq.matches?"dark":"light"));
 mq.addEventListener("change",e=>{if(!H.get("theme"))setTheme(e.matches?"dark":"light")});
 const STATE=H.get("state")||"default";
 if(H.get("state"))document.documentElement.classList.add("static");
-function scrollToEl(el,off){MAIN.style.scrollBehavior="auto";MAIN.scrollTop=el.getBoundingClientRect().top-MAIN.getBoundingClientRect().top+MAIN.scrollTop-off;MAIN.style.scrollBehavior=""}
-if(STATE==="thread"){
-  const fqr=rangeOn(qaEng,"advances a shared");
-  const m=wrapRange(fqr,"mk"); m.dataset.t=tEng.id;
-  seedAnswered(tEng,"engine_f",{fq:"advances a shared pos counter"});
-  openThread(tEng.id); scrollToEl($("#p-engine").parentElement,24);
+if(H.get("state"))HOLD=true;
+function mapTo(el,off){MAIN.scrollTop=el.getBoundingClientRect().top-MAIN.getBoundingClientRect().top+MAIN.scrollTop-off}
+function branchEngine(){
+  const a=newNode(tEng,{parent:nEng.id,span:{quote:"advances a shared pos counter"},q:ANSWERS.engine_pos.q,key:"engine_pos"}); finish(a);
+  const b=newNode(tEng,{parent:nEng.id,span:{quote:"about 38 MB"},q:ANSWERS.engine_mb.q,key:"engine_mb"}); finish(b); b.closed=true;
+  return a;
 }
-if(STATE==="path"){
-  const hop=$$("#flows .hop")[6]; $(".hop-b",hop).click(); scrollToEl($("#flows"),30);
-}
-if(STATE==="working"){
-  $(".qas",tEng.el).innerHTML=""; openThread(tEng.id);
-  const qa=seedAnswered(tEng,"engine",{pending:true}); tEng.dot.classList.add("busy");
-  say("cartographer","mapping <code>data.py</code> (4 of 9 files)");
-  say("tracer","following <code>opt.step()</code> into <code>optim.py</code>");
-  say("investigator","reading <code>engine.py</code> lines 45–58 …");
-  say("checker","checking 4 claims against their cited lines");
-  say("guide","routing 2 questions: Investigator, Tracer");
-  $("#line").innerHTML=`<b>Investigator</b>reading <code>engine.py</code> lines 45–58 …`;
-  scrollToEl($("#p-engine").parentElement,24);
-}
-if(STATE==="select"){
-  scrollToEl($("#overview"),120);
-  const r=rangeOn($("#p-data"),"Each GPU reads its own interleaved slice");
-  const s=getSelection(); s.removeAllRanges(); s.addRange(r);
-  setTimeout(()=>document.dispatchEvent(new MouseEvent("mouseup",{bubbles:true})),150);
-}
-layout(); requestAnimationFrame(layout); document.fonts?.ready.then(layout);
-
-/* ---------- hidden demo: press "d" to watch every agent work ---------- */
-let demoOn=false;
-document.addEventListener("keydown",e=>{
-  if(e.key!=="d"||e.metaKey||e.ctrlKey||(e.target.closest&&e.target.closest("input,textarea"))||demoOn)return; demoOn=true;
-  const S=[
-   [0,"guide","say","routing 3 questions from the map"],
-   [700,"cartographer","say","reading <code>train.py</code> (1 of 9 files)"],
-   [1500,"investigator","say","reading <code>engine.py</code> lines 45–58 …"],
-   [2300,"cartographer","say","mapping <code>data.py</code> (4 of 9 files)"],
-   [2600,"tracer","say","following <code>loss.backward()</code> …"],
-   [3200,"guide","done"],
-   [4200,"tracer","say","following <code>opt.step()</code> into <code>optim.py</code>"],
-   [4800,"investigator","done"],
-   [4900,"checker","say","checking 4 claims against their cited lines"],
-   [5600,"cartographer","say","writing the Flows section"],
-   [6800,"cartographer","done"],
-   [7200,"tracer","done"],
-   [7400,"checker","say","checking 7 hops of the training-step path"],
-   [8800,"checker","done"],
-   [8900,"guide","say","writing 3 answers back to the map"],
-   [9900,"guide","done"]];
-  S.forEach(([ms,ag,act,w])=>after(ms,()=>act==="say"?say(ag,w):done(ag)));
-  after(10500,()=>demoOn=false);
-});
+const STATES={
+ default(){render()},
+ select(){render(); mapTo($("#overview"),40);
+   const r=findRange($("#p-data"),"Each GPU reads its own interleaved slice of every shard"); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+   setTimeout(()=>document.dispatchEvent(new MouseEvent("mouseup",{bubbles:true})),120)},
+ answer(){S.open=true;S.tab="thread";S.cur=tEng.id;S.curNode=nEng.id;render(); mapTo($("#p-engine").parentElement,150);
+   setTimeout(()=>{const f=$(".panel .flag");showTip(f,f.dataset.tip)},150)},
+ branch(){const a=branchEngine(); S.open=true;S.tab="thread";S.cur=tEng.id;S.curNode=a.id;render(); mapTo($("#p-engine").parentElement,150);
+   setTimeout(()=>{const b=$("#pbody"),el=$(`.nd[data-id="${nEng.id}"]`);b.scrollTop=el.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop-40;pinPreview($(`.nd[data-id="${a.id}"] .chip`))},150)},
+ path(){branchEngine().closed=true;
+   const p=newNode(tEng,{parent:nEng.id,span:{quote:"nothing keeps it between calls"},q:TRACES.engine2.q,key:"follow",trace:"engine2"}); finish(p);
+   nEng.closed=true; S.open=true;S.tab="thread";S.cur=tEng.id;S.curNode=p.id;render(); mapTo($("#p-engine").parentElement,150);
+   setTimeout(()=>{$("#pbody").scrollTop=0},50)},
+ working(){
+   const a=newNode(tEng,{parent:nEng.id,span:{quote:"advances a shared pos counter"},q:ANSWERS.engine_pos.q,key:"engine_pos"});
+   a.status="reading"; a.work={ag:"investigator",text:"reading <code>engine.py</code> 45–58 …"};
+   nEng.status="checking"; nEng.checked=2; nEng.work={ag:"checker",text:"checking claim 3 of 4 …"};
+   const tC=newThread(findRange($("#p-ckpt"),"the optimizer state and the step"));
+   const c=newNode(tC,{q:"What happens when a run resumes from a checkpoint?",key:"ckpt",trace:"step"}); c.status="reading"; c.work={ag:"tracer",text:"following <code>load_checkpoint()</code> into <code>checkpoint.py</code>"};
+   S.global=[{ag:"cartographer",text:"mapping <code>data.py</code> (4 of 9 files)",ctx:"the map"}];
+   S.open=true;S.tab="thread";S.cur=tEng.id;S.curNode=a.id;render(); mapTo($("#p-engine").parentElement,150);
+   setTimeout(()=>{const b=$("#pbody"),el=$(`.nd[data-id="${a.id}"]`);if(el)b.scrollTop=el.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop-300},60)},
+ busy(){STATES.working(); S.open=false; render(); mapTo($("#modules"),40)},
+ notes(){saveAnswer(nEng.id); S.notes.forEach(n=>n.fresh=false);
+   const r=findRange($("#p-data"),"Each GPU reads its own interleaved slice");const blk=$("#p-data");
+   saveNote({target:"map",quote:"Each GPU reads its own interleaved slice",range:r,sec:"overview",mod:null},"Inferred, not read: worth a runtime check with 2 GPUs.");
+   S.notes.forEach(n=>n.fresh=false); S.open=true; S.tab="notes"; $("#toast").classList.remove("on"); render(); mapTo($("#overview"),40)},
+ navigator(){STATES.working(); S.tab="nav"; render(); mapTo($("#overview"),40)}
+};
+(STATES[STATE]||STATES.default)();
+requestAnimationFrame(layout); document.fonts?.ready.then(layout);
 </script>
 </body>
 </html>
