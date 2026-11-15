@@ -1,0 +1,379 @@
+Runtime trace: smolagents
+==========================================================================
+  repo           https://github.com/huggingface/smolagents
+  commit         e1249d373d58db6abc73882ee394f6bb3854c89f
+  commit date    2026-11-15T20:34:42+01:00
+  branch         main
+  tracked edits  0
+  python         3.12.11
+  libraries      smolagents 1.27.0.dev0
+  platform       macOS-15.6.1-arm64-arm-64bit
+  child env      PYTHONHASHSEED=0 HF_HUB_OFFLINE=1
+
+Entry point and config
+--------------------------------------------------------------------------
+  model            OpenAIModel(model_id='canned-model',
+                   client=FakeOpenAIClient)
+  fake client      chat.completions.create returns canned replies in order
+  tool             @tool add(a: int, b: int) -> int
+  task             What is 2 + 3?
+  CodeAgent        CodeAgent(tools=[add], model=...) defaults: local
+                   executor, verbosity INFO, max_steps 20; 1 step
+  CodeAgent reply  Thought + <code> result = add(2, 3);
+                   final_answer(result) (no closing tag)
+  ToolCallingAgent ToolCallingAgent(tools=[add], model=...) defaults; 2
+                   steps (add, then final_answer)
+
+Filter rules
+--------------------------------------------------------------------------
+  keep: Python code whose file is under src/smolagents/
+  drop: files with a directory named tests, test,
+        site-packages, dist-packages between the root and the file
+  drop: stdlib, site-packages, <string> and <frozen> code
+  drop: synthetic frames: lambdas, comprehensions, genexprs,
+        module and class bodies
+  drop: C functions (only Python 'call' events are seen)
+
+Phases (run 1)
+--------------------------------------------------------------------------
+  phase              raw calls   kept  resumes  synthetic
+  model_init                 7      5        0          0
+  code_agent_init        36707     29        0         14
+  code_agent_run         66605     96        6         12
+  tool_agent_init        21424     31        0          4
+  tool_agent_run          9724    122       19          0
+  total                 134467    283       25         30
+  raw calls = every Python call event in the phase, any file;
+  kept = repo calls on the path; resumes = generator re-entries
+  (kept in the path, marked, not counted as calls); synthetic =
+  repo lambdas, comprehensions and class bodies dropped.
+  names not found in the source index (fallback): 0
+  source-index names vs Python's co_qualname: 308 of 308
+  kept events agree
+
+What the run returned (sanity, not a result)
+--------------------------------------------------------------------------
+  CodeAgent answer             5
+  CodeAgent steps in memory    2
+  CodeAgent model calls        1
+  ToolCallingAgent answer      5
+  ToolCallingAgent model calls 2
+
+Reproducibility (fresh process per run)
+--------------------------------------------------------------------------
+  kept path, run 1 vs run 2:
+    identical (308 events)
+  kept path, run 1 vs control, PYTHONHASHSEED=1:
+    identical (308 events)
+  raw calls, runs then control: 134467 / 134467 / 134467
+  wall time, runs then control: 0.4 s / 0.4 s / 0.4 s
+
+Coverage of the files the trace touched
+--------------------------------------------------------------------------
+  file (under src/smolagents/)                  defined   called
+  _function_type_hints_utils.py                       8        3
+  agent_types.py                                     17        2
+  agents.py                                          51       24
+  default_tools.py                                   35        1
+  local_python_executor.py                           69       22
+  memory.py                                          18        9
+  models.py                                          63       14
+  monitoring.py                                      21       11
+  tools.py                                           53        9
+  utils.py                                           23       10
+  defined = def statements in the file (methods and nested
+  functions included); called = distinct ones seen in any phase.
+
+Collapsed paths
+--------------------------------------------------------------------------
+  One block per phase. Indent = depth in repo frames. xN =
+  N consecutive identical subtrees folded. (+N deeper) = kept
+  calls below depth 6, hidden here, kept in the JSON.
+  (resume) = a suspended generator re-entered. [worker-1] = a
+  thread the run started. Anchors: file:line of the def (of
+  its first decorator if decorated), relative to src/smolagents/
+
+## model_init: OpenAIModel(model_id, client=fake)
+   kept calls 5, resumes 0, max depth 2, rows shown 5
+OpenAIModel.__init__                                        models.py:1671
+  ApiModel.__init__                                         models.py:1161
+    Model.__init__                                           models.py:484
+    RateLimiter.__init__                                      utils.py:512
+    Retrying.__init__                                         utils.py:531
+
+## code_agent_init: CodeAgent(tools=[add], model=model)
+   kept calls 29, resumes 0, max depth 7, rows shown 25
+CodeAgent.__init__                                          agents.py:1527
+  MultiStepAgent.__init__                                    agents.py:294
+    MultiStepAgent._validate_name                            agents.py:364
+    MultiStepAgent._setup_managed_agents                     agents.py:369
+    MultiStepAgent._setup_tools                              agents.py:389
+      validate_after_init.<locals>.new_init                    tools.py:73
+        Tool.__init__                                         tools.py:137
+        Tool.validate_arguments                               tools.py:144
+          is_valid_name                                       utils.py:447
+          _convert_type_hints_to_json_schema
+                                         _function_type_hints_utils.py:291
+            _parse_type_hint
+                         x2 (+1 deeper)  _function_type_hints_utils.py:326
+    MultiStepAgent._validate_tools_and_managed_agents        agents.py:404
+    MultiStepAgent.system_prompt                             agents.py:354
+      CodeAgent.initialize_system_prompt                    agents.py:1620
+        populate_template                                    agents.py:102
+          Tool.to_code_prompt x2                              tools.py:258
+    AgentMemory.__init__                                     memory.py:228
+    AgentLogger.__init__                                 monitoring.py:131
+    Monitor.__init__                                      monitoring.py:82
+    MultiStepAgent._setup_step_callbacks                     agents.py:416
+      CallbackRegistry.__init__                              memory.py:286
+      CallbackRegistry.register                              memory.py:289
+  CodeAgent.create_python_executor                          agents.py:1598
+    LocalPythonExecutor.__init__             local_python_executor.py:1708
+      LocalPythonExecutor._check_authorized_imports_are_installed
+                                             local_python_executor.py:1727
+
+## code_agent_run: code_agent.run(TASK)
+   kept calls 96, resumes 6, max depth 14, rows shown 66
+MultiStepAgent.run                                           agents.py:436
+  MultiStepAgent.system_prompt                               agents.py:354
+    CodeAgent.initialize_system_prompt                      agents.py:1620
+      populate_template                                      agents.py:102
+        Tool.to_code_prompt x2                                tools.py:258
+  AgentMemory.reset                                          memory.py:232
+  Monitor.reset                                           monitoring.py:95
+  AgentLogger.log_task                                   monitoring.py:200
+    sanitize_for_rich x2                                       utils.py:64
+    AgentLogger.log                                      monitoring.py:138
+  LocalPythonExecutor.send_variables         local_python_executor.py:1760
+  LocalPythonExecutor.send_tools             local_python_executor.py:1763
+  MultiStepAgent._run_stream                                 agents.py:540
+    AgentLogger.log_rule                                 monitoring.py:190
+      AgentLogger.log                                    monitoring.py:138
+    CodeAgent._step_stream                                  agents.py:1638
+      MultiStepAgent.write_memory_to_messages                agents.py:758
+        SystemPromptStep.to_messages                         memory.py:203
+          ChatMessage.__post_init__                          models.py:131
+        TaskStep.to_messages                                 memory.py:191
+          ChatMessage.__post_init__                          models.py:131
+      OpenAIModel.generate                                  models.py:1761
+        Model._prepare_completion_kwargs                     models.py:502
+          get_clean_message_list                             models.py:332
+            MessageRole.roles x2                             models.py:118
+          Model.supports_stop_parameter                      models.py:498
+            supports_stop_parameter                          models.py:418
+        ApiModel._apply_rate_limit                          models.py:1189
+          RateLimiter.throttle                                utils.py:517
+        Retrying.__call__                                     utils.py:551
+        Model.supports_stop_parameter                        models.py:498
+          supports_stop_parameter                            models.py:418
+        TokenUsage.__post_init__                          monitoring.py:46
+        ChatMessage.__post_init__                            models.py:131
+      AgentLogger.log_markdown                           monitoring.py:152
+        AgentLogger.log                                  monitoring.py:138
+      parse_code_blobs                                        utils.py:198
+        extract_code_from_text                                utils.py:189
+      fix_final_answer_code                   local_python_executor.py:332
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) CodeAgent._step_stream                         agents.py:1638
+      AgentLogger.log_code                               monitoring.py:174
+        AgentLogger.log                                  monitoring.py:138
+      LocalPythonExecutor.__call__           local_python_executor.py:1747
+        evaluate_python_code                 local_python_executor.py:1583
+          PrintContainer.__init__             local_python_executor.py:241
+          timeout                             local_python_executor.py:285
+          timeout.<locals>.decorator          local_python_executor.py:304
+          timeout.<locals>.decorator.<locals>.wrapper
+                                              local_python_executor.py:305
+            [worker-1] evaluate_python_code.<locals>._execute_code
+                               (+33 deeper)  local_python_executor.py:1639
+        PrintContainer.__str__                local_python_executor.py:253
+      truncate_content                                        utils.py:257
+      AgentLogger.log                                    monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    AgentLogger.log                                      monitoring.py:138
+    (resume) CodeAgent._step_stream                         agents.py:1638
+    MultiStepAgent._finalize_step                            agents.py:620
+      CallbackRegistry.callback                              memory.py:300
+        Monitor.update_metrics                           monitoring.py:100
+          Timing.duration                                 monitoring.py:66
+          AgentLogger.log                                monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    handle_agent_output_types                           agent_types.py:263
+    MultiStepAgent._finalize_step                            agents.py:620
+      CallbackRegistry.callback                              memory.py:300
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+
+## tool_agent_init: OpenAIModel(...) + ToolCallingAgent(...)
+   kept calls 31, resumes 0, max depth 7, rows shown 27
+OpenAIModel.__init__                                        models.py:1671
+  ApiModel.__init__                                         models.py:1161
+    Model.__init__                                           models.py:484
+    RateLimiter.__init__                                      utils.py:512
+    Retrying.__init__                                         utils.py:531
+ToolCallingAgent.__init__                                   agents.py:1231
+  MultiStepAgent.__init__                                    agents.py:294
+    MultiStepAgent._validate_name                            agents.py:364
+    MultiStepAgent._setup_managed_agents                     agents.py:369
+    MultiStepAgent._setup_tools                              agents.py:389
+      validate_after_init.<locals>.new_init                    tools.py:73
+        Tool.__init__                                         tools.py:137
+        Tool.validate_arguments                               tools.py:144
+          is_valid_name                                       utils.py:447
+          _convert_type_hints_to_json_schema
+                                         _function_type_hints_utils.py:291
+            _parse_type_hint
+                         x2 (+1 deeper)  _function_type_hints_utils.py:326
+    MultiStepAgent._validate_tools_and_managed_agents        agents.py:404
+    MultiStepAgent.system_prompt                             agents.py:354
+      ToolCallingAgent.initialize_system_prompt             agents.py:1265
+        populate_template                                    agents.py:102
+          Tool.to_tool_calling_prompt x2                      tools.py:289
+    AgentMemory.__init__                                     memory.py:228
+    AgentLogger.__init__                                 monitoring.py:131
+    Monitor.__init__                                      monitoring.py:82
+    MultiStepAgent._setup_step_callbacks                     agents.py:416
+      CallbackRegistry.__init__                              memory.py:286
+      CallbackRegistry.register                              memory.py:289
+
+## tool_agent_run: tool_agent.run(TASK)
+   kept calls 122, resumes 19, max depth 7, rows shown 119
+MultiStepAgent.run                                           agents.py:436
+  MultiStepAgent.system_prompt                               agents.py:354
+    ToolCallingAgent.initialize_system_prompt               agents.py:1265
+      populate_template                                      agents.py:102
+        Tool.to_tool_calling_prompt x2                        tools.py:289
+  AgentMemory.reset                                          memory.py:232
+  Monitor.reset                                           monitoring.py:95
+  AgentLogger.log_task                                   monitoring.py:200
+    sanitize_for_rich x2                                       utils.py:64
+    AgentLogger.log                                      monitoring.py:138
+  MultiStepAgent._run_stream                                 agents.py:540
+    AgentLogger.log_rule                                 monitoring.py:190
+      AgentLogger.log                                    monitoring.py:138
+    ToolCallingAgent._step_stream                           agents.py:1276
+      MultiStepAgent.write_memory_to_messages                agents.py:758
+        SystemPromptStep.to_messages                         memory.py:203
+          ChatMessage.__post_init__                          models.py:131
+        TaskStep.to_messages                                 memory.py:191
+          ChatMessage.__post_init__                          models.py:131
+      ToolCallingAgent.tools_and_managed_agents             agents.py:1260
+      OpenAIModel.generate                                  models.py:1761
+        Model._prepare_completion_kwargs                     models.py:502
+          get_clean_message_list                             models.py:332
+            MessageRole.roles x2                             models.py:118
+          Model.supports_stop_parameter                      models.py:498
+            supports_stop_parameter                          models.py:418
+          get_tool_json_schema x2                            models.py:288
+        ApiModel._apply_rate_limit                          models.py:1189
+          RateLimiter.throttle                                utils.py:517
+        Retrying.__call__                                     utils.py:551
+        Model.supports_stop_parameter                        models.py:498
+          supports_stop_parameter                            models.py:418
+        TokenUsage.__post_init__                          monitoring.py:46
+        ChatMessage.__post_init__                            models.py:131
+          _coerce_tool_call                                  models.py:172
+      AgentLogger.log_markdown                           monitoring.py:152
+        AgentLogger.log                                  monitoring.py:138
+      parse_json_if_needed                                   models.py:193
+      ToolCallingAgent.process_tool_calls                   agents.py:1361
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+      (resume) ToolCallingAgent.process_tool_calls          agents.py:1361
+4> ToolCallingAgent.process_tool_calls.<locals>.process_single_tool_call
+                                                            agents.py:1383
+          AgentLogger.log                                monitoring.py:138
+          ToolCallingAgent.execute_tool_call                agents.py:1453
+            ToolCallingAgent._substitute_state_variables    agents.py:1444
+            validate_tool_arguments (+2 deeper)              tools.py:1361
+            Tool.__call__ (+3 deeper)                         tools.py:231
+          AgentLogger.log                                monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+      (resume) ToolCallingAgent.process_tool_calls          agents.py:1361
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+    MultiStepAgent._finalize_step                            agents.py:620
+      CallbackRegistry.callback                              memory.py:300
+        Monitor.update_metrics                           monitoring.py:100
+          Timing.duration                                 monitoring.py:66
+          AgentLogger.log                                monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    AgentLogger.log_rule                                 monitoring.py:190
+      AgentLogger.log                                    monitoring.py:138
+    ToolCallingAgent._step_stream                           agents.py:1276
+      MultiStepAgent.write_memory_to_messages                agents.py:758
+        SystemPromptStep.to_messages                         memory.py:203
+          ChatMessage.__post_init__                          models.py:131
+        TaskStep.to_messages                                 memory.py:191
+          ChatMessage.__post_init__                          models.py:131
+        ActionStep.to_messages                                memory.py:92
+          ChatMessage.__post_init__                          models.py:131
+          ToolCall.dict                                       memory.py:30
+            make_json_serializable (+2 deeper)                utils.py:140
+          ChatMessage.__post_init__ x2                       models.py:131
+      ToolCallingAgent.tools_and_managed_agents             agents.py:1260
+      OpenAIModel.generate                                  models.py:1761
+        Model._prepare_completion_kwargs                     models.py:502
+          get_clean_message_list                             models.py:332
+            MessageRole.roles x5                             models.py:118
+          Model.supports_stop_parameter                      models.py:498
+            supports_stop_parameter                          models.py:418
+          get_tool_json_schema x2                            models.py:288
+        ApiModel._apply_rate_limit                          models.py:1189
+          RateLimiter.throttle                                utils.py:517
+        Retrying.__call__                                     utils.py:551
+        Model.supports_stop_parameter                        models.py:498
+          supports_stop_parameter                            models.py:418
+        TokenUsage.__post_init__                          monitoring.py:46
+        ChatMessage.__post_init__                            models.py:131
+          _coerce_tool_call                                  models.py:172
+      AgentLogger.log_markdown                           monitoring.py:152
+        AgentLogger.log                                  monitoring.py:138
+      parse_json_if_needed                                   models.py:193
+      ToolCallingAgent.process_tool_calls                   agents.py:1361
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+      (resume) ToolCallingAgent.process_tool_calls          agents.py:1361
+4> ToolCallingAgent.process_tool_calls.<locals>.process_single_tool_call
+                                                            agents.py:1383
+          AgentLogger.log                                monitoring.py:138
+          ToolCallingAgent.execute_tool_call                agents.py:1453
+            ToolCallingAgent._substitute_state_variables    agents.py:1444
+            validate_tool_arguments (+1 deeper)              tools.py:1361
+            Tool.__call__ (+4 deeper)                         tools.py:231
+          AgentLogger.log                                monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+      (resume) ToolCallingAgent.process_tool_calls          agents.py:1361
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    AgentLogger.log                                      monitoring.py:138
+    (resume) ToolCallingAgent._step_stream                  agents.py:1276
+    MultiStepAgent._finalize_step                            agents.py:620
+      CallbackRegistry.callback                              memory.py:300
+        Monitor.update_metrics                           monitoring.py:100
+          Timing.duration                                 monitoring.py:66
+          AgentLogger.log                                monitoring.py:138
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+    handle_agent_output_types                           agent_types.py:263
+    MultiStepAgent._finalize_step                            agents.py:620
+      CallbackRegistry.callback                              memory.py:300
+  (resume) MultiStepAgent._run_stream                        agents.py:540
+
+What this toy run skips (read from the code at this commit)
+--------------------------------------------------------------------------
+- the HTTP request: openai.OpenAI is replaced by a fake client
+    src/smolagents/models.py:1705
+- streaming output (stream_outputs=False is the default)
+    src/smolagents/agents.py:660 (1st of 3)
+- planning steps (planning_interval=None)
+    src/smolagents/agents.py:555
+- remote executors (e2b, docker, modal, blaxel); local executor only
+    src/smolagents/agents.py:1610
+- errors and retries: the fake never fails, so no retry, no error step
+    src/smolagents/agents.py:599
+- max-steps fallback (each run ends with a final answer)
+    src/smolagents/agents.py:607
+- parallel tool calls in a thread pool (one call per reply here)
+    src/smolagents/agents.py:1426
+- managed agents, images, structured outputs, step callbacks
+    src/smolagents/agents.py:338
