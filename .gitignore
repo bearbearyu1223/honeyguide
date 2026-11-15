@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+.pytest_cache/
+tests/review/
+# eval runs: raw transcripts and throwaway config dirs never get committed unscrubbed
+runs/
+eval/pilot/configs/
+*.err
