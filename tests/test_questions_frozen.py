@@ -25,7 +25,7 @@ def run(repo, out_dir, hashseed):
     return res.stdout, files
 
 
-@pytest.mark.parametrize("repo", ["nanochat", "smolagents"])
+@pytest.mark.parametrize("repo", ["nanochat", "waku-agent"])
 def test_two_runs_byte_identical(repo, tmp_path):
     if not (TARGETS / repo).exists():
         pytest.skip(f"target clone {repo} not present")

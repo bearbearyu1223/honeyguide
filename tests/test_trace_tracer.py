@@ -133,3 +133,20 @@ def test_phase_exception_still_uninstalls(pkg):
         tracer.run_phase("p", boom)
     assert sys.getprofile() is None
     assert [e["qual"] for e in tracer.events] == ["leaf"]
+
+
+def test_new_thread_never_inherits_a_finished_threads_label(pkg):
+    # one thread at a time: the OS may hand the second the first one's
+    # ident, and each must still get its own label
+    import threading
+
+    core, tracer = pkg
+
+    def two_threads():
+        for _ in range(2):
+            t = threading.Thread(target=core.leaf, args=(1,))
+            t.start()
+            t.join()
+
+    tracer.run_phase("p", two_threads)
+    assert [e["thread"] for e in tracer.events] == ["worker-1", "worker-2"]

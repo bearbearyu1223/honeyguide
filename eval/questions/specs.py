@@ -134,153 +134,170 @@ SPECS["nanochat"] = {
 }
 
 # ==========================================================================
-# smolagents @ e1249d3 (2026-11-15)
+# waku-agent @ 2c7e7e6 (2026-11-14). Questions stay in waku/ (never hosted/).
 
-SMOL_RULES = FlowRules(
-    drop_classes=("AgentLogger", "Monitor", "Timing", "TokenUsage"),
-    drop_funcs=(),
+# waku's own telemetry: the JSONL/OTel Tracer, the observer fan-out that
+# feeds it (and the turn's meta capture), and the graph engine's locked
+# wrapper around that observer. Each only records what happened.
+WAKU_RULES = FlowRules(
+    drop_classes=("Tracer",),
+    drop_funcs=("compose.<locals>.fanout", "run_graph.<locals>.notify"),
 )
 
-SPECS["smolagents"] = {
-    "prefix": "sa",
-    "flow_rules": SMOL_RULES,
+WAKU_SETUP = ("Waku(settings, client=<scripted fake model client>) with a fresh "
+              "home (empty SQLite state.db), no MCP servers or plugins, "
+              "graph_workflows off, consolidate_every=3")
+
+SPECS["waku-agent"] = {
+    "prefix": "wk",
+    "flow_rules": WAKU_RULES,
     "locate": [
-        # newest code in the package (last changed 2026-01 to 2026-05)
-        ("src/smolagents/default_tools.py", "WebSearchTool.search_exa",
-         "Where is a query sent to the Exa API, with each result's title, "
-         "URL and highlights turned into a result entry?"),
-        ("src/smolagents/utils.py", "sanitize_for_rich",
-         "Where are arbitrary values, bytes included, turned into a string "
-         "that is safe to print to the console, with ASCII control "
-         "characters replaced by visible escape codes?"),
-        ("src/smolagents/local_python_executor.py", "timeout",
-         "Where is the limit on how long model-written code may run "
-         "enforced, by running it in a one-worker thread pool and raising an "
-         "error if it hasn't finished in time?"),
-        ("src/smolagents/remote_executors.py",
-         "RemotePythonExecutor._deserialize_final_answer",
-         "When code runs in a remote sandbox, where is the encoded answer it "
-         "sends back decoded, choosing JSON or pickle by a prefix and "
-         "rejecting pickle unless it was allowed?"),
-        ("src/smolagents/serialization.py", "SafeSerializer.to_json_safe",
-         "Where are Python values such as tuples, sets, bytes, dates, numpy "
-         "arrays and images converted into plain JSON structures tagged with "
-         "type markers?"),
-        ("src/smolagents/serialization.py", "SafeSerializer.dumps",
-         "Where is a value encoded into a prefixed string for the remote "
-         "executor, JSON-only by default, falling back to pickle with a "
-         "warning only when that is allowed?"),
-        # older code
-        ("src/smolagents/local_python_executor.py", "fix_final_answer_code",
-         "Where is model-written code rewritten so that assigning to a "
-         "variable with the same name as the answer-returning tool does not "
-         "shadow that tool?"),
-        ("src/smolagents/models.py", "remove_content_after_stop_sequences",
-         "After a model has returned its full reply, where is that text "
-         "trimmed at the stop strings (shared helper, and a reply with no "
-         "content is passed through unchanged)?"),
-        ("src/smolagents/utils.py", "truncate_content",
-         "Where is long output shortened to a maximum length by keeping its "
-         "first and last halves with a notice in between?"),
-        ("src/smolagents/agents.py", "ToolCallingAgent._substitute_state_variables",
-         "Before a tool runs, where are string arguments that match the name "
-         "of a stored value swapped for that value?"),
-        ("src/smolagents/models.py", "agglomerate_stream_deltas",
-         "Where are streamed chunks of a model reply merged into one message, "
-         "concatenating partial tool-call arguments by index and adding up "
-         "token counts?"),
-        ("src/smolagents/utils.py", "RateLimiter.throttle",
-         "Where does a model client sleep so that its requests stay under a "
-         "requests-per-minute limit?"),
+        ("waku/loop/trim.py", "shrink_seen",
+         "Before each later model call in a turn, where are long tool results "
+         "the model has already read cut to their opening, with a note saying "
+         "how long they were?"),
+        ("waku/loop/agent.py", "_final_answer",
+         "When a turn runs out of steps, where is the one last model call made "
+         "with tool use switched off, so the reply comes from what was already "
+         "gathered?"),
+        ("waku/memory/retrieval_gate.py", "should_retrieve",
+         "Where does a small model decide whether a message needs the user's "
+         "stored memories at all, returning search keywords, and falling back "
+         "to searching when its reply can't be read?"),
+        ("waku/memory/consolidation.py", "is_ops_state",
+         "When chats are distilled into long-term facts, where is a proposed "
+         "fact thrown out because it is about the assistant's own running "
+         "condition, such as an account balance, a rate limit or a token "
+         "count?"),
+        ("waku/memory/consolidation.py", "restates",
+         "Where is a proposed fact dropped because it has a number or a date "
+         "and every name, number and date in it already appears in the memory "
+         "the turn read?"),
+        ("waku/config.py", "resolve_home",
+         "Where is the folder that holds the assistant's database and files "
+         "chosen: an environment variable first, then an older per-folder "
+         "location kept until the person copies it, otherwise one under the "
+         "user's home directory?"),
+        ("waku/graph/engine.py", "run_graph",
+         "Where does a workflow of steps run in waves, running the ready steps "
+         "of a wave on a thread pool, merging what they return into one shared "
+         "dictionary and raising if two write the same key?"),
+        ("waku/memory/semantic/store.py", "_fts_query",
+         "Where is a user's free text reduced to lowercase word tokens joined "
+         "by OR, so it can be used safely as a full-text search over the "
+         "SQLite index?"),
+        ("waku/memory/procedural/loader.py", "SkillLoader.match",
+         "Where are the stored how-to instructions picked for a message, by "
+         "counting words it shares with each one's name and description, "
+         "re-reading the folder first when a file changed?"),
+        ("waku/tools/registry.py", "ToolRegistry.execute",
+         "Where is one action the model asked for run so that an unknown name "
+         "or an exception comes back to the model as text instead of stopping "
+         "the turn?"),
+        ("waku/gateway/runner.py", "safe_exception",
+         "Where are the values of configured secrets (keys, tokens, "
+         "passwords) removed from an error message before it is shown to the "
+         "person in a chat app?"),
+        ("waku/plugins/hooks.py", "read_output",
+         "Where is a plugin hook's JSON answer read for extra context, a "
+         "refusal of the action about to run, and a message to show the "
+         "person?"),
     ],
     "callers": [
-        ("src/smolagents/utils.py", "sanitize_for_rich"),
-        ("src/smolagents/local_python_executor.py", "timeout"),
-        ("src/smolagents/serialization.py", "SafeSerializer.dumps"),
-        ("src/smolagents/serialization.py", "SafeSerializer.from_json_safe"),
-        ("src/smolagents/agents.py", "CodeAgent._step_stream"),
-        ("src/smolagents/models.py", "OpenAIModel.generate"),
-        ("src/smolagents/monitoring.py", "Monitor.update_metrics"),
-        ("src/smolagents/agents.py", "populate_template"),
-        ("src/smolagents/utils.py", "truncate_content"),
-        ("src/smolagents/agents.py", "ToolCallingAgent.execute_tool_call"),
+        ("waku/memory/__init__.py", "Memory.gated_retrieve"),
+        ("waku/loop/agent.py", "run_loop"),
+        ("waku/app.py", "Waku.respond"),
+        ("waku/loop/trim.py", "shrink_seen"),
+        ("waku/memory/consolidation.py", "kept_if_due"),
+        ("waku/tools/registry.py", "ToolRegistry.schemas"),
+        ("waku/graph/engine.py", "run_graph"),
+        ("waku/memory/tool_note.py", "clip"),
+        ("waku/config.py", "resolve_home"),
+        ("waku/memory/__init__.py", "Memory.maybe_consolidate"),
     ],
     "flow": [
         {
-            "phase": "model_init",
-            "entries": [("OpenAIModel.__init__", 0)],
-            "fold": [],
-            "text": "OpenAIModel(model_id='canned-model', client=<fake OpenAI "
-                    "client>) with all other arguments at their defaults. Which "
-                    "repo functions run, in order?",
+            "phase": "init",
+            "entries": [("Waku.__init__", 0)],
+            "fold": ["Memory.__init__", "build_registry"],
+            "text": WAKU_SETUP + ". Which repo functions does building the "
+                    "agent run, in order? (Count setting up memory, and "
+                    "building the tool registry, as one step each.)",
         },
         {
-            "phase": "code_agent_init",
-            "entries": [("CodeAgent.__init__", 0)],
-            "fold": ["MultiStepAgent._setup_tools", "MultiStepAgent._setup_step_callbacks"],
-            "text": "CodeAgent(tools=[add], model=model) where add is a "
-                    "@tool-decorated function add(a: int, b: int) -> int and model "
-                    "is that OpenAIModel; every other argument at its default "
-                    "(local executor). Which repo functions run, in order? "
-                    "(Count setting up the tools, and the step callbacks, as "
-                    "one step each.)",
-        },
-        {
-            "phase": "code_agent_run",
-            "entries": [("MultiStepAgent.run", 0)],
-            "fold": ["CodeAgent._step_stream", "CodeAgent.initialize_system_prompt"],
-            "text": "That CodeAgent: agent.run('What is 2 + 3?') where the "
-                    "model's one reply is a thought plus code calling add(2, 3) "
-                    "and final_answer(result). Which repo functions does run "
-                    "call, in order? (Count each agent step as one step; what "
-                    "happens inside a step is another question.)",
-        },
-        {
-            "phase": "code_agent_run",
-            "entries": [("CodeAgent._step_stream", 0)],
-            "fold": ["OpenAIModel.generate", "LocalPythonExecutor.__call__"],
-            "text": "In that CodeAgent run, the single step: "
-                    "CodeAgent._step_stream for step 1. Which repo functions "
-                    "run, in order, from building the messages to the code's "
-                    "output? (Count the model call and the code execution as one "
+            "phase": "turn_tool",
+            "entries": [("Waku.respond", 0)],
+            "fold": ["Waku._run_full_turn", "Memory.maybe_consolidate",
+                     "Waku._receipt"],
+            "text": "That agent's first turn: waku.respond(<a request to "
+                    "remember an agenda for Alex>), where the model saves it "
+                    "with one save_note call and then replies. Which repo "
+                    "functions does respond call, in order? (Count running "
+                    "the turn, the consolidation check and the receipt as one "
                     "step each.)",
         },
         {
-            "phase": "code_agent_run",
-            "entries": [("OpenAIModel.generate", 0)],
+            "phase": "turn_tool",
+            "entries": [("Session.build_system", 0)],
             "fold": [],
-            "text": "In that CodeAgent step, the model call: OpenAIModel.generate "
-                    "with the system and task messages and stop sequences, "
-                    "against the fake client. Which repo functions run, in order?",
+            "text": "In that first turn, building the system prompt: "
+                    "Session.build_system on the message, where the small "
+                    "model's gate replies retrieve=true with query 'alex' and "
+                    "memory is still empty. Which repo functions run, in "
+                    "order?",
         },
         {
-            "phase": "code_agent_run",
-            "entries": [("LocalPythonExecutor.__call__", 0)],
-            "fold": ["Tool.__call__"],
-            "text": "In that CodeAgent step, the code execution: the default "
-                    "LocalPythonExecutor called on 'result = add(2, 3)\\n"
-                    "final_answer(result)'. Which repo functions run, in order? "
-                    "(Count each tool call as one step.)",
+            "phase": "turn_tool",
+            "entries": [("run_loop", 0)],
+            "fold": [],
+            "text": "In that first turn, the loop: run_loop where the model's "
+                    "first reply asks for save_note(subject='alex', "
+                    "content=<the agenda>) and its second reply is plain "
+                    "text. Which repo functions are called, in order, until "
+                    "the reply is returned?",
         },
         {
-            "phase": "tool_agent_run",
-            "entries": [("ToolCallingAgent._step_stream", 0)],
-            "fold": ["OpenAIModel.generate", "ToolCallingAgent.execute_tool_call"],
-            "text": "ToolCallingAgent(tools=[add], model=<the same fake "
-                    "OpenAIModel>) running 'What is 2 + 3?': its first step, "
-                    "ToolCallingAgent._step_stream, where the model replies with "
-                    "one tool call add(a=2, b=3). Which repo functions run, in "
-                    "order? (Count the model call and the tool execution as one "
+            "phase": "turn_limit",
+            "entries": [("run_loop", 0)],
+            "fold": ["ToolRegistry.execute"],
+            "text": "The second turn, with settings.max_iterations=2: "
+                    "run_loop where the model asks for manage_memory "
+                    "(search 'alex', a 4,800-character result) and then "
+                    "send_message, so the limit is reached. Which repo "
+                    "functions are called, in order, until the reply is "
+                    "returned? "
+                    "(Count each tool's execution as one step.)",
+        },
+        {
+            "phase": "turn_consolidate",
+            "entries": [("Memory.maybe_consolidate", 0)],
+            "fold": [],
+            "text": "The third turn ends with six unconsolidated chat rows "
+                    "(consolidate_every=3): Memory.maybe_consolidate, where "
+                    "the small model proposes two facts (one about the "
+                    "user's meeting times, one an account balance) and one "
+                    "episode. Which repo functions run, in order?",
+        },
+        {
+            "phase": "graph_quick",
+            "entries": [("Waku._respond_via_graph", 0)],
+            "fold": [],
+            "text": "The fourth turn, with settings.graph_workflows=True: "
+                    "waku.respond('thanks!'), where the triage model answers "
+                    "'quick'. Which repo functions does "
+                    "Waku._respond_via_graph run, in order, until the quick "
+                    "reply is returned?",
+        },
+        {
+            "phase": "graph_full",
+            "entries": [("Waku._respond_via_graph", 0)],
+            "fold": ["build_triage_graph", "Waku._run_full_turn"],
+            "text": "The fifth turn, graph_workflows still on: a question "
+                    "about Alex, where the triage model answers 'full'. "
+                    "Which repo functions does "
+                    "Waku._respond_via_graph run, in order? (Count building "
+                    "the graph, and the full turn it hands over to, as one "
                     "step each.)",
-        },
-        {
-            "phase": "tool_agent_run",
-            "entries": [("ToolCallingAgent.execute_tool_call", 0)],
-            "fold": [],
-            "text": "In that first step, the tool execution: "
-                    "ToolCallingAgent.execute_tool_call('add', {'a': 2, 'b': 3}). "
-                    "Which repo functions run, in order, until the result "
-                    "returns?",
         },
     ],
 }

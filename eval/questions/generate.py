@@ -52,6 +52,18 @@ SCOPE = {
     "flow": "the required hops Han marks, recalled, in order (LCS); hops in "
             "neither the trace nor the AST count as invented",
 }
+
+
+def scoring_scope(repo):
+    """SCOPE, with the callers line naming the repo's code dirs if it has
+    them (nanochat's set predates code_dirs and keeps its text)."""
+    if not repo.code_dirs:
+        return SCOPE
+    dirs = ", ".join(d + "/" for d in repo.code_dirs)
+    return dict(SCOPE, callers="the set of direct callers (file + function, or "
+                               f"file + <module> for top-level code), under {dirs}")
+
+
 BLAME_RULE = [
     "git blame -w -M -C --first-parent at the pinned commit; committer",
     "time per line (a branch merged later is dated by its merge; moved",
@@ -185,8 +197,8 @@ def build_callers(spec, repo, tagger, edges, sites, events):
             disputes.append((qid, qual, g))
             ranges.setdefault(g["file"], set()).update(g["lines"])
         name = qual if qual_is_unique(funcs, qual) else f"{qual} in {path}"
-        text = (f"What calls `{name}` directly? List every caller in the repo "
-                "(tests and examples excluded).")
+        text = (f"What calls `{name}` directly? List every caller "
+                f"{repo.callers_scope}.")
         named = set(qual.replace(".<locals>.", ".").split("."))
         symbols = sorted(({c["qual"].split(".")[-1] for c in callers}
                           | {c["qual"].split(".")[0] for c in callers if "." in c["qual"]})
@@ -516,8 +528,8 @@ def generate(name, args):
         "seed": args.seed,
         "cutoff": args.cutoff,
         "blame_rule": BLAME_RULE,
-        "scope": {"code": "every tracked .py outside tests/, test/, examples/, docs/",
-                  "trace": repo.trace_root, "scoring": SCOPE},
+        "scope": {"code": repo.scope_text,
+                  "trace": repo.trace_root, "scoring": scoring_scope(repo)},
         "trace": {"path": f"outputs/trace_{name}.json", "sha256": sha256(trace_path)},
         "flow_rules": spec["flow_rules"].describe(),
         "ast_resolution": RESOLUTION,

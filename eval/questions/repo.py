@@ -20,15 +20,35 @@ REPOS = {
         "package_roots": ("",),          # modules are nanochat.*, scripts.*, tasks.*
         "trace_root": "nanochat/",       # what the T3 trace kept
     },
-    "smolagents": {
-        "url": "https://github.com/huggingface/smolagents",
-        "commit": "e1249d373d58db6abc73882ee394f6bb3854c89f",
-        "package_roots": ("src",),
-        "trace_root": "src/smolagents/",
+    "waku-agent": {
+        "url": "https://github.com/ShenSeanChen/waku-agent",
+        "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+        "package_roots": ("",),          # modules are waku.*
+        "trace_root": "waku/",
+        # Only the package: hosted/ (Docker platform, Elastic licence),
+        # evals/ (its tests), lab/, scripts/, examples/, docs/ are out
+        "code_dirs": ("waku",),
+        "scope_text": "every tracked .py under waku/ (hosted/, evals/, lab/, "
+                      "scripts/, examples/, docs/ excluded)",
+        # not "waku/": the scan would read it as the class Waku, named
+        "callers_scope": "in the package source (tests, evals and hosted/ "
+                         "excluded)",
     },
 }
-# Code in scope for keys: every tracked .py outside these top-level dirs
+# Code in scope for keys, unless a repo names its code_dirs: every tracked
+# .py outside these top-level dirs
 EXCLUDE_TOP = ("tests", "test", "examples", "docs")
+SCOPE_TEXT = "every tracked .py outside tests/, test/, examples/, docs/"
+CALLERS_SCOPE = "in the repo (tests and examples excluded)"
+
+
+def in_scope(path, code_dirs=None):
+    """A repo-relative .py path is in the key scope: under one of code_dirs
+    when the repo names them, else outside EXCLUDE_TOP. Pure."""
+    top = path.split("/")[0]
+    if code_dirs is not None:
+        return "/" in path and top in code_dirs
+    return top not in EXCLUDE_TOP
 
 
 def git(clone, *args):
@@ -55,6 +75,9 @@ class Repo:
         self.url = cfg["url"]
         self.package_roots = cfg["package_roots"]
         self.trace_root = cfg["trace_root"]
+        self.code_dirs = cfg.get("code_dirs")
+        self.scope_text = cfg.get("scope_text", SCOPE_TEXT)
+        self.callers_scope = cfg.get("callers_scope", CALLERS_SCOPE)
         self._memo = {}
         got = git(self.clone, "rev-parse", self.commit + "^{commit}").strip()
         if got != self.commit:
@@ -71,8 +94,8 @@ class Repo:
     def py_files(self):
         def make():
             out = git(self.clone, "ls-tree", "-r", "--name-only", self.commit).splitlines()
-            return tuple(p for p in sorted(out)
-                         if p.endswith(".py") and p.split("/")[0] not in EXCLUDE_TOP)
+            return tuple(p for p in sorted(out) if p.endswith(".py") and in_scope(
+                p, self.code_dirs))
         return self._cached("files", make)
 
     def source(self, path):

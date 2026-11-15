@@ -1,0 +1,868 @@
+Runtime trace: waku-agent
+==========================================================================
+  repo           https://github.com/ShenSeanChen/waku-agent
+  commit         2c7e7e68d3d65ac19d428bdde7820844d87dfa19
+  commit date    2026-11-14T21:09:43-08:00
+  branch         main
+  tracked edits  0
+  python         3.12.11
+  libraries      waku-agent 0.1.12, anthropic 0.116.0
+  platform       macOS-15.6.1-arm64-arm-64bit
+  child env      PYTHONHASHSEED=0 HF_HUB_OFFLINE=1
+
+Entry point and config
+--------------------------------------------------------------------------
+  app              Waku(settings, client=ScriptedClient) from waku/app.py
+  fake client      messages.create returns scripted replies in order; each
+                   is checked against the call it answers
+  settings         model 'scripted-model', small_model
+                   'scripted-small-model', consolidate_every 3,
+                   max_iterations 15 (2 in turn_limit), history_turns 12,
+                   graph_workflows off (on in graph_*), apple/google
+                   calendar, apple tools, gh, experimental off
+  home             throwaway HOME and WAKU_HOME (state.db, MEMORY.md,
+                   outbox, traces), TZ=UTC, WAKU_* and API keys unset
+  turn_tool        gate retrieve 'alex' (empty memory); save_note(subject
+                   'alex', content: a 4790-character agenda); reply
+  turn_limit       max_iterations 2: gate retrieve 'alex' (finds the
+                   note); manage_memory search 'alex'; send_message to
+                   Alex; limit hit, one tools-off final call
+  turn_consolidate gate skip; plain reply; consolidation due (6
+                   unconsolidated rows): 2 facts proposed, 1 an ops fact
+                   that is dropped; 1 episode
+  graph_quick      graph_workflows on: triage says quick; quick reply
+  graph_full       graph_workflows on: triage says full; gate retrieve
+                   'alex'; plain reply
+  graph pool       first wave run one node at a time on pool threads, in
+                   submit order (see SKIPS)
+
+Filter rules
+--------------------------------------------------------------------------
+  keep: Python code whose file is under waku/
+  drop: files with a directory named tests, test,
+        site-packages, dist-packages between the root and the file
+  drop: stdlib, site-packages, <string> and <frozen> code
+  drop: synthetic frames: lambdas, comprehensions, genexprs,
+        module and class bodies
+  drop: C functions (only Python 'call' events are seen)
+
+Phases (run 1)
+--------------------------------------------------------------------------
+  phase              raw calls   kept  resumes  synthetic
+  init                    1675     78        0         21
+  turn_tool               1419    159        1         27
+  turn_limit              1140    215        1         40
+  turn_consolidate        1067    135        1         29
+  graph_quick             1037    180        1         23
+  graph_full              1336    226        1         37
+  total                   7674    993        5        177
+  raw calls = every Python call event in the phase, any file;
+  kept = repo calls on the path; resumes = generator re-entries
+  (kept in the path, marked, not counted as calls); synthetic =
+  repo lambdas, comprehensions and class bodies dropped.
+  names not found in the source index (fallback): 0
+  source-index names vs Python's co_qualname: 998 of 998
+  kept events agree
+
+What the run returned (sanity, not a result)
+--------------------------------------------------------------------------
+  tools offered                8
+  turn_tool model calls        gate loop loop
+  turn_tool reply              Saved your agenda for Alex.
+  turn_limit model calls       gate loop loop final
+  turn_limit limit reached     True
+  turn_limit iterations        2
+  manage_memory output chars   4800
+  tool results in final call   2217 chars 96 chars
+  turn_consolidate model calls gate loop consolidation
+  turn_consolidate reply       Noted: mornings before 10am.
+  facts after consolidation    2
+  episodes after consolidation 1
+  graph_quick model calls      triage quick
+  graph_quick reply            You're welcome!
+  graph_full model calls       triage gate loop
+  graph_full reply             You saved an agenda for Alex.
+
+Reproducibility (fresh process per run)
+--------------------------------------------------------------------------
+  kept path, run 1 vs run 2:
+    identical (998 events)
+  kept path, run 1 vs control, PYTHONHASHSEED=1:
+    identical (998 events)
+  raw calls, runs then control: 7674 / 7674 / 7673
+  wall time, runs then control: 0.4 s / 0.4 s / 0.3 s
+
+Coverage of the files the trace touched
+--------------------------------------------------------------------------
+  file (under waku/)                            defined   called
+  app.py                                             19       13
+  config.py                                          11        1
+  db.py                                               2        2
+  graph/engine.py                                     8        7
+  graph/nodes.py                                      9        2
+  graph/workflows/triage.py                           5        4
+  loop/agent.py                                       3        2
+  loop/trim.py                                        3        3
+  memory/__init__.py                                 16       14
+  memory/consolidation.py                            10        4
+  memory/episodic/store.py                            6        3
+  memory/procedural/loader.py                         6        6
+  memory/reports.py                                  13        5
+  memory/retrieval_gate.py                            1        1
+  memory/semantic/store.py                           12        5
+  memory/slot_gate.py                                 5        3
+  memory/tool_note.py                                 4        3
+  ops/observability.py                               58       13
+  ops/pricing.py                                      6        1
+  ops/receipt.py                                      7        6
+  ops/tracing.py                                     15       13
+  plugins/store.py                                   10        4
+  runtime/session.py                                  7        4
+  tools/__init__.py                                   1        1
+  tools/calendar.py                                  15        2
+  tools/memory_admin.py                               6        4
+  tools/messages.py                                   2        2
+  tools/notes.py                                      3        2
+  tools/registry.py                                   6        6
+  tools/search.py                                     5        1
+  tools/treg.py                                      13        2
+  tools/waku_memory.py                               17        6
+  defined = def statements in the file (methods and nested
+  functions included); called = distinct ones seen in any phase.
+
+Collapsed paths
+--------------------------------------------------------------------------
+  One block per phase. Indent = depth in repo frames. xN =
+  N consecutive identical subtrees folded. (+N deeper) = kept
+  calls below depth 6, hidden here, kept in the JSON.
+  (resume) = a suspended generator re-entered. [worker-1] = a
+  thread the run started. Anchors: file:line of the def (of
+  its first decorator if decorated), relative to waku/
+
+## init: Waku(settings, client=ScriptedClient())
+   kept calls 78, resumes 0, max depth 5, rows shown 59
+Waku.__init__                                                    app.py:69
+  Settings.ensure_home                                       config.py:314
+  connect                                                        db.py:111
+    _migrate                                                      db.py:83
+  Memory.__init__                                    memory/__init__.py:60
+    Memory._make_fact_store                          memory/__init__.py:85
+      SqliteFactStore.__init__                 memory/semantic/store.py:68
+    Memory._make_episode_store                      memory/__init__.py:109
+      SqliteEpisodeStore.__init__              memory/episodic/store.py:17
+    enabled                                            plugins/store.py:75
+      read                                             plugins/store.py:57
+        folder                                         plugins/store.py:38
+    bundled_skill_dirs                               memory/__init__.py:27
+    SkillLoader.__init__                    memory/procedural/loader.py:52
+      SkillLoader.refresh                   memory/procedural/loader.py:66
+        _parse x7                           memory/procedural/loader.py:43
+          _parse_text                       memory/procedural/loader.py:28
+        SkillLoader._scan_sig               memory/procedural/loader.py:58
+  build_registry                                      tools/__init__.py:14
+    ToolRegistry.__init__                             tools/registry.py:38
+    make_tool                                        tools/calendar.py:403
+    ToolRegistry.register                             tools/registry.py:41
+    make_list_tool                                   tools/calendar.py:490
+    ToolRegistry.register                             tools/registry.py:41
+    make_tool                                            tools/notes.py:34
+    ToolRegistry.register                             tools/registry.py:41
+    make_tool                                         tools/messages.py:16
+    ToolRegistry.register                             tools/registry.py:41
+    make_tool                                           tools/search.py:61
+    ToolRegistry.register                             tools/registry.py:41
+    make_manage_memory_tool                       tools/memory_admin.py:25
+    ToolRegistry.register                             tools/registry.py:41
+    make_update_soul_tool                         tools/memory_admin.py:85
+    ToolRegistry.register                             tools/registry.py:41
+    make_create_skill_tool                       tools/memory_admin.py:118
+    ToolRegistry.register                             tools/registry.py:41
+    servers                                            plugins/store.py:91
+      enabled                                          plugins/store.py:75
+        read                                           plugins/store.py:57
+          folder                                       plugins/store.py:38
+  remember_via                                    tools/waku_memory.py:101
+    _server                                        tools/waku_memory.py:67
+  consolidation_every                              tools/waku_memory.py:55
+  search_via                                      tools/waku_memory.py:128
+    _server                                        tools/waku_memory.py:67
+  get_via                                         tools/waku_memory.py:152
+    _server                                        tools/waku_memory.py:67
+  tool_name                                       tools/waku_memory.py:188
+    _server                                        tools/waku_memory.py:67
+  ToolRegistry.get                                    tools/registry.py:44
+  Session.__init__                                   runtime/session.py:86
+  Tracer.__init__                                        ops/tracing.py:77
+    Tracer._init_otel                                    ops/tracing.py:94
+    mcp_servers                                   ops/observability.py:137
+  enabled                                              plugins/store.py:75
+    read                                               plugins/store.py:57
+      folder                                           plugins/store.py:38
+ToolRegistry.schemas                                  tools/registry.py:47
+  Tool.to_api x8                                      tools/registry.py:28
+
+## turn_tool: waku.respond(...): gate, save_note, reply
+   kept calls 159, resumes 1, max depth 9, rows shown 114
+Waku.respond                                                    app.py:136
+  compose                                               ops/tracing.py:217
+  Tracer.turn                                           ops/tracing.py:190
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._before_turn                                             app.py:281
+  Waku._run_full_turn                                           app.py:392
+    Session.build_system                            runtime/session.py:100
+      load_soul                                      runtime/session.py:73
+      unavailable                                         tools/treg.py:95
+        own_key                                           tools/treg.py:70
+      Memory.gated_retrieve                         memory/__init__.py:118
+        metered.__init__                                ops/tracing.py:249
+          _MeteredMessages.__init__                     ops/tracing.py:227
+        should_retrieve                        memory/retrieval_gate.py:36
+          _MeteredMessages.create                       ops/tracing.py:230
+            compose.<locals>.fanout (+8 deeper)         ops/tracing.py:220
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+        SqliteFactStore.search                memory/semantic/store.py:100
+          _fts_query                           memory/semantic/store.py:31
+        select                                      memory/slot_gate.py:66
+        SqliteEpisodeStore.search              memory/episodic/store.py:27
+          _fts_query                           memory/semantic/store.py:31
+      Memory.matching_skills                        memory/__init__.py:139
+        SkillLoader.match                   memory/procedural/loader.py:77
+          SkillLoader._scan_sig             memory/procedural/loader.py:58
+    with_context                                                 app.py:50
+    chain                                                  loop/trim.py:56
+    Waku._before_tool                                           app.py:323
+    run_loop                                              loop/agent.py:91
+      ToolRegistry.schemas                            tools/registry.py:47
+        Tool.to_api x8                                tools/registry.py:28
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          Tracer._record_usage                          ops/tracing.py:131
+            _now                                         ops/tracing.py:47
+          llm_cost                                ops/observability.py:305
+            price_for                                   ops/pricing.py:128
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      ToolRegistry.execute                            tools/registry.py:50
+        make_tool.<locals>.save_note                     tools/notes.py:35
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          trace_record                            ops/observability.py:289
+            trace_args (+4 deeper)                ops/observability.py:129
+            describe (+9 deeper)                  ops/observability.py:257
+            tool_type                             ops/observability.py:173
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      chain.<locals>.run                                   loop/trim.py:60
+        shrink_read                                  memory/reports.py:186
+        shrink_seen                                        loop/trim.py:40
+      ToolRegistry.schemas                            tools/registry.py:47
+        Tool.to_api x8                                tools/registry.py:28
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          Tracer._record_usage                          ops/tracing.py:131
+            _now                                         ops/tracing.py:47
+          llm_cost                                ops/observability.py:305
+            price_for                                   ops/pricing.py:128
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+  kept_body                                          memory/reports.py:176
+    saved_by_model                                   memory/reports.py:156
+    find                                              memory/reports.py:88
+  save                                               memory/reports.py:260
+    find                                              memory/reports.py:88
+    saved_by_model                                   memory/reports.py:156
+  Waku.respond.<locals>._status                                 app.py:211
+  Session.add_exchange                              runtime/session.py:140
+    note                                            memory/tool_note.py:46
+      _short x2                                     memory/tool_note.py:38
+    Memory.log_chat                                 memory/__init__.py:144
+  Waku._recalled                                                app.py:358
+    tool_name x4                                  tools/waku_memory.py:188
+      _server                                      tools/waku_memory.py:67
+  Memory.maybe_consolidate                          memory/__init__.py:271
+    metered.__init__                                    ops/tracing.py:249
+      _MeteredMessages.__init__                         ops/tracing.py:227
+    Memory._server_extracts x2                      memory/__init__.py:263
+    kept_if_due                                memory/consolidation.py:161
+  Memory.export_markdown                            memory/__init__.py:213
+    Memory.export_fact_files                        memory/__init__.py:240
+      _fact_file_text                                memory/__init__.py:46
+        _fact_file_text.<locals>.one_line x3         memory/__init__.py:52
+  Waku._receipt                                                 app.py:379
+    build                                               ops/receipt.py:106
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      tool_cost                                          ops/receipt.py:79
+        _json                                            ops/receipt.py:66
+      _name                                              ops/receipt.py:62
+      _status                                            ops/receipt.py:74
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      _id                                                ops/receipt.py:57
+    Memory.update_meta                              memory/__init__.py:162
+    Tracer.event                                        ops/tracing.py:151
+      Tracer._write                                     ops/tracing.py:116
+        _now                                             ops/tracing.py:47
+  (resume) Tracer.turn                                  ops/tracing.py:190
+  Tracer.end_turn                                       ops/tracing.py:208
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._after_turn                                              app.py:341
+
+## turn_limit: waku.respond(...) with max_iterations=2: two tool calls,
+   then the tools-off final call
+   kept calls 215, resumes 1, max depth 9, rows shown 146
+Waku.respond                                                    app.py:136
+  compose                                               ops/tracing.py:217
+  Tracer.turn                                           ops/tracing.py:190
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._before_turn                                             app.py:281
+  Waku._run_full_turn                                           app.py:392
+    Session.build_system                            runtime/session.py:100
+      load_soul                                      runtime/session.py:73
+      unavailable                                         tools/treg.py:95
+        own_key                                           tools/treg.py:70
+      Memory.gated_retrieve                         memory/__init__.py:118
+        metered.__init__                                ops/tracing.py:249
+          _MeteredMessages.__init__                     ops/tracing.py:227
+        should_retrieve                        memory/retrieval_gate.py:36
+          _MeteredMessages.create                       ops/tracing.py:230
+            compose.<locals>.fanout (+8 deeper)         ops/tracing.py:220
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+        SqliteFactStore.search                memory/semantic/store.py:100
+          _fts_query                           memory/semantic/store.py:31
+        select                                      memory/slot_gate.py:66
+          enabled                                   memory/slot_gate.py:44
+        SqliteEpisodeStore.search              memory/episodic/store.py:27
+          _fts_query                           memory/semantic/store.py:31
+      Memory.matching_skills                        memory/__init__.py:139
+        SkillLoader.match                   memory/procedural/loader.py:77
+          SkillLoader._scan_sig             memory/procedural/loader.py:58
+    with_context                                                 app.py:50
+    chain                                                  loop/trim.py:56
+    Waku._before_tool                                           app.py:323
+    run_loop                                              loop/agent.py:91
+      ToolRegistry.schemas                            tools/registry.py:47
+        Tool.to_api x8                                tools/registry.py:28
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          Tracer._record_usage                          ops/tracing.py:131
+            _now                                         ops/tracing.py:47
+          llm_cost                                ops/observability.py:305
+            price_for                                   ops/pricing.py:128
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      ToolRegistry.execute                            tools/registry.py:50
+        make_manage_memory_tool.<locals>.manage_memory
+                                                  tools/memory_admin.py:29
+          SqliteFactStore.search_with_ids     memory/semantic/store.py:120
+            _fts_query                         memory/semantic/store.py:31
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          trace_record                            ops/observability.py:289
+            trace_args (+3 deeper)                ops/observability.py:129
+            describe (+9 deeper)                  ops/observability.py:257
+            tool_type                             ops/observability.py:173
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      chain.<locals>.run                                   loop/trim.py:60
+        shrink_read                                  memory/reports.py:186
+        shrink_seen                                        loop/trim.py:40
+      ToolRegistry.schemas                            tools/registry.py:47
+        Tool.to_api x8                                tools/registry.py:28
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          Tracer._record_usage                          ops/tracing.py:131
+            _now                                         ops/tracing.py:47
+          llm_cost                                ops/observability.py:305
+            price_for                                   ops/pricing.py:128
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      ToolRegistry.execute                            tools/registry.py:50
+        make_tool.<locals>.send_message               tools/messages.py:17
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          trace_record                            ops/observability.py:289
+            trace_args (+3 deeper)                ops/observability.py:129
+            describe (+9 deeper)                  ops/observability.py:257
+            tool_type                             ops/observability.py:173
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+      _final_answer                                      loop/agent.py:203
+        chain.<locals>.run                                 loop/trim.py:60
+          shrink_read                                memory/reports.py:186
+          shrink_seen                                      loop/trim.py:40
+        ToolRegistry.schemas                          tools/registry.py:47
+          Tool.to_api x8                              tools/registry.py:28
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._record_usage (+1 deeper)            ops/tracing.py:131
+            llm_cost (+1 deeper)                  ops/observability.py:305
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+  kept_body                                          memory/reports.py:176
+    saved_by_model                                   memory/reports.py:156
+    find                                              memory/reports.py:88
+  save                                               memory/reports.py:260
+    find                                              memory/reports.py:88
+    saved_by_model                                   memory/reports.py:156
+  Waku.respond.<locals>._status x2                              app.py:211
+  Session.add_exchange                              runtime/session.py:140
+    note                                            memory/tool_note.py:46
+      _short x4                                     memory/tool_note.py:38
+    Memory.log_chat                                 memory/__init__.py:144
+  Waku._recalled                                                app.py:358
+    tool_name x4                                  tools/waku_memory.py:188
+      _server                                      tools/waku_memory.py:67
+  Memory.maybe_consolidate                          memory/__init__.py:271
+    metered.__init__                                    ops/tracing.py:249
+      _MeteredMessages.__init__                         ops/tracing.py:227
+    Memory._server_extracts x2                      memory/__init__.py:263
+    kept_if_due                                memory/consolidation.py:161
+  Memory.export_markdown                            memory/__init__.py:213
+    Memory.export_fact_files                        memory/__init__.py:240
+      _fact_file_text                                memory/__init__.py:46
+        _fact_file_text.<locals>.one_line x3         memory/__init__.py:52
+  Waku._receipt                                                 app.py:379
+    build                                               ops/receipt.py:106
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      tool_cost                                          ops/receipt.py:79
+        _json                                            ops/receipt.py:66
+      _name                                              ops/receipt.py:62
+      _status                                            ops/receipt.py:74
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      tool_cost                                          ops/receipt.py:79
+        _json                                            ops/receipt.py:66
+      _name                                              ops/receipt.py:62
+      _status                                            ops/receipt.py:74
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      _id                                                ops/receipt.py:57
+    Memory.update_meta                              memory/__init__.py:162
+    Tracer.event                                        ops/tracing.py:151
+      Tracer._write                                     ops/tracing.py:116
+        _now                                             ops/tracing.py:47
+  (resume) Tracer.turn                                  ops/tracing.py:190
+  Tracer.end_turn                                       ops/tracing.py:208
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._after_turn                                              app.py:341
+
+## turn_consolidate: waku.respond(...): reply, then consolidation
+   kept calls 135, resumes 1, max depth 9, rows shown 98
+Waku.respond                                                    app.py:136
+  compose                                               ops/tracing.py:217
+  Tracer.turn                                           ops/tracing.py:190
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._before_turn                                             app.py:281
+  Waku._run_full_turn                                           app.py:392
+    Session.build_system                            runtime/session.py:100
+      load_soul                                      runtime/session.py:73
+      unavailable                                         tools/treg.py:95
+        own_key                                           tools/treg.py:70
+      Memory.gated_retrieve                         memory/__init__.py:118
+        metered.__init__                                ops/tracing.py:249
+          _MeteredMessages.__init__                     ops/tracing.py:227
+        should_retrieve                        memory/retrieval_gate.py:36
+          _MeteredMessages.create                       ops/tracing.py:230
+            compose.<locals>.fanout (+8 deeper)         ops/tracing.py:220
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      Memory.matching_skills                        memory/__init__.py:139
+        SkillLoader.match                   memory/procedural/loader.py:77
+          SkillLoader._scan_sig             memory/procedural/loader.py:58
+    with_context                                                 app.py:50
+    chain                                                  loop/trim.py:56
+    Waku._before_tool                                           app.py:323
+    run_loop                                              loop/agent.py:91
+      ToolRegistry.schemas                            tools/registry.py:47
+        Tool.to_api x8                                tools/registry.py:28
+      compose.<locals>.fanout                           ops/tracing.py:220
+        Tracer.event                                    ops/tracing.py:151
+          Tracer._record_usage                          ops/tracing.py:131
+            _now                                         ops/tracing.py:47
+          llm_cost                                ops/observability.py:305
+            price_for                                   ops/pricing.py:128
+          Tracer._write                                 ops/tracing.py:116
+            _now                                         ops/tracing.py:47
+        Waku.respond.<locals>._capture                          app.py:150
+  kept_body                                          memory/reports.py:176
+    saved_by_model                                   memory/reports.py:156
+    find                                              memory/reports.py:88
+  save                                               memory/reports.py:260
+    find                                              memory/reports.py:88
+    saved_by_model                                   memory/reports.py:156
+  Session.add_exchange                              runtime/session.py:140
+    Memory.log_chat                                 memory/__init__.py:144
+  Waku._recalled                                                app.py:358
+    tool_name x4                                  tools/waku_memory.py:188
+      _server                                      tools/waku_memory.py:67
+  Memory.maybe_consolidate                          memory/__init__.py:271
+    metered.__init__                                    ops/tracing.py:249
+      _MeteredMessages.__init__                         ops/tracing.py:227
+    Memory._server_extracts x2                      memory/__init__.py:263
+    kept_if_due                                memory/consolidation.py:161
+      clip x6                                       memory/tool_note.py:62
+      _saved_reports                           memory/consolidation.py:297
+      _MeteredMessages.create                           ops/tracing.py:230
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._record_usage (+1 deeper)            ops/tracing.py:131
+            llm_cost (+1 deeper)                  ops/observability.py:305
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      is_ops_state                             memory/consolidation.py:375
+      is_memory_state                          memory/consolidation.py:401
+      is_ops_state                             memory/consolidation.py:375
+      keep                                          memory/slot_gate.py:83
+        enabled                                     memory/slot_gate.py:44
+      SqliteFactStore.add                      memory/semantic/store.py:71
+      SqliteEpisodeStore.add                   memory/episodic/store.py:20
+    compose.<locals>.fanout                             ops/tracing.py:220
+      Tracer.event                                      ops/tracing.py:151
+        Tracer._write                                   ops/tracing.py:116
+          _now                                           ops/tracing.py:47
+      Waku.respond.<locals>._capture                            app.py:150
+  Memory.export_markdown                            memory/__init__.py:213
+    Memory.export_fact_files                        memory/__init__.py:240
+      _fact_file_text x2                             memory/__init__.py:46
+        _fact_file_text.<locals>.one_line x3         memory/__init__.py:52
+  Waku._receipt                                                 app.py:379
+    build                                               ops/receipt.py:106
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      _id x2                                             ops/receipt.py:57
+    Memory.update_meta                              memory/__init__.py:162
+    Tracer.event                                        ops/tracing.py:151
+      Tracer._write                                     ops/tracing.py:116
+        _now                                             ops/tracing.py:47
+  (resume) Tracer.turn                                  ops/tracing.py:190
+  Tracer.end_turn                                       ops/tracing.py:208
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._after_turn                                              app.py:341
+
+## graph_quick: waku.respond('thanks!') with graph_workflows on: quick
+   route
+   kept calls 180, resumes 1, max depth 10, rows shown 120
+Waku.respond                                                    app.py:136
+  compose                                               ops/tracing.py:217
+  Tracer.turn                                           ops/tracing.py:190
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._before_turn                                             app.py:281
+  Waku._respond_via_graph                                       app.py:436
+    build_triage_graph                        graph/workflows/triage.py:89
+      Graph.add_node x4                                 graph/engine.py:71
+      Graph.add_edge x2                                 graph/engine.py:76
+      Graph.add_node                                    graph/engine.py:71
+      Graph.add_edge x2                                 graph/engine.py:76
+      key_router                                         graph/nodes.py:65
+      Graph.add_router                                  graph/engine.py:84
+      Graph.add_edge x2                                 graph/engine.py:76
+    run_graph                                          graph/engine.py:106
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify x2                     graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      [worker-1] run_graph.<locals>.run_one            graph/engine.py:141
+        [worker-1] build_triage_graph.<locals>.classify
+                                              graph/workflows/triage.py:97
+          [worker-1] metered.__init__                   ops/tracing.py:249
+            [worker-1] _MeteredMessages.__init__        ops/tracing.py:227
+          [worker-1] classify_message         graph/workflows/triage.py:52
+            [worker-1] _MeteredMessages.create
+                                           (+9 deeper)  ops/tracing.py:230
+          [worker-1] run_graph.<locals>.notify         graph/engine.py:113
+            [worker-1] compose.<locals>.fanout
+                                           (+4 deeper)  ops/tracing.py:220
+      [worker-2] run_graph.<locals>.run_one            graph/engine.py:141
+        [worker-2] todays_events              graph/workflows/triage.py:73
+      run_graph.<locals>.notify x2                     graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.run_one                       graph/engine.py:141
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      key_router.<locals>.route                          graph/nodes.py:69
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.run_one                       graph/engine.py:141
+        Waku._respond_via_graph.<locals>.quick_reply            app.py:448
+          with_context                                           app.py:50
+          metered.__init__                              ops/tracing.py:249
+            _MeteredMessages.__init__                   ops/tracing.py:227
+          _MeteredMessages.create                       ops/tracing.py:230
+            compose.<locals>.fanout (+8 deeper)         ops/tracing.py:220
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+  kept_body                                          memory/reports.py:176
+    saved_by_model                                   memory/reports.py:156
+    find                                              memory/reports.py:88
+  save                                               memory/reports.py:260
+    find                                              memory/reports.py:88
+    saved_by_model                                   memory/reports.py:156
+  Session.add_exchange                              runtime/session.py:140
+    Memory.log_chat                                 memory/__init__.py:144
+  Waku._recalled                                                app.py:358
+    tool_name x4                                  tools/waku_memory.py:188
+      _server                                      tools/waku_memory.py:67
+  Memory.maybe_consolidate                          memory/__init__.py:271
+    metered.__init__                                    ops/tracing.py:249
+      _MeteredMessages.__init__                         ops/tracing.py:227
+    Memory._server_extracts x2                      memory/__init__.py:263
+    kept_if_due                                memory/consolidation.py:161
+  Memory.export_markdown                            memory/__init__.py:213
+    Memory.export_fact_files                        memory/__init__.py:240
+      _fact_file_text x2                             memory/__init__.py:46
+        _fact_file_text.<locals>.one_line x3         memory/__init__.py:52
+  Waku._receipt                                                 app.py:379
+    build                                               ops/receipt.py:106
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      _id                                                ops/receipt.py:57
+    Memory.update_meta                              memory/__init__.py:162
+    Tracer.event                                        ops/tracing.py:151
+      Tracer._write                                     ops/tracing.py:116
+        _now                                             ops/tracing.py:47
+  (resume) Tracer.turn                                  ops/tracing.py:190
+  Tracer.end_turn                                       ops/tracing.py:208
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._after_turn                                              app.py:341
+
+## graph_full: waku.respond(...) with graph_workflows on: full route
+   kept calls 226, resumes 1, max depth 13, rows shown 128
+Waku.respond                                                    app.py:136
+  compose                                               ops/tracing.py:217
+  Tracer.turn                                           ops/tracing.py:190
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._before_turn                                             app.py:281
+  Waku._respond_via_graph                                       app.py:436
+    build_triage_graph                        graph/workflows/triage.py:89
+      Graph.add_node x4                                 graph/engine.py:71
+      Graph.add_edge x2                                 graph/engine.py:76
+      Graph.add_node                                    graph/engine.py:71
+      Graph.add_edge x2                                 graph/engine.py:76
+      key_router                                         graph/nodes.py:65
+      Graph.add_router                                  graph/engine.py:84
+      Graph.add_edge x2                                 graph/engine.py:76
+    run_graph                                          graph/engine.py:106
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify x2                     graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      [worker-3] run_graph.<locals>.run_one            graph/engine.py:141
+        [worker-3] build_triage_graph.<locals>.classify
+                                              graph/workflows/triage.py:97
+          [worker-3] metered.__init__                   ops/tracing.py:249
+            [worker-3] _MeteredMessages.__init__        ops/tracing.py:227
+          [worker-3] classify_message         graph/workflows/triage.py:52
+            [worker-3] _MeteredMessages.create
+                                           (+9 deeper)  ops/tracing.py:230
+          [worker-3] run_graph.<locals>.notify         graph/engine.py:113
+            [worker-3] compose.<locals>.fanout
+                                           (+4 deeper)  ops/tracing.py:220
+      [worker-4] run_graph.<locals>.run_one            graph/engine.py:141
+        [worker-4] todays_events              graph/workflows/triage.py:73
+      run_graph.<locals>.notify x2                     graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.run_one                       graph/engine.py:141
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      key_router.<locals>.route                          graph/nodes.py:69
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.run_one                       graph/engine.py:141
+        Waku._run_full_turn                                     app.py:392
+          Session.build_system                      runtime/session.py:100
+            load_soul                                runtime/session.py:73
+            unavailable (+1 deeper)                       tools/treg.py:95
+            Memory.gated_retrieve (+26 deeper)      memory/__init__.py:118
+            Memory.matching_skills (+2 deeper)      memory/__init__.py:139
+          with_context                                           app.py:50
+          chain                                            loop/trim.py:56
+          Waku._before_tool                                     app.py:323
+          run_loop                                        loop/agent.py:91
+            ToolRegistry.schemas (+8 deeper)          tools/registry.py:47
+            run_graph.<locals>.notify (+9 deeper)      graph/engine.py:113
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+      run_graph.<locals>.next_wave                     graph/engine.py:128
+      run_graph.<locals>.notify                        graph/engine.py:113
+        compose.<locals>.fanout                         ops/tracing.py:220
+          Tracer.event                                  ops/tracing.py:151
+            Tracer._write (+1 deeper)                   ops/tracing.py:116
+          Waku.respond.<locals>._capture                        app.py:150
+  kept_body                                          memory/reports.py:176
+    saved_by_model                                   memory/reports.py:156
+    find                                              memory/reports.py:88
+  save                                               memory/reports.py:260
+    find                                              memory/reports.py:88
+    saved_by_model                                   memory/reports.py:156
+  Session.add_exchange                              runtime/session.py:140
+    Memory.log_chat                                 memory/__init__.py:144
+  Waku._recalled                                                app.py:358
+    tool_name x4                                  tools/waku_memory.py:188
+      _server                                      tools/waku_memory.py:67
+  Memory.maybe_consolidate                          memory/__init__.py:271
+    metered.__init__                                    ops/tracing.py:249
+      _MeteredMessages.__init__                         ops/tracing.py:227
+    Memory._server_extracts x2                      memory/__init__.py:263
+    kept_if_due                                memory/consolidation.py:161
+  Memory.export_markdown                            memory/__init__.py:213
+    Memory.export_fact_files                        memory/__init__.py:240
+      _fact_file_text x2                             memory/__init__.py:46
+        _fact_file_text.<locals>.one_line x3         memory/__init__.py:52
+  Waku._receipt                                                 app.py:379
+    build                                               ops/receipt.py:106
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      price_for                                         ops/pricing.py:128
+      _name                                              ops/receipt.py:62
+      _id                                                ops/receipt.py:57
+    Memory.update_meta                              memory/__init__.py:162
+    Tracer.event                                        ops/tracing.py:151
+      Tracer._write                                     ops/tracing.py:116
+        _now                                             ops/tracing.py:47
+  (resume) Tracer.turn                                  ops/tracing.py:190
+  Tracer.end_turn                                       ops/tracing.py:208
+    Tracer._write                                       ops/tracing.py:116
+      _now                                               ops/tracing.py:47
+  Waku._after_turn                                              app.py:341
+
+What this toy run skips (read from the code at this commit)
+--------------------------------------------------------------------------
+- the HTTP request: the model client is a scripted fake (get_client is
+  never called)
+    waku/app.py:75
+- streaming replies (stream=False, the CLI default)
+    waku/loop/agent.py:135
+- MCP servers, Waku Memory and plugins: no mcp.json, no plugin, so no
+  bridge, no remember, no hooks
+    waku/tools/__init__.py:76
+- plugin hooks (SessionStart, UserPromptSubmit, PreToolUse deny, Stop
+  thread)
+    waku/app.py:286
+- research turns that read Waku Memory first (needs the bridge)
+    waku/app.py:411
+- sending a research report to Waku Memory (no remember)
+    waku/memory/reports.py:284
+- other memory stores (supabase, mem0, zep, langmem, notion); SQLite only
+    waku/memory/__init__.py:91
+- the Jev slot gate (off without WAKU_SLOT_GATE=jev)
+    waku/memory/slot_gate.py:45
+- OpenTelemetry export (JSONL trace only)
+    waku/ops/tracing.py:95
+- opt-in tools: experimental, Apple, GitHub; web search is offered but
+  never called
+    waku/tools/__init__.py:58
+- failures: the fake never fails, so no gate or triage fail-open, no tool
+  error text, no failed final answer
+    waku/loop/agent.py:216
+- the triage graph's overlapping first wave: its two nodes run one after
+  the other here
+    waku/graph/engine.py:173
+- gateways (Telegram, Discord, WhatsApp, voice), the dashboard, and
+  everything under hosted/ (never imported)
+    waku/gateway/runner.py:34

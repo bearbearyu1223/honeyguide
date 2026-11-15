@@ -41,10 +41,10 @@ REPOS = {
         "sys_path": ["."],   # not installed into its venv; import from the clone
         "entry": "entries/nanochat_entry.py",
     },
-    "smolagents": {
-        "package_dir": "src/smolagents",
+    "waku-agent": {
+        "package_dir": "waku",   # waku/ only: hosted/, lab/, evals/ never kept
         "sys_path": [],      # editable install
-        "entry": "entries/smolagents_entry.py",
+        "entry": "entries/waku_entry.py",
     },
 }
 

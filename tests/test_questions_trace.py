@@ -148,3 +148,19 @@ def test_several_entries_and_missing_entry():
     assert quals(hops) == ["run", "step", "work", "inner"] and raw == 4
     with pytest.raises(ValueError):
         flow_hops(events, "ph", [("run", 1)], FUNCS, RULES)
+
+
+def test_worker_started_after_a_dropped_subtree_returned_is_kept():
+    # run's logging call returns, then run starts a worker (no repo call on
+    # the main thread in between, so the logging cut is still set): the
+    # worker's depth (1) is not below the cut (1), so it is kept
+    events = [
+        ev("run", 0),
+        ev("Logger.log", 1), ev("Logger.fmt", 2),
+        ev("work", 1, thread="worker-1"), ev("inner", 2, thread="worker-1"),
+        ev("step", 1),
+    ]
+    hops, dropped, _ = flow_hops(events, "ph", [("run", 0)], FUNCS, RULES)
+    assert quals(hops) == ["run", "work", "inner", "step"]
+    assert hops[1].thread == "worker-1" and hops[1].caller == "run"
+    assert dropped == {"logging": 1, "under logging": 1}

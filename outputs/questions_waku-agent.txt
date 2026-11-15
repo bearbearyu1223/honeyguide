@@ -1,0 +1,159 @@
+Eval questions and keys: waku-agent
+==========================================================================
+  repo           https://github.com/ShenSeanChen/waku-agent
+  commit         2c7e7e68d3d65ac19d428bdde7820844d87dfa19
+  commit date    2026-11-14T21:09:43-08:00
+  generator      v1, seed 0
+  cutoff         2026-06-30 (a parameter until verified)
+  trace          outputs/trace_waku-agent.json
+                 sha256 737abf2e7bae505e...
+
+Questions by type and subset (cutoff 2026-06-30)
+--------------------------------------------------------------------------
+  type        total  before  after  none
+  locate         12       0     12     0
+  callers        10       0     10     0
+  flow            8       0      8     0
+  all            30       0     30     0
+  why/how      slot  Han writes ~10 (T5); not generated
+  tag differs if dated by authored commit instead of merge: 0
+
+Blame rule
+--------------------------------------------------------------------------
+  git blame -w -M -C --first-parent at the pinned commit; committer
+  time per line (a branch merged later is dated by its merge; moved
+  or copied lines keep their original date)
+  a question is 'after' when at least half of its key's non-blank
+  lines changed after the cutoff day (23:59:59 UTC)
+  key lines: locate = the function; callers = the call lines of
+  key callers and open disputes; flow = every candidate hop's
+  function
+
+After-cutoff counts at other cutoffs (same questions)
+--------------------------------------------------------------------------
+  cutoff         locate  callers     flow    all
+  2025-12-31         12        9        8     29
+  2026-03-31         12        9        8     29
+
+Leakage (key names or file names verbatim in the text)
+--------------------------------------------------------------------------
+  locate: key function, class or file named        0 of 12
+  locate: all words of a key name present (loose)   0 of 12
+  callers: target named (by design)                10 of 10
+  callers: a key caller or its file named            0 of 10
+  flow: a hop's function named (not the entry's)    1 of 8
+    wk-flo-04: save_note
+
+Callers keys: where each key caller came from
+--------------------------------------------------------------------------
+  key callers 20: ast only 11, trace only 5, both 4
+  id        target                               ast trace both  han
+  wk-cal-01 Memory.gated_retrieve                  0     1    0    0
+  wk-cal-02 run_loop                               1     0    1    0
+  wk-cal-03 Waku.respond                           0     0    0   10
+  wk-cal-04 shrink_seen                            0     1    0    1
+  wk-cal-05 kept_if_due                            1     0    1    0
+  wk-cal-06 ToolRegistry.schemas                   0     2    0    0
+  wk-cal-07 run_graph                              1     0    1    0
+  wk-cal-08 clip                                   1     0    1    0
+  wk-cal-09 resolve_home                           7     0    0    0
+  wk-cal-10 Memory.maybe_consolidate               0     1    0    0
+  han = call sites the AST can't resolve and the trace didn't
+  confirm (getattr, obj.m() on an unknown type, callbacks)
+  AST resolution rules:
+    name: plain name: same-module function, nested function or import
+    class: class called by name -> its __init__ (found up the repo bases)
+    self: self.m() / cls.m() -> m on the class or its repo bases
+    override: self.m() -> an override of m in a repo subclass (class
+      hierarchy analysis)
+    super: super().m() -> m on a repo base class
+    module: module.f() on an imported repo module
+    classattr: Class.m() on a repo class named in the code
+
+Flow keys: trace pre-filter
+--------------------------------------------------------------------------
+  keep: the subtree under the question's entry call(s), repo
+        calls only (the T3 filter: package source, no tests)
+  drop with callees: logging and metrics:
+        Tracer.*, compose.<locals>.fanout, run_graph.<locals>.notify
+  drop with callees: folded calls (fold = one hop, callees
+        belong to another question)
+  drop, keep callees: generator re-entries (resume events);
+        a generator counts once, where it was created
+  drop, keep callees: properties, __post_init__, dunders
+        other than __init__ and __call__
+  drop, keep callees: trivial functions (one statement: a
+        return with no call, or a get_/is_/has_ return)
+  merge: a function called again counts once, at its first
+        call (layers, loop iterations, decode steps)
+  id        phase               raw  hops  dropped
+  wk-flo-01 init                 69    17  logging 1, repeat 3, under fold
+                                           46, under logging 2
+  wk-flo-02 turn_tool           159    23  logging 2, repeat 11, resume 1,
+                                           under fold 119, under logging 4
+  wk-flo-03 turn_tool            31    16  logging 2, repeat 1, under
+                                           logging 12
+  wk-flo-04 turn_tool            64     7  logging 3, repeat 1, trivial
+                                           16, under logging 37
+  wk-flo-05 turn_limit          110     7  logging 5, repeat 6, trivial
+                                           24, under fold 4, under logging
+                                           64
+  wk-flo-06 turn_consolidate     35    13  logging 2, repeat 6, trivial 2,
+                                           under logging 12
+  wk-flo-07 graph_quick         126    18  logging 14, repeat 18, under
+                                           logging 76
+  wk-flo-08 graph_full          170    13  logging 13, repeat 6, under
+                                           fold 70, under logging 68
+  raw = repo calls in the entry's subtree (T3 filter); hops =
+  candidates Han marks
+
+Examples
+--------------------------------------------------------------------------
+  wk-loc-01 [after] Before each later model call in a turn, where are long
+    tool results the model has already read cut to their opening, with a
+    note saying how long they were?
+    key: waku/loop/trim.py shrink_seen lines 40-53
+
+  wk-loc-02 [after] When a turn runs out of steps, where is the one last
+    model call made with tool use switched off, so the reply comes from
+    what was already gathered?
+    key: waku/loop/agent.py _final_answer lines 203-226
+
+  wk-cal-01 [after] What calls `Memory.gated_retrieve` directly? List
+    every caller in the package source (tests, evals and hosted/
+    excluded).
+    key: Session.build_system (trace)
+
+  wk-cal-02 [after] What calls `run_loop` directly? List every caller in
+    the package source (tests, evals and hosted/ excluded).
+    key: Waku._run_full_turn (both); agent_node.<locals>.run (ast)
+
+  wk-flo-01 [after] Waku(settings, client=<scripted fake model client>)
+    with a fresh home (empty SQLite state.db), no MCP servers or plugins,
+    graph_workflows off, consolidate_every=3. Which repo functions does
+    building the agent run, in order? (Count setting up memory, and
+    building the tool registry, as one step each.)
+    candidates: Waku.__init__ > Settings.ensure_home > connect > _migrate
+      > Memory.__init__ > build_registry > remember_via > _server >
+      consolidation_every > search_via > get_via > tool_name >
+      ToolRegistry.get > Session.__init__ > enabled > read > folder
+
+  wk-flo-02 [after] That agent's first turn: waku.respond(<a request to
+    remember an agenda for Alex>), where the model saves it with one
+    save_note call and then replies. Which repo functions does respond
+    call, in order? (Count running the turn, the consolidation check and
+    the receipt as one step each.)
+    candidates: Waku.respond > compose > Waku._before_turn >
+      Waku._run_full_turn > kept_body > saved_by_model > find > save >
+      Waku.respond.<locals>._status > Session.add_exchange > note > _short
+      > Memory.log_chat > Waku._recalled > tool_name > _server >
+      Memory.maybe_consolidate > Memory.export_markdown >
+      Memory.export_fact_files > _fact_file_text >
+      _fact_file_text.<locals>.one_line > Waku._receipt > Waku._after_turn
+
+What Han marks
+--------------------------------------------------------------------------
+  flow hops (required / optional)    114 in 8 questions
+  callers disputes (caller / not)     11 in 2 questions
+  sheets: eval/questions/waku-agent_flow_hops_to_mark.md,
+          eval/questions/waku-agent_callers_disputes.md

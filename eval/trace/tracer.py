@@ -26,7 +26,9 @@ at the moment the worker first runs repo code (the main thread is blocked
 waiting for it), and its top kept frame's caller is the nearest kept frame on
 the main thread's stack, with no call line (which line the main thread is on
 when the worker starts is a race). Threads are labelled main, worker-1, worker-2, ... in
-order of first kept event, so labels compare across runs.
+order of first kept event, so labels compare across runs. Labels and
+offsets are keyed by the Thread object, not its ident: the OS reuses a
+finished thread's ident, and a new thread must not inherit the old label.
 """
 
 from __future__ import annotations
@@ -149,9 +151,10 @@ class Tracer:
         self.counts = {}
         self._code_info = {}
         self._suspended = {}
-        self._thread_labels = {}
-        self._thread_offsets = {}
-        self._main_ident = threading.main_thread().ident
+        self._thread_labels = {}     # Thread object -> label
+        self._thread_offsets = {}    # Thread object -> (depth, caller, line)
+        self._main_thread = threading.main_thread()
+        self._main_ident = self._main_thread.ident
         self._lock = threading.Lock()
 
     # counts are per phase: raw Python call events, kept calls, resumes,
@@ -194,26 +197,26 @@ class Tracer:
             f = f.f_back
         return depth, caller, line
 
-    def _thread_context(self, ident):
+    def _thread_context(self, thread):
         """Offset depth and caller for a thread's top kept frame."""
-        if ident == self._main_ident:
+        if thread is self._main_thread:
             return 0, None, None
-        ctx = self._thread_offsets.get(ident)
+        ctx = self._thread_offsets.get(thread)
         if ctx is None:
             main = sys._current_frames().get(self._main_ident)
             ctx = self._kept_ancestors(main) if main is not None else (0, None, None)
-            self._thread_offsets[ident] = ctx
+            self._thread_offsets[thread] = ctx
         return ctx
 
-    def _label(self, ident):
-        label = self._thread_labels.get(ident)
+    def _label(self, thread):
+        label = self._thread_labels.get(thread)
         if label is None:
-            if ident == self._main_ident:
+            if thread is self._main_thread:
                 label = "main"
             else:
                 n = sum(1 for v in self._thread_labels.values() if v != "main")
                 label = "worker-%d" % (n + 1)
-            self._thread_labels[ident] = label
+            self._thread_labels[thread] = label
         return label
 
     def _profile(self, frame, event, arg):
@@ -245,18 +248,18 @@ class Tracer:
         kind = "call"
         if self._suspended.get(id(frame)) is frame:
             kind = "resume"
-        ident = threading.get_ident()
+        thread = threading.current_thread()
         depth, caller, call_line = self._kept_ancestors(frame.f_back)
         if caller is None:
             # Crossing into a worker thread: the caller function is known,
             # but the line the main thread is on is a race (it may still be
             # in executor.submit or already waiting in future.result), so
             # no call line is recorded for this hop.
-            offset, caller, _racy_line = self._thread_context(ident)
+            offset, caller, _racy_line = self._thread_context(thread)
             call_line = None
             depth += offset
         else:
-            depth += self._thread_context(ident)[0]
+            depth += self._thread_context(thread)[0]
         self._bump("kept_calls" if kind == "call" else "kept_resumes")
         if fallback:
             self._bump("qualname_fallbacks")
@@ -265,7 +268,7 @@ class Tracer:
             if not agrees:
                 self._bump("qualname_mismatches")
         self.events.append({
-            "phase": self.phase, "thread": self._label(ident), "kind": kind,
+            "phase": self.phase, "thread": self._label(thread), "kind": kind,
             "qual": qual, "file": rel, "line": line, "depth": depth,
             "caller": caller, "call_line": call_line,
         })

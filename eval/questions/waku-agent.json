@@ -1,0 +1,3083 @@
+{
+ "repo": "waku-agent",
+ "url": "https://github.com/ShenSeanChen/waku-agent",
+ "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+ "commit_date": "2026-11-14T21:09:43-08:00",
+ "generator_version": "1",
+ "seed": 0,
+ "cutoff": "2026-06-30",
+ "blame_rule": [
+  "git blame -w -M -C --first-parent at the pinned commit; committer",
+  "time per line (a branch merged later is dated by its merge; moved",
+  "or copied lines keep their original date)",
+  "a question is 'after' when at least half of its key's non-blank",
+  "lines changed after the cutoff day (23:59:59 UTC)",
+  "key lines: locate = the function; callers = the call lines of",
+  "key callers and open disputes; flow = every candidate hop's",
+  "function"
+ ],
+ "scope": {
+  "code": "every tracked .py under waku/ (hosted/, evals/, lab/, scripts/, examples/, docs/ excluded)",
+  "trace": "waku/",
+  "scoring": {
+   "locate": "file + function; a function nested inside the key function also counts",
+   "callers": "the set of direct callers (file + function, or file + <module> for top-level code), under waku/",
+   "flow": "the required hops Han marks, recalled, in order (LCS); hops in neither the trace nor the AST count as invented"
+  }
+ },
+ "trace": {
+  "path": "outputs/trace_waku-agent.json",
+  "sha256": "737abf2e7bae505e46d8c961a556c719f7dcbdd9f01bfcb2a4a5fe7999cc66e1"
+ },
+ "flow_rules": [
+  "keep: the subtree under the question's entry call(s), repo",
+  "      calls only (the T3 filter: package source, no tests)",
+  "drop with callees: logging and metrics:",
+  "      Tracer.*, compose.<locals>.fanout, run_graph.<locals>.notify",
+  "drop with callees: folded calls (fold = one hop, callees",
+  "      belong to another question)",
+  "drop, keep callees: generator re-entries (resume events);",
+  "      a generator counts once, where it was created",
+  "drop, keep callees: properties, __post_init__, dunders",
+  "      other than __init__ and __call__",
+  "drop, keep callees: trivial functions (one statement: a",
+  "      return with no call, or a get_/is_/has_ return)",
+  "merge: a function called again counts once, at its first",
+  "      call (layers, loop iterations, decode steps)"
+ ],
+ "ast_resolution": {
+  "name": "plain name: same-module function, nested function or import",
+  "class": "class called by name -> its __init__ (found up the repo bases)",
+  "self": "self.m() / cls.m() -> m on the class or its repo bases",
+  "override": "self.m() -> an override of m in a repo subclass (class hierarchy analysis)",
+  "super": "super().m() -> m on a repo base class",
+  "module": "module.f() on an imported repo module",
+  "classattr": "Class.m() on a repo class named in the code"
+ },
+ "dispute_kinds": {
+  "attr": "obj.m() on an object whose type the AST cannot see; m matches the target by name only",
+  "getattr": "getattr(obj, 'm') with the target's name as a string",
+  "reference": "the target passed or stored without being called (callback, registry, decorator)"
+ },
+ "presentation_order": [
+  "wk-loc-04",
+  "wk-loc-11",
+  "wk-cal-07",
+  "wk-cal-06",
+  "wk-loc-06",
+  "wk-loc-01",
+  "wk-loc-08",
+  "wk-flo-05",
+  "wk-flo-08",
+  "wk-cal-03",
+  "wk-cal-09",
+  "wk-flo-04",
+  "wk-cal-10",
+  "wk-loc-03",
+  "wk-cal-08",
+  "wk-loc-05",
+  "wk-flo-02",
+  "wk-loc-07",
+  "wk-loc-12",
+  "wk-flo-01",
+  "wk-loc-10",
+  "wk-flo-07",
+  "wk-cal-04",
+  "wk-cal-05",
+  "wk-loc-09",
+  "wk-loc-02",
+  "wk-cal-02",
+  "wk-flo-03",
+  "wk-cal-01",
+  "wk-flo-06"
+ ],
+ "questions": [
+  {
+   "id": "wk-loc-01",
+   "type": "locate",
+   "text": "Before each later model call in a turn, where are long tool results the model has already read cut to their opening, with a note saying how long they were?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/loop/trim.py",
+    "qual": "shrink_seen",
+    "lines": [
+     40,
+     53
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 14,
+    "lines_counted": 14,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-02",
+   "type": "locate",
+   "text": "When a turn runs out of steps, where is the one last model call made with tool use switched off, so the reply comes from what was already gathered?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/loop/agent.py",
+    "qual": "_final_answer",
+    "lines": [
+     203,
+     226
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 24,
+    "lines_counted": 24,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-03",
+   "type": "locate",
+   "text": "Where does a small model decide whether a message needs the user's stored memories at all, returning search keywords, and falling back to searching when its reply can't be read?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/memory/retrieval_gate.py",
+    "qual": "should_retrieve",
+    "lines": [
+     36,
+     55
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 20,
+    "lines_counted": 20,
+    "newest_change": "2026-07-17",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-04",
+   "type": "locate",
+   "text": "When chats are distilled into long-term facts, where is a proposed fact thrown out because it is about the assistant's own running condition, such as an account balance, a rate limit or a token count?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/memory/consolidation.py",
+    "qual": "is_ops_state",
+    "lines": [
+     375,
+     383
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 9,
+    "lines_counted": 9,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-05",
+   "type": "locate",
+   "text": "Where is a proposed fact dropped because it has a number or a date and every name, number and date in it already appears in the memory the turn read?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/memory/consolidation.py",
+    "qual": "restates",
+    "lines": [
+     337,
+     352
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 15,
+    "lines_counted": 15,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-06",
+   "type": "locate",
+   "text": "Where is the folder that holds the assistant's database and files chosen: an environment variable first, then an older per-folder location kept until the person copies it, otherwise one under the user's home directory?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/config.py",
+    "qual": "resolve_home",
+    "lines": [
+     64,
+     85
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 20,
+    "lines_counted": 20,
+    "newest_change": "2026-10-01",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-07",
+   "type": "locate",
+   "text": "Where does a workflow of steps run in waves, running the ready steps of a wave on a thread pool, merging what they return into one shared dictionary and raising if two write the same key?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/graph/engine.py",
+    "qual": "run_graph",
+    "lines": [
+     106,
+     214
+    ],
+    "also_accept": [
+     "run_graph.<locals>.next_wave",
+     "run_graph.<locals>.notify",
+     "run_graph.<locals>.run_one"
+    ]
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 101,
+    "lines_counted": 101,
+    "newest_change": "2026-09-24",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-08",
+   "type": "locate",
+   "text": "Where is a user's free text reduced to lowercase word tokens joined by OR, so it can be used safely as a full-text search over the SQLite index?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/memory/semantic/store.py",
+    "qual": "_fts_query",
+    "lines": [
+     31,
+     64
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 30,
+    "lines_counted": 30,
+    "newest_change": "2026-08-07",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-09",
+   "type": "locate",
+   "text": "Where are the stored how-to instructions picked for a message, by counting words it shares with each one's name and description, re-reading the folder first when a file changed?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/memory/procedural/loader.py",
+    "qual": "SkillLoader.match",
+    "lines": [
+     77,
+     93
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 17,
+    "lines_counted": 17,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-10",
+   "type": "locate",
+   "text": "Where is one action the model asked for run so that an unknown name or an exception comes back to the model as text instead of stopping the turn?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/tools/registry.py",
+    "qual": "ToolRegistry.execute",
+    "lines": [
+     50,
+     61
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 12,
+    "lines_counted": 12,
+    "newest_change": "2026-07-24",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-11",
+   "type": "locate",
+   "text": "Where are the values of configured secrets (keys, tokens, passwords) removed from an error message before it is shown to the person in a chat app?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/gateway/runner.py",
+    "qual": "safe_exception",
+    "lines": [
+     21,
+     31
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 11,
+    "lines_counted": 11,
+    "newest_change": "2026-08-07",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-loc-12",
+   "type": "locate",
+   "text": "Where is a plugin hook's JSON answer read for extra context, a refusal of the action about to run, and a message to show the person?",
+   "phrasing": "hand",
+   "key": {
+    "file": "waku/plugins/hooks.py",
+    "qual": "read_output",
+    "lines": [
+     77,
+     93
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 17,
+    "lines_counted": 17,
+    "newest_change": "2026-11-13",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "wk-cal-01",
+   "type": "callers",
+   "text": "What calls `Memory.gated_retrieve` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/memory/__init__.py",
+    "qual": "Memory.gated_retrieve",
+    "lines": [
+     118,
+     136
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "Session.build_system",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       130
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "waku/runtime/session.py",
+     "caller": "Session.build_system",
+     "line": 130,
+     "name": "gated_retrieve",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 1,
+    "lines_counted": 1,
+    "newest_change": "2026-07-10",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-02",
+   "type": "callers",
+   "text": "What calls `run_loop` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/loop/agent.py",
+    "qual": "run_loop",
+    "lines": [
+     91,
+     200
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._run_full_turn",
+      "source": "both",
+      "ast_lines": [
+       416
+      ],
+      "trace_lines": [
+       416
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/graph/nodes.py",
+      "qual": "agent_node.<locals>.run",
+      "source": "ast",
+      "ast_lines": [
+       56
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-10-04",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-03",
+   "type": "callers",
+   "text": "What calls `Waku.respond` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/app.py",
+    "qual": "Waku.respond",
+    "lines": [
+     136,
+     269
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": []
+   },
+   "disputes_for_han": [
+    {
+     "file": "waku/gateway/cli.py",
+     "caller": "main",
+     "lines": [
+      91
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/gateway/runner.py",
+     "caller": "GatewayAgentRunner._respond",
+     "lines": [
+      71
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/gateway/runner.py",
+     "caller": "run_gateway_turn",
+     "lines": [
+      120
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/gateway/voice.py",
+     "caller": "main",
+     "lines": [
+      353
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/gateway/voice.py",
+     "caller": "wake_loop",
+     "lines": [
+      298
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/gateway/whatsapp.py",
+     "caller": "_build_handler.<locals>.Handler.do_POST",
+     "lines": [
+      225
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/ops/arena.py",
+     "caller": "compare_stream.<locals>.run",
+     "lines": [
+      117
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/ops/brief.py",
+     "caller": "main",
+     "lines": [
+      27
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/ops/dashboard.py",
+     "caller": "chat_stream",
+     "lines": [
+      117
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "waku/ops/memory_arena.py",
+     "caller": "run_arena.<locals>.one",
+     "lines": [
+      484,
+      554
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "respond",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 11,
+    "lines_counted": 11,
+    "newest_change": "2026-08-09",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-04",
+   "type": "callers",
+   "text": "What calls `shrink_seen` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/loop/trim.py",
+    "qual": "shrink_seen",
+    "lines": [
+     40,
+     53
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/loop/trim.py",
+      "qual": "chain.<locals>.run",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       62
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "waku/app.py",
+     "caller": "Waku._run_full_turn",
+     "lines": [
+      429
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "shrink_seen",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-05",
+   "type": "callers",
+   "text": "What calls `kept_if_due` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/memory/consolidation.py",
+    "qual": "kept_if_due",
+    "lines": [
+     161,
+     294
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.maybe_consolidate",
+      "source": "both",
+      "ast_lines": [
+       276
+      ],
+      "trace_lines": [
+       276
+      ],
+      "ast_via": [
+       "module"
+      ]
+     },
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "consolidate_if_due",
+      "source": "ast",
+      "ast_lines": [
+       133
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-10-04",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-06",
+   "type": "callers",
+   "text": "What calls `ToolRegistry.schemas` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/tools/registry.py",
+    "qual": "ToolRegistry.schemas",
+    "lines": [
+     47,
+     48
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/loop/agent.py",
+      "qual": "_final_answer",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       214
+      ],
+      "ast_via": []
+     },
+     {
+      "file": "waku/loop/agent.py",
+      "qual": "run_loop",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       155
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "waku/loop/agent.py",
+     "caller": "_final_answer",
+     "line": 214,
+     "name": "schemas",
+     "kind": "attr"
+    },
+    {
+     "file": "waku/loop/agent.py",
+     "caller": "run_loop",
+     "line": 137,
+     "name": "schemas",
+     "kind": "attr"
+    },
+    {
+     "file": "waku/loop/agent.py",
+     "caller": "run_loop",
+     "line": 155,
+     "name": "schemas",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-07",
+   "type": "callers",
+   "text": "What calls `run_graph` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/graph/engine.py",
+    "qual": "run_graph",
+    "lines": [
+     106,
+     214
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._respond_via_graph",
+      "source": "both",
+      "ast_lines": [
+       468
+      ],
+      "trace_lines": [
+       468
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/ops/gather.py",
+      "qual": "run_gather",
+      "source": "ast",
+      "ast_lines": [
+       159
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-07-31",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-08",
+   "type": "callers",
+   "text": "What calls `clip` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/memory/tool_note.py",
+    "qual": "clip",
+    "lines": [
+     62,
+     68
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "kept_if_due",
+      "source": "both",
+      "ast_lines": [
+       227
+      ],
+      "trace_lines": [
+       227
+      ],
+      "ast_via": [
+       "module"
+      ]
+     },
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "Session.switch",
+      "source": "ast",
+      "ast_lines": [
+       183
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "module"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-10-04",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-09",
+   "type": "callers",
+   "text": "What calls `resolve_home` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/config.py",
+    "qual": "resolve_home",
+    "lines": [
+     64,
+     85
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/config.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       211
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/config.py",
+      "qual": "_load_home_env",
+      "source": "ast",
+      "ast_lines": [
+       123
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/config.py",
+      "qual": "env_write_target",
+      "source": "ast",
+      "ast_lines": [
+       149
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/config.py",
+      "qual": "home_notice",
+      "source": "ast",
+      "ast_lines": [
+       92
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/integrations.py",
+      "qual": "cli_main",
+      "source": "ast",
+      "ast_lines": [
+       511
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "waku/key_locations.py",
+      "qual": "model_key_locations",
+      "source": "ast",
+      "ast_lines": [
+       94
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "module"
+      ]
+     },
+     {
+      "file": "waku/loop/models.py",
+      "qual": "_no_key_message",
+      "source": "ast",
+      "ast_lines": [
+       186
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "module"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 7,
+    "lines_counted": 7,
+    "newest_change": "2026-10-05",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-cal-10",
+   "type": "callers",
+   "text": "What calls `Memory.maybe_consolidate` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
+   "target": {
+    "file": "waku/memory/__init__.py",
+    "qual": "Memory.maybe_consolidate",
+    "lines": [
+     271,
+     299
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku.respond",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       253
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "waku/app.py",
+     "caller": "Waku.respond",
+     "line": 253,
+     "name": "maybe_consolidate",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 1,
+    "lines_counted": 1,
+    "newest_change": "2026-10-04",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-01",
+   "type": "flow",
+   "text": "Waku(settings, client=<scripted fake model client>) with a fresh home (empty SQLite state.db), no MCP servers or plugins, graph_workflows off, consolidate_every=3. Which repo functions does building the agent run, in order? (Count setting up memory, and building the tool registry, as one step each.)",
+   "trace_phase": "init",
+   "entries": [
+    {
+     "qual": "Waku.__init__",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "Memory.__init__",
+    "build_registry"
+   ],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku.__init__",
+      "lines": [
+       69,
+       118
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/config.py",
+      "qual": "Settings.ensure_home",
+      "lines": [
+       314,
+       318
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/db.py",
+      "qual": "connect",
+      "lines": [
+       111,
+       120
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/db.py",
+      "qual": "_migrate",
+      "lines": [
+       83,
+       108
+      ],
+      "calls": 1,
+      "first_caller": "connect",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.__init__",
+      "lines": [
+       60,
+       83
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/__init__.py",
+      "qual": "build_registry",
+      "lines": [
+       14,
+       91
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "remember_via",
+      "lines": [
+       101,
+       125
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "_server",
+      "lines": [
+       67,
+       88
+      ],
+      "calls": 4,
+      "first_caller": "remember_via",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "consolidation_every",
+      "lines": [
+       55,
+       64
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "search_via",
+      "lines": [
+       128,
+       149
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "get_via",
+      "lines": [
+       152,
+       171
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "tool_name",
+      "lines": [
+       188,
+       196
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/registry.py",
+      "qual": "ToolRegistry.get",
+      "lines": [
+       44,
+       45
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "Session.__init__",
+      "lines": [
+       86,
+       98
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/plugins/store.py",
+      "qual": "enabled",
+      "lines": [
+       75,
+       88
+      ],
+      "calls": 1,
+      "first_caller": "Waku.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/plugins/store.py",
+      "qual": "read",
+      "lines": [
+       57,
+       66
+      ],
+      "calls": 1,
+      "first_caller": "enabled",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/plugins/store.py",
+      "qual": "folder",
+      "lines": [
+       38,
+       39
+      ],
+      "calls": 1,
+      "first_caller": "read",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 69,
+    "dropped": {
+     "logging": 1,
+     "repeat": 3,
+     "under fold": 46,
+     "under logging": 2
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 321,
+    "lines_counted": 321,
+    "newest_change": "2026-11-14",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-02",
+   "type": "flow",
+   "text": "That agent's first turn: waku.respond(<a request to remember an agenda for Alex>), where the model saves it with one save_note call and then replies. Which repo functions does respond call, in order? (Count running the turn, the consolidation check and the receipt as one step each.)",
+   "trace_phase": "turn_tool",
+   "entries": [
+    {
+     "qual": "Waku.respond",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "Waku._run_full_turn",
+    "Memory.maybe_consolidate",
+    "Waku._receipt"
+   ],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku.respond",
+      "lines": [
+       136,
+       269
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "compose",
+      "lines": [
+       217,
+       223
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._before_turn",
+      "lines": [
+       281,
+       306
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._run_full_turn",
+      "lines": [
+       392,
+       434
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "kept_body",
+      "lines": [
+       176,
+       183
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "saved_by_model",
+      "lines": [
+       156,
+       173
+      ],
+      "calls": 2,
+      "first_caller": "kept_body",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "find",
+      "lines": [
+       88,
+       104
+      ],
+      "calls": 2,
+      "first_caller": "kept_body",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "save",
+      "lines": [
+       260,
+       290
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku.respond.<locals>._status",
+      "lines": [
+       211,
+       214
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "Session.add_exchange",
+      "lines": [
+       140,
+       162
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/tool_note.py",
+      "qual": "note",
+      "lines": [
+       46,
+       53
+      ],
+      "calls": 1,
+      "first_caller": "Session.add_exchange",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/tool_note.py",
+      "qual": "_short",
+      "lines": [
+       38,
+       43
+      ],
+      "calls": 2,
+      "first_caller": "note",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.log_chat",
+      "lines": [
+       144,
+       160
+      ],
+      "calls": 1,
+      "first_caller": "Session.add_exchange",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._recalled",
+      "lines": [
+       358,
+       377
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "tool_name",
+      "lines": [
+       188,
+       196
+      ],
+      "calls": 4,
+      "first_caller": "Waku._recalled",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/waku_memory.py",
+      "qual": "_server",
+      "lines": [
+       67,
+       88
+      ],
+      "calls": 4,
+      "first_caller": "tool_name",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.maybe_consolidate",
+      "lines": [
+       271,
+       299
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.export_markdown",
+      "lines": [
+       213,
+       238
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.export_fact_files",
+      "lines": [
+       240,
+       261
+      ],
+      "calls": 1,
+      "first_caller": "Memory.export_markdown",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "_fact_file_text",
+      "lines": [
+       46,
+       56
+      ],
+      "calls": 1,
+      "first_caller": "Memory.export_fact_files",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "_fact_file_text.<locals>.one_line",
+      "lines": [
+       52,
+       53
+      ],
+      "calls": 3,
+      "first_caller": "_fact_file_text",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._receipt",
+      "lines": [
+       379,
+       390
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._after_turn",
+      "lines": [
+       341,
+       356
+      ],
+      "calls": 1,
+      "first_caller": "Waku.respond",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 159,
+    "dropped": {
+     "logging": 2,
+     "repeat": 11,
+     "resume": 1,
+     "under fold": 119,
+     "under logging": 4
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 488,
+    "lines_counted": 488,
+    "newest_change": "2026-11-14",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-03",
+   "type": "flow",
+   "text": "In that first turn, building the system prompt: Session.build_system on the message, where the small model's gate replies retrieve=true with query 'alex' and memory is still empty. Which repo functions run, in order?",
+   "trace_phase": "turn_tool",
+   "entries": [
+    {
+     "qual": "Session.build_system",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "Session.build_system",
+      "lines": [
+       100,
+       138
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/runtime/session.py",
+      "qual": "load_soul",
+      "lines": [
+       73,
+       79
+      ],
+      "calls": 1,
+      "first_caller": "Session.build_system",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/treg.py",
+      "qual": "unavailable",
+      "lines": [
+       95,
+       101
+      ],
+      "calls": 1,
+      "first_caller": "Session.build_system",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/treg.py",
+      "qual": "own_key",
+      "lines": [
+       70,
+       72
+      ],
+      "calls": 1,
+      "first_caller": "unavailable",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.gated_retrieve",
+      "lines": [
+       118,
+       136
+      ],
+      "calls": 1,
+      "first_caller": "Session.build_system",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "metered.__init__",
+      "lines": [
+       249,
+       250
+      ],
+      "calls": 1,
+      "first_caller": "Memory.gated_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.__init__",
+      "lines": [
+       227,
+       228
+      ],
+      "calls": 1,
+      "first_caller": "metered.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/retrieval_gate.py",
+      "qual": "should_retrieve",
+      "lines": [
+       36,
+       55
+      ],
+      "calls": 1,
+      "first_caller": "Memory.gated_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.create",
+      "lines": [
+       230,
+       236
+      ],
+      "calls": 1,
+      "first_caller": "should_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/semantic/store.py",
+      "qual": "SqliteFactStore.search",
+      "lines": [
+       100,
+       109
+      ],
+      "calls": 1,
+      "first_caller": "Memory.gated_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/semantic/store.py",
+      "qual": "_fts_query",
+      "lines": [
+       31,
+       64
+      ],
+      "calls": 2,
+      "first_caller": "SqliteFactStore.search",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/slot_gate.py",
+      "qual": "select",
+      "lines": [
+       66,
+       80
+      ],
+      "calls": 1,
+      "first_caller": "Memory.gated_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/episodic/store.py",
+      "qual": "SqliteEpisodeStore.search",
+      "lines": [
+       27,
+       38
+      ],
+      "calls": 1,
+      "first_caller": "Memory.gated_retrieve",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.matching_skills",
+      "lines": [
+       139,
+       141
+      ],
+      "calls": 1,
+      "first_caller": "Session.build_system",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/procedural/loader.py",
+      "qual": "SkillLoader.match",
+      "lines": [
+       77,
+       93
+      ],
+      "calls": 1,
+      "first_caller": "Memory.matching_skills",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/procedural/loader.py",
+      "qual": "SkillLoader._scan_sig",
+      "lines": [
+       58,
+       64
+      ],
+      "calls": 1,
+      "first_caller": "SkillLoader.match",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 31,
+    "dropped": {
+     "logging": 2,
+     "repeat": 1,
+     "under logging": 12
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 195,
+    "lines_counted": 195,
+    "newest_change": "2026-11-14",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-04",
+   "type": "flow",
+   "text": "In that first turn, the loop: run_loop where the model's first reply asks for save_note(subject='alex', content=<the agenda>) and its second reply is plain text. Which repo functions are called, in order, until the reply is returned?",
+   "trace_phase": "turn_tool",
+   "entries": [
+    {
+     "qual": "run_loop",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/loop/agent.py",
+      "qual": "run_loop",
+      "lines": [
+       91,
+       200
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/registry.py",
+      "qual": "ToolRegistry.schemas",
+      "lines": [
+       47,
+       48
+      ],
+      "calls": 2,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/registry.py",
+      "qual": "ToolRegistry.execute",
+      "lines": [
+       50,
+       61
+      ],
+      "calls": 1,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/notes.py",
+      "qual": "make_tool.<locals>.save_note",
+      "lines": [
+       35,
+       67
+      ],
+      "calls": 1,
+      "first_caller": "ToolRegistry.execute",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/loop/trim.py",
+      "qual": "chain.<locals>.run",
+      "lines": [
+       60,
+       62
+      ],
+      "calls": 1,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "shrink_read",
+      "lines": [
+       186,
+       211
+      ],
+      "calls": 1,
+      "first_caller": "chain.<locals>.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/loop/trim.py",
+      "qual": "shrink_seen",
+      "lines": [
+       40,
+       53
+      ],
+      "calls": 1,
+      "first_caller": "chain.<locals>.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 64,
+    "dropped": {
+     "logging": 3,
+     "repeat": 1,
+     "trivial": 16,
+     "under logging": 37
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 188,
+    "lines_counted": 188,
+    "newest_change": "2026-11-14",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [
+    "save_note"
+   ]
+  },
+  {
+   "id": "wk-flo-05",
+   "type": "flow",
+   "text": "The second turn, with settings.max_iterations=2: run_loop where the model asks for manage_memory (search 'alex', a 4,800-character result) and then send_message, so the limit is reached. Which repo functions are called, in order, until the reply is returned? (Count each tool's execution as one step.)",
+   "trace_phase": "turn_limit",
+   "entries": [
+    {
+     "qual": "run_loop",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "ToolRegistry.execute"
+   ],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/loop/agent.py",
+      "qual": "run_loop",
+      "lines": [
+       91,
+       200
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/registry.py",
+      "qual": "ToolRegistry.schemas",
+      "lines": [
+       47,
+       48
+      ],
+      "calls": 3,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/tools/registry.py",
+      "qual": "ToolRegistry.execute",
+      "lines": [
+       50,
+       61
+      ],
+      "calls": 2,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/loop/trim.py",
+      "qual": "chain.<locals>.run",
+      "lines": [
+       60,
+       62
+      ],
+      "calls": 2,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/reports.py",
+      "qual": "shrink_read",
+      "lines": [
+       186,
+       211
+      ],
+      "calls": 2,
+      "first_caller": "chain.<locals>.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/loop/trim.py",
+      "qual": "shrink_seen",
+      "lines": [
+       40,
+       53
+      ],
+      "calls": 2,
+      "first_caller": "chain.<locals>.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/loop/agent.py",
+      "qual": "_final_answer",
+      "lines": [
+       203,
+       226
+      ],
+      "calls": 1,
+      "first_caller": "run_loop",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 110,
+    "dropped": {
+     "logging": 5,
+     "repeat": 6,
+     "trivial": 24,
+     "under fold": 4,
+     "under logging": 64
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 180,
+    "lines_counted": 180,
+    "newest_change": "2026-11-13",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-06",
+   "type": "flow",
+   "text": "The third turn ends with six unconsolidated chat rows (consolidate_every=3): Memory.maybe_consolidate, where the small model proposes two facts (one about the user's meeting times, one an account balance) and one episode. Which repo functions run, in order?",
+   "trace_phase": "turn_consolidate",
+   "entries": [
+    {
+     "qual": "Memory.maybe_consolidate",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/memory/__init__.py",
+      "qual": "Memory.maybe_consolidate",
+      "lines": [
+       271,
+       299
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "metered.__init__",
+      "lines": [
+       249,
+       250
+      ],
+      "calls": 1,
+      "first_caller": "Memory.maybe_consolidate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.__init__",
+      "lines": [
+       227,
+       228
+      ],
+      "calls": 1,
+      "first_caller": "metered.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "kept_if_due",
+      "lines": [
+       161,
+       294
+      ],
+      "calls": 1,
+      "first_caller": "Memory.maybe_consolidate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/tool_note.py",
+      "qual": "clip",
+      "lines": [
+       62,
+       68
+      ],
+      "calls": 6,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "_saved_reports",
+      "lines": [
+       297,
+       309
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.create",
+      "lines": [
+       230,
+       236
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "is_ops_state",
+      "lines": [
+       375,
+       383
+      ],
+      "calls": 2,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/consolidation.py",
+      "qual": "is_memory_state",
+      "lines": [
+       401,
+       406
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/slot_gate.py",
+      "qual": "keep",
+      "lines": [
+       83,
+       95
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/slot_gate.py",
+      "qual": "enabled",
+      "lines": [
+       44,
+       46
+      ],
+      "calls": 1,
+      "first_caller": "keep",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/semantic/store.py",
+      "qual": "SqliteFactStore.add",
+      "lines": [
+       71,
+       76
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/memory/episodic/store.py",
+      "qual": "SqliteEpisodeStore.add",
+      "lines": [
+       20,
+       25
+      ],
+      "calls": 1,
+      "first_caller": "kept_if_due",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 35,
+    "dropped": {
+     "logging": 2,
+     "repeat": 6,
+     "trivial": 2,
+     "under logging": 12
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 229,
+    "lines_counted": 229,
+    "newest_change": "2026-11-14",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-07",
+   "type": "flow",
+   "text": "The fourth turn, with settings.graph_workflows=True: waku.respond('thanks!'), where the triage model answers 'quick'. Which repo functions does Waku._respond_via_graph run, in order, until the quick reply is returned?",
+   "trace_phase": "graph_quick",
+   "entries": [
+    {
+     "qual": "Waku._respond_via_graph",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._respond_via_graph",
+      "lines": [
+       436,
+       473
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "build_triage_graph",
+      "lines": [
+       89,
+       118
+      ],
+      "calls": 1,
+      "first_caller": "Waku._respond_via_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "Graph.add_node",
+      "lines": [
+       71,
+       74
+      ],
+      "calls": 5,
+      "first_caller": "build_triage_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "Graph.add_edge",
+      "lines": [
+       76,
+       82
+      ],
+      "calls": 6,
+      "first_caller": "build_triage_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/nodes.py",
+      "qual": "key_router",
+      "lines": [
+       65,
+       73
+      ],
+      "calls": 1,
+      "first_caller": "build_triage_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "Graph.add_router",
+      "lines": [
+       84,
+       92
+      ],
+      "calls": 1,
+      "first_caller": "build_triage_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph",
+      "lines": [
+       106,
+       214
+      ],
+      "calls": 1,
+      "first_caller": "Waku._respond_via_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph.<locals>.next_wave",
+      "lines": [
+       128,
+       139
+      ],
+      "calls": 4,
+      "first_caller": "run_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph.<locals>.run_one",
+      "lines": [
+       141,
+       156
+      ],
+      "calls": 4,
+      "first_caller": "run_graph",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "build_triage_graph.<locals>.classify",
+      "lines": [
+       97,
+       102
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "metered.__init__",
+      "lines": [
+       249,
+       250
+      ],
+      "calls": 2,
+      "first_caller": "build_triage_graph.<locals>.classify",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.__init__",
+      "lines": [
+       227,
+       228
+      ],
+      "calls": 2,
+      "first_caller": "metered.__init__",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "classify_message",
+      "lines": [
+       52,
+       70
+      ],
+      "calls": 1,
+      "first_caller": "build_triage_graph.<locals>.classify",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.create",
+      "lines": [
+       230,
+       236
+      ],
+      "calls": 2,
+      "first_caller": "classify_message",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "todays_events",
+      "lines": [
+       73,
+       86
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "worker-2",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/nodes.py",
+      "qual": "key_router.<locals>.route",
+      "lines": [
+       69,
+       71
+      ],
+      "calls": 1,
+      "first_caller": "run_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._respond_via_graph.<locals>.quick_reply",
+      "lines": [
+       448,
+       456
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "with_context",
+      "lines": [
+       50,
+       58
+      ],
+      "calls": 1,
+      "first_caller": "Waku._respond_via_graph.<locals>.quick_reply",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 126,
+    "dropped": {
+     "logging": 14,
+     "repeat": 18,
+     "under logging": 76
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 245,
+    "lines_counted": 245,
+    "newest_change": "2026-11-13",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  },
+  {
+   "id": "wk-flo-08",
+   "type": "flow",
+   "text": "The fifth turn, graph_workflows still on: a question about Alex, where the triage model answers 'full'. Which repo functions does Waku._respond_via_graph run, in order? (Count building the graph, and the full turn it hands over to, as one step each.)",
+   "trace_phase": "graph_full",
+   "entries": [
+    {
+     "qual": "Waku._respond_via_graph",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "build_triage_graph",
+    "Waku._run_full_turn"
+   ],
+   "trace_config": {
+    "app": "Waku(settings, client=ScriptedClient) from waku/app.py",
+    "fake client": "messages.create returns scripted replies in order; each is checked against the call it answers",
+    "settings": "model 'scripted-model', small_model 'scripted-small-model', consolidate_every 3, max_iterations 15 (2 in turn_limit), history_turns 12, graph_workflows off (on in graph_*), apple/google calendar, apple tools, gh, experimental off",
+    "home": "throwaway HOME and WAKU_HOME (state.db, MEMORY.md, outbox, traces), TZ=UTC, WAKU_* and API keys unset",
+    "turn_tool": "gate retrieve 'alex' (empty memory); save_note(subject 'alex', content: a 4790-character agenda); reply",
+    "turn_limit": "max_iterations 2: gate retrieve 'alex' (finds the note); manage_memory search 'alex'; send_message to Alex; limit hit, one tools-off final call",
+    "turn_consolidate": "gate skip; plain reply; consolidation due (6 unconsolidated rows): 2 facts proposed, 1 an ops fact that is dropped; 1 episode",
+    "graph_quick": "graph_workflows on: triage says quick; quick reply",
+    "graph_full": "graph_workflows on: triage says full; gate retrieve 'alex'; plain reply",
+    "graph pool": "first wave run one node at a time on pool threads, in submit order (see SKIPS)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._respond_via_graph",
+      "lines": [
+       436,
+       473
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "build_triage_graph",
+      "lines": [
+       89,
+       118
+      ],
+      "calls": 1,
+      "first_caller": "Waku._respond_via_graph",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph",
+      "lines": [
+       106,
+       214
+      ],
+      "calls": 1,
+      "first_caller": "Waku._respond_via_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph.<locals>.next_wave",
+      "lines": [
+       128,
+       139
+      ],
+      "calls": 4,
+      "first_caller": "run_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/engine.py",
+      "qual": "run_graph.<locals>.run_one",
+      "lines": [
+       141,
+       156
+      ],
+      "calls": 4,
+      "first_caller": "run_graph",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "build_triage_graph.<locals>.classify",
+      "lines": [
+       97,
+       102
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "metered.__init__",
+      "lines": [
+       249,
+       250
+      ],
+      "calls": 1,
+      "first_caller": "build_triage_graph.<locals>.classify",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.__init__",
+      "lines": [
+       227,
+       228
+      ],
+      "calls": 1,
+      "first_caller": "metered.__init__",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "classify_message",
+      "lines": [
+       52,
+       70
+      ],
+      "calls": 1,
+      "first_caller": "build_triage_graph.<locals>.classify",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/ops/tracing.py",
+      "qual": "_MeteredMessages.create",
+      "lines": [
+       230,
+       236
+      ],
+      "calls": 1,
+      "first_caller": "classify_message",
+      "thread": "worker-3",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/workflows/triage.py",
+      "qual": "todays_events",
+      "lines": [
+       73,
+       86
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "worker-4",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/graph/nodes.py",
+      "qual": "key_router.<locals>.route",
+      "lines": [
+       69,
+       71
+      ],
+      "calls": 1,
+      "first_caller": "run_graph",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "waku/app.py",
+      "qual": "Waku._run_full_turn",
+      "lines": [
+       392,
+       434
+      ],
+      "calls": 1,
+      "first_caller": "run_graph.<locals>.run_one",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 170,
+    "dropped": {
+     "logging": 13,
+     "repeat": 6,
+     "under fold": 70,
+     "under logging": 68
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 253,
+    "lines_counted": 253,
+    "newest_change": "2026-11-13",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": []
+  }
+ ],
+ "why_how": {
+  "status": "slot: Han writes ~10 questions and a rubric (T5) before any map exists",
+  "questions": []
+ }
+}

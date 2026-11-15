@@ -79,6 +79,7 @@ def test_index_flags():
 
 def test_module_name():
     assert module_name("src/smolagents/agents.py", ("src",)) == "smolagents.agents"
+    assert module_name("waku/memory/__init__.py", ("",)) == "waku.memory"
     assert module_name("nanochat/gpt.py", ("",)) == "nanochat.gpt"
     assert module_name("pkg/__init__.py", ("",)) == "pkg"
 
@@ -204,6 +205,36 @@ def test_disputes_and_external_modules():
     assert ("main", "attr", 10) not in kinds
 
 
+def test_class_body_code_belongs_to_the_enclosing_scope():
+    # a dataclass field default (here a lambda in the class body) runs code
+    # the AST must still see: its calls belong to the scope the class is
+    # defined in, like the lambda's frame does at runtime
+    mods = [module_info(src('''
+        from dataclasses import dataclass, field
+
+        def resolve():
+            return 1
+
+        @dataclass
+        class Settings:
+            home: int = field(default_factory=lambda: resolve())
+
+            def m(self):
+                return resolve()
+
+        def build():
+            class Local:
+                x = resolve()
+            return Local
+    '''), "pkg/cfg.py", ("",))]
+    edges, _ = call_graph(Project(mods))
+    assert callers(edges, "pkg/cfg.py", "resolve") == {
+        ("pkg/cfg.py", "<module>"): [8],
+        ("pkg/cfg.py", "Settings.m"): [11],
+        ("pkg/cfg.py", "build"): [15],
+    }
+
+
 # --------------------------------------------------------------------------
 # Leakage
 
@@ -222,3 +253,16 @@ def test_loose_leaks():
     assert loose_leaks("the safe serializer", ["SafeSerializer"]) == ["SafeSerializer"]
     # one-word names never loose-leak (that is the strict check's job)
     assert loose_leaks("norm", ["norm"]) == []
+
+
+def test_in_scope_code_dirs_or_excluded_tops():
+    from repo import in_scope
+
+    # default rule (nanochat): everything outside tests/examples/docs
+    assert in_scope("nanochat/gpt.py") and in_scope("setup.py")
+    assert not in_scope("tests/test_x.py") and not in_scope("docs/conf.py")
+    # a repo naming its code dirs (waku-agent): only those, never top level
+    assert in_scope("waku/app.py", ("waku",))
+    assert not in_scope("hosted/gateway/app.py", ("waku",))
+    assert not in_scope("evals/helpers.py", ("waku",))
+    assert not in_scope("waku.py", ("waku",))

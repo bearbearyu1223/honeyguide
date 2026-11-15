@@ -380,10 +380,13 @@ def _scopes(tree):
 
 
 def _own_nodes(scope_node):
-    """Nodes inside a scope, not descending into nested defs or classes
-    (lambdas and comprehensions belong to the enclosing function, as the
-    tracer's synthetic-frame rule does). Decorators and default values of a
-    nested def run in the enclosing scope, so they are included."""
+    """Nodes inside a scope, not descending into nested defs (lambdas and
+    comprehensions belong to the enclosing function, as the tracer's
+    synthetic-frame rule does). Decorators and default values of a nested
+    def run in the enclosing scope, so they are included. A class body is
+    not a scope of its own: its statements (field defaults, lambdas in
+    them) belong to the scope the class is defined in, its methods are
+    scopes of their own."""
     todo = list(ast.iter_child_nodes(scope_node))
     if isinstance(scope_node, (ast.FunctionDef, ast.AsyncFunctionDef)):
         todo = list(scope_node.body)
@@ -395,7 +398,7 @@ def _own_nodes(scope_node):
             if not isinstance(n, ast.ClassDef):
                 todo.extend(n.args.defaults + [d for d in n.args.kw_defaults if d])
             else:
-                todo.extend(n.bases)
+                todo.extend(n.bases + n.keywords + n.body)
             continue
         todo.extend(ast.iter_child_nodes(n))
 
@@ -693,6 +696,7 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
         root, base = sub[0], sub[0]["depth"]
         cut = {}                 # thread -> (depth, reason) of a dropped subtree
         kept_stack = {}          # thread -> [(depth, qual)] of kept frames
+        worker_top = {}          # worker thread -> (top depth, cut reason or None)
         for e in sub:
             th, d = e["thread"], e["depth"]
             is_call = e["kind"] == "call"
@@ -700,11 +704,22 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
             if cut.get(th) and d <= cut[th][0]:
                 cut[th] = None
             # a worker thread runs while the thread that started it waits:
-            # if that thread is inside a dropped subtree, so is the worker
-            if th != root["thread"] and cut.get(root["thread"]):
-                if is_call:
-                    count("under " + cut[root["thread"]][1])
-                continue
+            # if that thread is inside a dropped subtree, so is the worker.
+            # A worker's top frame is offset by the starting thread's kept
+            # frames at the moment it started, so a top frame no deeper than
+            # the cut started after that subtree returned (the cut is only
+            # cleared by the starting thread's next repo call, which may come
+            # later). Decided at each top frame; deeper frames inherit it.
+            if th != root["thread"]:
+                rc = cut.get(root["thread"])
+                top = worker_top.get(th)
+                if top is None or d <= top[0]:
+                    top = (d, rc[1] if rc and d > rc[0] else None)
+                    worker_top[th] = top
+                if top[1]:
+                    if is_call:
+                        count("under " + top[1])
+                    continue
             stack = kept_stack.setdefault(th, [])
             while stack and stack[-1][0] >= d:
                 stack.pop()
