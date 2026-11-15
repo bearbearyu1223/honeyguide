@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="honeyguide-token" content="__TOKEN__">
+<meta name="honeyguide-repo" content="__REPO__">
+<title>Honeyguide</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/page.css">
+<script src="/boot.js"></script>
+<script src="/page.js" defer></script>
+</head>
+<body class="layer-notes">
+<aside class="side" id="side" aria-label="Contents">
+  <div class="side-h">
+    <div class="brand"><svg class="logo" viewBox="0 0 96 96" aria-hidden="true"><defs><mask id="logo-eye"><rect width="96" height="96" fill="#fff"/><path d="M58.5 21 L68.5 26.8 V38.4 L58.5 44.2 L48.5 38.4 V26.8 Z" fill="#000" stroke="#000" stroke-width="1.6" stroke-linejoin="round"/></mask></defs><path mask="url(#logo-eye)" d="M50 10 C66 10 78 22 79 38 C80 58 72 86 46 87 C38 87 32 85 28 83 C23.5 84.6 17 84 15.6 80.6 C14.6 78 17.4 75.6 20 74 C14 64 14 50 19 38 C25 20 36 10 50 10 Z"/><path d="M77 30 Q82 31.8 86 34.6 Q88.2 36.2 86 37.8 Q82 40.6 77 42.4 Z"/></svg><span class="brand-t">Honeyguide</span></div>
+    <button class="railbtn" id="railbtn" aria-label="Collapse the contents" aria-expanded="true" data-tip="Collapse the contents"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M6.5 2.5v11"/></svg></button>
+  </div>
+  <div class="repo" id="repo"></div>
+  <nav><ul class="toc" id="toc"></ul></nav>
+  <label class="layer" id="layer" data-tip="Your notes are a separate layer. Hiding them leaves the map as the Cartographer wrote it."><input type="checkbox" id="laynotes" checked><span class="sw"></span><span class="lt">My notes</span> <span class="n" id="laycount"></span></label>
+  <div class="legend" id="legend"></div>
+  <button class="theme" id="theme" aria-label="Switch theme"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 0 0 12z" fill="currentColor"/></svg><span id="themelabel">Dark</span></button>
+</aside>
+
+<main class="main" id="main">
+  <div class="col" id="col" aria-live="polite"><p class="loading">Loading the map…</p></div>
+</main>
+
+<button class="top" id="top" aria-label="Open discussions"></button>
+
+<aside class="panel" id="panel" aria-label="Discussion panel">
+  <div class="grip" id="grip" role="separator" aria-orientation="vertical" aria-label="Resize the discussion panel" tabindex="0" aria-valuemin="320" aria-valuemax="720"></div>
+  <div class="p-head">
+    <div class="tabs" id="tabs" role="tablist">
+      <button data-tab="thread" role="tab">Thread</button>
+      <button data-tab="nav" role="tab">Discussions<span class="n" id="navcount"></span></button>
+      <button data-tab="notes" role="tab">Notes<span class="n" id="notescount"></span></button>
+    </div>
+    <button class="x" id="pclose" aria-label="Close panel">×</button>
+  </div>
+  <div class="p-body" id="pbody"></div>
+  <div class="elsewhere" id="pelse"></div>
+  <form class="composer hide" id="composer" autocomplete="off">
+    <div class="ctx" id="ctx"></div>
+    <div class="qp" id="qp"><button type="button">Explain this</button><button type="button">Show an example</button><button type="button">Find the implementation</button></div>
+    <div class="crow"><textarea id="cin" rows="1" aria-label="Your question"></textarea><button class="send" id="send" type="submit">Ask</button></div>
+    <div class="cfoot" id="cfoot"></div>
+  </form>
+</aside>
+
+<div class="tb" id="tb" role="toolbar" aria-label="Selection">
+  <button data-act="ask" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Ask</button>
+  <button data-act="note" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3-7.5 7.5H3v-3z"/></svg>Annotate</button>
+  <button data-act="copy" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1 1 0 0 0 10 2.5H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy</button>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="prev" id="prev"></div>
+<div class="toast" id="toast" role="status"></div>
+</body>
+</html>

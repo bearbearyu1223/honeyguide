@@ -10,6 +10,7 @@ The page never starts Claude: questions land in the inbox and the session's ``ho
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
@@ -28,6 +29,13 @@ from .store import Store, StoreError, all_claims
 
 MAX_BODY = 1_000_000
 TOKEN_HEADER = "X-Honeyguide-Token"
+PAGE_DIR = Path(__file__).parent / "page"
+# The map page's own files (T7.3), served by name only: nothing else on disk is reachable.
+PAGE_FILES = {"/page.css": "text/css; charset=utf-8", "/page.js": "text/javascript; charset=utf-8",
+              "/boot.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml"}
+# Scripts, styles and fetches from this server only; no frames, no forms posting elsewhere.
+PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 
 PLACEHOLDER = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Honeyguide</title>
@@ -82,6 +90,15 @@ def state(repo: Repo, store: Store) -> dict:
     }
 
 
+def page_html(token: str, repo_id: str) -> str:
+    """The map page with this server's token and the repo id filled in (the placeholder if it isn't installed)."""
+    try:
+        page = (PAGE_DIR / "index.html").read_text(encoding="utf-8")
+    except OSError:
+        page = PLACEHOLDER
+    return page.replace("__TOKEN__", token).replace("__REPO__", html.escape(repo_id, quote=True))
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Honeyguide/1"
     repo: Repo
@@ -119,6 +136,8 @@ class Handler(BaseHTTPRequestHandler):
     def send(self, code: int, body: bytes, ctype: str) -> None:
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if ctype.startswith("text/html") and (PAGE_DIR / "index.html").exists():
+            self.send_header("Content-Security-Policy", PAGE_CSP)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -146,8 +165,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(403, b"forbidden host", "text/plain")
         url = urlparse(self.path)
         if url.path in ("/", "/index.html"):
-            page = PLACEHOLDER.replace("__TOKEN__", self.token).replace("__REPO__", self.store.repo_id)
+            page = page_html(self.token, self.store.repo_id)
             return self.send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+        if url.path in PAGE_FILES:
+            try:
+                body = (PAGE_DIR / url.path.lstrip("/")).read_bytes()
+            except OSError:
+                return self.send(404, b"not found", "text/plain")
+            return self.send(200, body, PAGE_FILES[url.path])
         if not url.path.startswith("/api/"):
             return self.send(404, b"not found", "text/plain")
         why = self._api_ok(post=False)
