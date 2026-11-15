@@ -1,4 +1,5 @@
-"""``honeyguide``: status, refresh-plan (dry run), export, import. Results on stdout; errors on stderr."""
+"""``honeyguide``: status, refresh-plan (dry run), export, import, and the agent contract's commands
+(docs/design/agent-contract.md): JSON in on stdin, one JSON object out on stdout. Plus ``serve`` and ``watch``."""
 
 from __future__ import annotations
 
@@ -8,7 +9,10 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from . import activity, claims, inbox
+from .contract import ContractError
 from .gitio import GitError, Repo
+from .preview import preview
 from .refresh import plan_refresh
 from .repoid import identify
 from .store import Store, StoreError, all_claims, export_bundle, import_bundle
@@ -130,6 +134,92 @@ def cmd_import(args) -> int:
     return 0
 
 
+# -- the agent contract: JSON in, JSON out ---------------------------------------------------
+
+AGENT_COMMANDS = {
+    # (group, name): (function(repo, store, data) -> dict, takes input)
+    ("anchor", "resolve"): (lambda r, s, d: claims.resolve_call(r, d), True),
+    ("claims", "save"): (lambda r, s, d: claims.save_claims(s, r, d), True),
+    ("verdict", "set"): (lambda r, s, d: claims.set_verdicts(s, d), True),
+    ("inbox", None): (lambda r, s, d: inbox.inbox(s), False),
+    ("question", "show"): (lambda r, s, d: inbox.show(s, d), True),
+    ("question", "claim"): (lambda r, s, d: {"question": inbox.claim(s, d)}, True),
+    ("question", "fail"): (lambda r, s, d: {"question": inbox.fail(s, d)}, True),
+    ("question", "release"): (lambda r, s, d: {"question": inbox.release(s, d)}, True),
+    ("question", "reopen"): (lambda r, s, d: {"question": inbox.reopen(s, d)}, True),
+    ("answer", "record"): (lambda r, s, d: inbox.record_answer(s, r, d), True),
+    ("activity", "start"): (lambda r, s, d: {"entry": activity.start(s, d)}, True),
+    ("activity", "update"): (lambda r, s, d: {"entry": activity.update(s, d)}, True),
+    ("activity", "finish"): (lambda r, s, d: {"entry": activity.finish(s, d)}, True),
+    ("activity", "list"): (lambda r, s, d: activity.listing(s), False),
+    ("preview", None): (lambda r, s, d: preview(r, s, d), True),
+    ("refresh-log", "add"): (lambda r, s, d: {"entry": activity.add_refresh(s, d)}, True),
+}
+
+
+def _read_input(args) -> object:
+    try:
+        raw = Path(args.input).read_text(encoding="utf-8") if args.input else sys.stdin.read()
+    except OSError as exc:
+        raise ContractError("bad_input", f"can't read the input: {exc}") from None
+    try:
+        return json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError as exc:
+        raise ContractError("bad_input", f"input is not JSON: {exc}") from None
+
+
+def _contract_error(exc: Exception) -> ContractError:
+    if isinstance(exc, ContractError):
+        return exc
+    if isinstance(exc, GitError):
+        return ContractError("git_error", str(exc))
+    if isinstance(exc, StoreError):
+        return ContractError("lock_timeout" if "holds the lock" in str(exc) else "store_error", str(exc))
+    if isinstance(exc, OSError):
+        return ContractError("store_error", str(exc))
+    return ContractError("bad_input", str(exc))
+
+
+def run_json(args, func) -> int:
+    """Run one contract command; stdout gets exactly one JSON object either way."""
+    try:
+        data = _read_input(args) if args.takes_input else {}
+        repo, identity, store = _open(args)
+        store.init(identity)
+        result = {"ok": True, **func(repo, store, data)}
+        code = 0
+    except (ContractError, GitError, StoreError, ValueError, KeyError, OSError) as exc:
+        err = _contract_error(exc)
+        result, code = err.to_dict(), 1
+        print(f"honeyguide: {err.code}: {err.message}", file=sys.stderr)
+    print(json.dumps(result, indent=1, ensure_ascii=False))
+    return code
+
+
+def cmd_map_validate(args) -> int:
+    def func(repo, store, data):
+        return claims.validate_draft(repo, data) if args.stdin else claims.validate_map(repo, store.load("map"))
+    args.takes_input = args.stdin
+    return run_json(args, func)
+
+
+def cmd_serve(args) -> int:
+    from .server import serve
+    repo, identity, store = _open(args)
+    store.init(identity)
+    try:
+        return serve(repo, store, args.port)
+    except OSError as exc:
+        print(f"honeyguide: can't serve on 127.0.0.1:{args.port}: {exc}", file=sys.stderr)
+        return 1
+
+
+def cmd_watch(args) -> int:
+    _, identity, store = _open(args)
+    store.init(identity)
+    return inbox.watch(store, interval=args.interval, follow=args.follow, timeout=args.timeout)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="honeyguide", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -153,6 +243,33 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("import", cmd_import, "merge an export into this repo's memory")
     p.add_argument("file")
     p.add_argument("--force", action="store_true", help="import an export made for another repo id")
+
+    groups: dict[str, argparse._SubParsersAction] = {}
+    for (group, name), (func, takes_input) in AGENT_COMMANDS.items():
+        if name is None:
+            p = sub.add_parser(group, help="agent contract (JSON)")
+        else:
+            if group not in groups:
+                g = sub.add_parser(group, help="agent contract (JSON)")
+                groups[group] = g.add_subparsers(dest="action", required=True)
+            p = groups[group].add_parser(name)
+        p.add_argument("--repo", default=".", help="a path inside the checkout (default: .)")
+        if takes_input:
+            p.add_argument("--input", help="read the JSON input from this file (default: stdin)")
+        p.set_defaults(func=lambda a, f=func: run_json(a, f), takes_input=takes_input, input=None)
+    g = sub.add_parser("map", help="agent contract (JSON)")
+    msub = g.add_subparsers(dest="action", required=True)
+    p = msub.add_parser("validate", help="check the saved map (or --stdin: a claims-save input) against the rules")
+    p.add_argument("--repo", default=".")
+    p.add_argument("--stdin", action="store_true")
+    p.add_argument("--input")
+    p.set_defaults(func=cmd_map_validate)
+    p = add("serve", cmd_serve, "the local map page and its API on 127.0.0.1")
+    p.add_argument("--port", type=int, default=8780)
+    p = add("watch", cmd_watch, "print one line per new question (for the session's Monitor)")
+    p.add_argument("--follow", action="store_true", help="keep watching; otherwise exit after the first batch")
+    p.add_argument("--interval", type=float, default=1.0)
+    p.add_argument("--timeout", type=float, help="give up after this many seconds (exit 3)")
     return parser
 
 
