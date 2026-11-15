@@ -1,0 +1,6 @@
+{
+  "name": "honeyguide",
+  "version": "0.1.0",
+  "description": "Learns a codebase into a source-cited map you read in the browser, and answers the questions you highlight on it: a Cartographer maps, Investigators and a Tracer answer, a Checker re-reads every claim against its cited lines.",
+  "author": { "name": "Han Yu" }
+}

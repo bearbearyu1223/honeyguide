@@ -1,0 +1,11 @@
+{
+  "name": "honeyguide",
+  "owner": { "name": "Han Yu" },
+  "plugins": [
+    {
+      "name": "honeyguide",
+      "source": "./",
+      "description": "Learns a codebase into a source-cited map you read in the browser, and answers the questions you highlight on it."
+    }
+  ]
+}
