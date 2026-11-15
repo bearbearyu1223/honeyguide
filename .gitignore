@@ -6,3 +6,4 @@ tests/review/
 runs/
 eval/pilot/configs/
 *.err
+.DS_Store
