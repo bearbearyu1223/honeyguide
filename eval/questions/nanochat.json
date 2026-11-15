@@ -1,0 +1,1853 @@
+{
+ "repo": "nanochat",
+ "url": "https://github.com/karpathy/nanochat",
+ "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+ "commit_date": "2026-07-03T22:54:57+00:00",
+ "generator_version": "1",
+ "seed": 0,
+ "cutoff": "2026-06-30",
+ "blame_rule": [
+  "git blame -w -M -C --first-parent at the pinned commit; committer",
+  "time per line (a branch merged later is dated by its merge; moved",
+  "or copied lines keep their original date)",
+  "a question is 'after' when at least half of its key's non-blank",
+  "lines changed after the cutoff day (23:59:59 UTC)",
+  "key lines: locate = the function; callers = the call lines of",
+  "key callers and open disputes; flow = every candidate hop's",
+  "function"
+ ],
+ "scope": {
+  "code": "every tracked .py outside tests/, test/, examples/, docs/",
+  "trace": "nanochat/",
+  "scoring": {
+   "locate": "file + function; a function nested inside the key function also counts",
+   "callers": "the set of direct callers (file + function, or file + <module> for top-level code), outside tests/, examples/, docs/",
+   "flow": "the required hops Han marks, recalled, in order (LCS); hops in neither the trace nor the AST count as invented"
+  }
+ },
+ "trace": {
+  "path": "outputs/trace_nanochat.json",
+  "sha256": "4db4e84c764034941e3a853f1a51cc23bd8ea60c289c027b4a8876758f73fbb4"
+ },
+ "flow_rules": [
+  "keep: the subtree under the question's entry call(s), repo",
+  "      calls only (the T3 filter: package source, no tests)",
+  "drop with callees: logging and metrics:",
+  "      print0",
+  "drop with callees: folded calls (fold = one hop, callees",
+  "      belong to another question)",
+  "drop, keep callees: generator re-entries (resume events);",
+  "      a generator counts once, where it was created",
+  "drop, keep callees: properties, __post_init__, dunders",
+  "      other than __init__ and __call__",
+  "drop, keep callees: trivial functions (one statement: a",
+  "      return with no call, or a get_/is_/has_ return)",
+  "merge: a function called again counts once, at its first",
+  "      call (layers, loop iterations, decode steps)"
+ ],
+ "ast_resolution": {
+  "name": "plain name: same-module function, nested function or import",
+  "class": "class called by name -> its __init__ (found up the repo bases)",
+  "self": "self.m() / cls.m() -> m on the class or its repo bases",
+  "override": "self.m() -> an override of m in a repo subclass (class hierarchy analysis)",
+  "super": "super().m() -> m on a repo base class",
+  "module": "module.f() on an imported repo module",
+  "classattr": "Class.m() on a repo class named in the code"
+ },
+ "dispute_kinds": {
+  "attr": "obj.m() on an object whose type the AST cannot see; m matches the target by name only",
+  "getattr": "getattr(obj, 'm') with the target's name as a string",
+  "reference": "the target passed or stored without being called (callback, registry, decorator)"
+ },
+ "presentation_order": [
+  "nc-loc-04",
+  "nc-cal-03",
+  "nc-loc-11",
+  "nc-cal-06",
+  "nc-loc-06",
+  "nc-loc-01",
+  "nc-loc-08",
+  "nc-cal-10",
+  "nc-cal-08",
+  "nc-cal-07",
+  "nc-flo-02",
+  "nc-flo-04",
+  "nc-loc-05",
+  "nc-loc-03",
+  "nc-flo-01",
+  "nc-loc-07",
+  "nc-loc-12",
+  "nc-cal-09",
+  "nc-loc-10",
+  "nc-flo-05",
+  "nc-cal-04",
+  "nc-cal-05",
+  "nc-loc-09",
+  "nc-loc-02",
+  "nc-cal-02",
+  "nc-flo-03",
+  "nc-cal-01"
+ ],
+ "questions": [
+  {
+   "id": "nc-loc-01",
+   "type": "locate",
+   "text": "Where does the code look up a GPU's peak memory bandwidth from its device name, the ceiling that decode speed is compared against?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/common.py",
+    "qual": "get_peak_bandwidth",
+    "lines": [
+     281,
+     328
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 43,
+    "lines_counted": 46,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-02",
+   "type": "locate",
+   "text": "Where is the forward compute needed to produce one new token at a given context length estimated, with each layer's attention capped at its window?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/gpt.py",
+    "qual": "GPT.estimate_decode_flops",
+    "lines": [
+     351,
+     360
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 10,
+    "lines_counted": 10,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-03",
+   "type": "locate",
+   "text": "Where is the amount of cached key/value memory that one decoding step has to load computed, given that sliding-window layers only look back over their window?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/gpt.py",
+    "qual": "GPT.kv_read_bytes",
+    "lines": [
+     380,
+     388
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 9,
+    "lines_counted": 9,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-04",
+   "type": "locate",
+   "text": "Where is a single timed generation run measured: time to first token, the time of every later step, and peak GPU memory?",
+   "phrasing": "hand",
+   "key": {
+    "file": "scripts/infer_bench.py",
+    "qual": "bench_generate",
+    "lines": [
+     55,
+     82
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 25,
+    "lines_counted": 25,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-05",
+   "type": "locate",
+   "text": "Where are a hub dataset's parquet shards listed through the web API, downloaded once under a file lock and read into one Arrow table, as a stand-in for the datasets library?",
+   "phrasing": "hand",
+   "key": {
+    "file": "tasks/common.py",
+    "qual": "load_hub_dataset",
+    "lines": [
+     45,
+     82
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 38,
+    "lines_counted": 38,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-06",
+   "type": "locate",
+   "text": "Where does the code decide which downloadable attention kernel to fetch depending on the GPU's compute capability, returning nothing when no GPU is available?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/flash_attention.py",
+    "qual": "_load_flash_attention_3",
+    "lines": [
+     23,
+     46
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 14,
+    "lines_counted": 23,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-07",
+   "type": "locate",
+   "text": "During base-model pretraining, where is the per-step learning-rate multiplier computed: linear warmup over a number of steps, flat, then a linear decay to a final fraction?",
+   "phrasing": "hand",
+   "key": {
+    "file": "scripts/base_train.py",
+    "qual": "get_lr_multiplier",
+    "lines": [
+     360,
+     369
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 10,
+    "newest_change": "2026-03-09",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-08",
+   "type": "locate",
+   "text": "Where is an expression the model writes during generation checked against allowed characters and banned words, and evaluated only if it is plain arithmetic or a string .count() call?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/engine.py",
+    "qual": "use_calculator",
+    "lines": [
+     46,
+     79
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 29,
+    "newest_change": "2025-10-24",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-09",
+   "type": "locate",
+   "text": "In the in-context-learning evaluation, where is the length of the prefix or suffix shared by several token sequences found?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/core_eval.py",
+    "qual": "find_common_length",
+    "lines": [
+     86,
+     101
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 16,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-10",
+   "type": "locate",
+   "text": "Where is each layer's attention window chosen by tiling a pattern of short and long letters across the layers, with the final layer forced to full context?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/gpt.py",
+    "qual": "GPT._compute_window_sizes",
+    "lines": [
+     287,
+     314
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 26,
+    "newest_change": "2026-03-14",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-11",
+   "type": "locate",
+   "text": "Where is a token drawn from the logits with a temperature and an optional top-k cut, using argmax when the temperature is zero?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/engine.py",
+    "qual": "sample_next_token",
+    "lines": [
+     140,
+     156
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 17,
+    "newest_change": "2026-01-04",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-loc-12",
+   "type": "locate",
+   "text": "Where is a multi-turn chat turned into token ids plus a mask that marks which tokens the assistant is trained to produce?",
+   "phrasing": "hand",
+   "key": {
+    "file": "nanochat/tokenizer.py",
+    "qual": "RustBPETokenizer.render_conversation",
+    "lines": [
+     140,
+     224
+    ],
+    "also_accept": [
+     "RustBPETokenizer.render_conversation.<locals>.add_tokens"
+    ]
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 78,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "nc-cal-01",
+   "type": "callers",
+   "text": "What calls `GPT.estimate_decode_flops` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/gpt.py",
+    "qual": "GPT.estimate_decode_flops",
+    "lines": [
+     351,
+     360
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": []
+   },
+   "disputes_for_han": [
+    {
+     "file": "scripts/infer_bench.py",
+     "caller": "main",
+     "lines": [
+      173,
+      221
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "estimate_decode_flops",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 2,
+    "lines_counted": 2,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-02",
+   "type": "callers",
+   "text": "What calls `get_peak_bandwidth` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/common.py",
+    "qual": "get_peak_bandwidth",
+    "lines": [
+     281,
+     328
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "scripts/infer_bench.py",
+      "qual": "main",
+      "source": "ast",
+      "ast_lines": [
+       127
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 1,
+    "lines_counted": 1,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-03",
+   "type": "callers",
+   "text": "What calls `load_hub_dataset` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "tasks/common.py",
+    "qual": "load_hub_dataset",
+    "lines": [
+     45,
+     82
+    ],
+    "in_trace_scope": false
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "tasks/arc.py",
+      "qual": "ARC.__init__",
+      "source": "ast",
+      "ast_lines": [
+       14
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "tasks/gsm8k.py",
+      "qual": "GSM8K.__init__",
+      "source": "ast",
+      "ast_lines": [
+       42
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "tasks/humaneval.py",
+      "qual": "HumanEval.__init__",
+      "source": "ast",
+      "ast_lines": [
+       51
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "tasks/mmlu.py",
+      "qual": "MMLU.__init__",
+      "source": "ast",
+      "ast_lines": [
+       19
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "tasks/smoltalk.py",
+      "qual": "SmolTalk.__init__",
+      "source": "ast",
+      "ast_lines": [
+       15
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "after",
+    "lines_after": 5,
+    "lines_counted": 5,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "after",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-04",
+   "type": "callers",
+   "text": "What calls `KVCache.prefill` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/engine.py",
+    "qual": "KVCache.prefill",
+    "lines": [
+     123,
+     137
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/engine.py",
+      "qual": "Engine.generate",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       217
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "nanochat/engine.py",
+     "caller": "Engine.generate",
+     "line": 217,
+     "name": "prefill",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 1,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-05",
+   "type": "callers",
+   "text": "What calls `sample_next_token` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/engine.py",
+    "qual": "sample_next_token",
+    "lines": [
+     140,
+     156
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/engine.py",
+      "qual": "Engine.generate",
+      "source": "both",
+      "ast_lines": [
+       234
+      ],
+      "trace_lines": [
+       234
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 1,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-06",
+   "type": "callers",
+   "text": "What calls `norm` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/gpt.py",
+    "qual": "norm",
+    "lines": [
+     42,
+     43
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Block.forward",
+      "source": "both",
+      "ast_lines": [
+       151,
+       152
+      ],
+      "trace_lines": [
+       151,
+       152
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "CausalSelfAttention.forward",
+      "source": "both",
+      "ast_lines": [
+       102
+      ],
+      "trace_lines": [
+       102
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.forward",
+      "source": "both",
+      "ast_lines": [
+       473,
+       508
+      ],
+      "trace_lines": [
+       473,
+       508
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "nanochat/optim.py",
+     "caller": "muon_step_fused",
+     "lines": [
+      139,
+      140,
+      144,
+      160
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "norm",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 3,
+    "lines_counted": 9,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-07",
+   "type": "callers",
+   "text": "What calls `flash_attn_with_kvcache` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/flash_attention.py",
+    "qual": "flash_attn_with_kvcache",
+    "lines": [
+     139,
+     185
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "CausalSelfAttention.forward",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       114
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "nanochat/flash_attention.py",
+     "caller": "<module>",
+     "lines": [
+      194
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "flash_attn_with_kvcache",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    },
+    {
+     "file": "nanochat/flash_attention.py",
+     "caller": "flash_attn_with_kvcache",
+     "lines": [
+      158
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "flash_attn_with_kvcache",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "nanochat/gpt.py",
+     "caller": "CausalSelfAttention.forward",
+     "line": 114,
+     "name": "flash_attn_with_kvcache",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 3,
+    "newest_change": "2026-01-16",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-08",
+   "type": "callers",
+   "text": "What calls `GPT._precompute_rotary_embeddings` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/gpt.py",
+    "qual": "GPT._precompute_rotary_embeddings",
+    "lines": [
+     270,
+     285
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.__init__",
+      "source": "both",
+      "ast_lines": [
+       199
+      ],
+      "trace_lines": [
+       199
+      ],
+      "ast_via": [
+       "self"
+      ]
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.init_weights",
+      "source": "both",
+      "ast_lines": [
+       259
+      ],
+      "trace_lines": [
+       259
+      ],
+      "ast_via": [
+       "self"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 2,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-09",
+   "type": "callers",
+   "text": "What calls `compute_init` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/common.py",
+    "qual": "compute_init",
+    "lines": [
+     174,
+     209
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/engine.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       310
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/base_eval.py",
+      "qual": "main",
+      "source": "ast",
+      "ast_lines": [
+       148
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/base_train.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       86
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/chat_cli.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       26
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/chat_eval.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       196
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/chat_rl.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       66
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/chat_sft.py",
+      "qual": "<module>",
+      "source": "ast",
+      "ast_lines": [
+       73
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "scripts/infer_bench.py",
+      "qual": "main",
+      "source": "ast",
+      "ast_lines": [
+       110
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 1,
+    "lines_counted": 8,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-cal-10",
+   "type": "callers",
+   "text": "What calls `use_calculator` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "nanochat/engine.py",
+    "qual": "use_calculator",
+    "lines": [
+     46,
+     79
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "nanochat/engine.py",
+      "qual": "Engine.generate",
+      "source": "ast",
+      "ast_lines": [
+       259
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 1,
+    "newest_change": "2025-10-13",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "nc-flo-01",
+   "type": "flow",
+   "text": "With config GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL'), the model is built with GPT(config) on the meta device, moved with to_empty(device='cpu'), then model.init_weights() is called. Which repo functions run, in order?",
+   "trace_phase": "build",
+   "entries": [
+    {
+     "qual": "GPT.__init__",
+     "call_index": 0
+    },
+    {
+     "qual": "GPT.init_weights",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "device": "cpu",
+    "torch.compile": "disabled (TORCH_COMPILE_DISABLE=1)",
+    "model": "GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL')",
+    "tokenizer": "RustBPETokenizer trained on a 4-line corpus x8, vocab 256 + 9 specials + 35 merges",
+    "train batch": "random token ids, B=2, T=16, torch.manual_seed(0)",
+    "optimizer": "model.setup_optimizer() defaults (MuonAdamW)",
+    "generate": "Engine.generate(prompt, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42) (chat_cli defaults except max_tokens)",
+    "prompt": "<|bos|><|user_start|>hello world<|user_end|><|assistant_start|>"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.__init__",
+      "lines": [
+       157,
+       201
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT._compute_window_sizes",
+      "lines": [
+       287,
+       314
+      ],
+      "calls": 1,
+      "first_caller": "GPT.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Block.__init__",
+      "lines": [
+       145,
+       148
+      ],
+      "calls": 2,
+      "first_caller": "GPT.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "CausalSelfAttention.__init__",
+      "lines": [
+       68,
+       82
+      ],
+      "calls": 2,
+      "first_caller": "Block.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "MLP.__init__",
+      "lines": [
+       132,
+       135
+      ],
+      "calls": 2,
+      "first_caller": "Block.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT._precompute_rotary_embeddings",
+      "lines": [
+       270,
+       285
+      ],
+      "calls": 2,
+      "first_caller": "GPT.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.init_weights",
+      "lines": [
+       203,
+       268
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 16,
+    "dropped": {
+     "logging": 1,
+     "repeat": 4,
+     "trivial": 4
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 167,
+    "newest_change": "2026-04-13",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "nc-flo-02",
+   "type": "flow",
+   "text": "Same toy GPTConfig on CPU (n_layer=2, n_embd=32, float32, torch.compile off): loss = model(x, y) with x and y random token ids of shape (2, 16). Which repo functions run, in order, from GPT.forward until the loss is returned?",
+   "trace_phase": "forward_loss",
+   "entries": [
+    {
+     "qual": "GPT.forward",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "device": "cpu",
+    "torch.compile": "disabled (TORCH_COMPILE_DISABLE=1)",
+    "model": "GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL')",
+    "tokenizer": "RustBPETokenizer trained on a 4-line corpus x8, vocab 256 + 9 specials + 35 merges",
+    "train batch": "random token ids, B=2, T=16, torch.manual_seed(0)",
+    "optimizer": "model.setup_optimizer() defaults (MuonAdamW)",
+    "generate": "Engine.generate(prompt, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42) (chat_cli defaults except max_tokens)",
+    "prompt": "<|bos|><|user_start|>hello world<|user_end|><|assistant_start|>"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.forward",
+      "lines": [
+       459,
+       524
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "norm",
+      "lines": [
+       42,
+       43
+      ],
+      "calls": 10,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Linear.forward",
+      "lines": [
+       49,
+       50
+      ],
+      "calls": 15,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Block.forward",
+      "lines": [
+       150,
+       153
+      ],
+      "calls": 2,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "CausalSelfAttention.forward",
+      "lines": [
+       84,
+       128
+      ],
+      "calls": 2,
+      "first_caller": "Block.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "apply_rotary_emb",
+      "lines": [
+       57,
+       65
+      ],
+      "calls": 4,
+      "first_caller": "CausalSelfAttention.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/flash_attention.py",
+      "qual": "flash_attn_func",
+      "lines": [
+       115,
+       136
+      ],
+      "calls": 2,
+      "first_caller": "CausalSelfAttention.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/flash_attention.py",
+      "qual": "_sdpa_attention",
+      "lines": [
+       77,
+       110
+      ],
+      "calls": 2,
+      "first_caller": "flash_attn_func",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "MLP.forward",
+      "lines": [
+       137,
+       141
+      ],
+      "calls": 2,
+      "first_caller": "Block.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 40,
+    "dropped": {
+     "repeat": 31
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 3,
+    "lines_counted": 170,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "nc-flo-03",
+   "type": "flow",
+   "text": "Same toy model on CPU, one process (world size 1), after loss.backward(): optimizer.step() on the optimizer returned by model.setup_optimizer() with default arguments, with torch.compile disabled. Which repo functions run, in order?",
+   "trace_phase": "optimizer_step",
+   "entries": [
+    {
+     "qual": "MuonAdamW.step",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "device": "cpu",
+    "torch.compile": "disabled (TORCH_COMPILE_DISABLE=1)",
+    "model": "GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL')",
+    "tokenizer": "RustBPETokenizer trained on a 4-line corpus x8, vocab 256 + 9 specials + 35 merges",
+    "train batch": "random token ids, B=2, T=16, torch.manual_seed(0)",
+    "optimizer": "model.setup_optimizer() defaults (MuonAdamW)",
+    "generate": "Engine.generate(prompt, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42) (chat_cli defaults except max_tokens)",
+    "prompt": "<|bos|><|user_start|>hello world<|user_end|><|assistant_start|>"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW.step",
+      "lines": [
+       428,
+       459
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW._reduce_adamw",
+      "lines": [
+       274,
+       293
+      ],
+      "calls": 6,
+      "first_caller": "MuonAdamW.step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW._reduce_muon",
+      "lines": [
+       295,
+       318
+      ],
+      "calls": 4,
+      "first_caller": "MuonAdamW.step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW._compute_adamw",
+      "lines": [
+       320,
+       360
+      ],
+      "calls": 6,
+      "first_caller": "MuonAdamW.step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "adamw_step_fused",
+      "lines": [
+       23,
+       63
+      ],
+      "calls": 8,
+      "first_caller": "MuonAdamW._compute_adamw",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW._compute_muon",
+      "lines": [
+       362,
+       417
+      ],
+      "calls": 4,
+      "first_caller": "MuonAdamW.step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "muon_step_fused",
+      "lines": [
+       111,
+       180
+      ],
+      "calls": 4,
+      "first_caller": "MuonAdamW._compute_muon",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/optim.py",
+      "qual": "MuonAdamW._finish_gathers",
+      "lines": [
+       419,
+       426
+      ],
+      "calls": 1,
+      "first_caller": "MuonAdamW.step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 34,
+    "dropped": {
+     "repeat": 26
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 50,
+    "lines_counted": 268,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "nc-flo-04",
+   "type": "flow",
+   "text": "Same toy model and its trained toy tokenizer on CPU: Engine(model, tokenizer).generate(prompt_ids, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42), consumed to the end. Which repo functions does Engine.generate call, in order? (Count each pass through the model as one step; what happens inside it is another question.)",
+   "trace_phase": "engine_generate",
+   "entries": [
+    {
+     "qual": "Engine.__init__",
+     "call_index": 0
+    },
+    {
+     "qual": "Engine.generate",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "GPT.forward"
+   ],
+   "trace_config": {
+    "device": "cpu",
+    "torch.compile": "disabled (TORCH_COMPILE_DISABLE=1)",
+    "model": "GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL')",
+    "tokenizer": "RustBPETokenizer trained on a 4-line corpus x8, vocab 256 + 9 specials + 35 merges",
+    "train batch": "random token ids, B=2, T=16, torch.manual_seed(0)",
+    "optimizer": "model.setup_optimizer() defaults (MuonAdamW)",
+    "generate": "Engine.generate(prompt, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42) (chat_cli defaults except max_tokens)",
+    "prompt": "<|bos|><|user_start|>hello world<|user_end|><|assistant_start|>"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "nanochat/engine.py",
+      "qual": "Engine.__init__",
+      "lines": [
+       171,
+       173
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "Engine.generate",
+      "lines": [
+       175,
+       275
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/tokenizer.py",
+      "qual": "RustBPETokenizer.encode_special",
+      "lines": [
+       89,
+       91
+      ],
+      "calls": 5,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": true,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "KVCache.__init__",
+      "lines": [
+       92,
+       104
+      ],
+      "calls": 2,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.forward",
+      "lines": [
+       459,
+       524
+      ],
+      "calls": 5,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "KVCache.prefill",
+      "lines": [
+       123,
+       137
+      ],
+      "calls": 1,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "RowState.__init__",
+      "lines": [
+       162,
+       167
+      ],
+      "calls": 1,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "sample_next_token",
+      "lines": [
+       140,
+       156
+      ],
+      "calls": 4,
+      "first_caller": "Engine.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 239,
+    "dropped": {
+     "repeat": 12,
+     "resume": 4,
+     "trivial": 4,
+     "under fold": 215
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 2,
+    "lines_counted": 209,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "nc-flo-05",
+   "type": "flow",
+   "text": "In that generate call, the first model forward pass: GPT.forward on the 9-token prompt (batch 1) with a fresh KV cache (kv_cache passed, no targets). Which repo functions run, in order, until the logits are returned?",
+   "trace_phase": "engine_generate",
+   "entries": [
+    {
+     "qual": "GPT.forward",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "device": "cpu",
+    "torch.compile": "disabled (TORCH_COMPILE_DISABLE=1)",
+    "model": "GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL')",
+    "tokenizer": "RustBPETokenizer trained on a 4-line corpus x8, vocab 256 + 9 specials + 35 merges",
+    "train batch": "random token ids, B=2, T=16, torch.manual_seed(0)",
+    "optimizer": "model.setup_optimizer() defaults (MuonAdamW)",
+    "generate": "Engine.generate(prompt, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42) (chat_cli defaults except max_tokens)",
+    "prompt": "<|bos|><|user_start|>hello world<|user_end|><|assistant_start|>"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "GPT.forward",
+      "lines": [
+       459,
+       524
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "norm",
+      "lines": [
+       42,
+       43
+      ],
+      "calls": 10,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Linear.forward",
+      "lines": [
+       49,
+       50
+      ],
+      "calls": 15,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "Block.forward",
+      "lines": [
+       150,
+       153
+      ],
+      "calls": 2,
+      "first_caller": "GPT.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "CausalSelfAttention.forward",
+      "lines": [
+       84,
+       128
+      ],
+      "calls": 2,
+      "first_caller": "Block.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "apply_rotary_emb",
+      "lines": [
+       57,
+       65
+      ],
+      "calls": 4,
+      "first_caller": "CausalSelfAttention.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/flash_attention.py",
+      "qual": "flash_attn_with_kvcache",
+      "lines": [
+       139,
+       185
+      ],
+      "calls": 2,
+      "first_caller": "CausalSelfAttention.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/flash_attention.py",
+      "qual": "_sdpa_attention",
+      "lines": [
+       77,
+       110
+      ],
+      "calls": 2,
+      "first_caller": "flash_attn_with_kvcache",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/gpt.py",
+      "qual": "MLP.forward",
+      "lines": [
+       137,
+       141
+      ],
+      "calls": 2,
+      "first_caller": "Block.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "nanochat/engine.py",
+      "qual": "KVCache.advance",
+      "lines": [
+       119,
+       121
+      ],
+      "calls": 1,
+      "first_caller": "CausalSelfAttention.forward",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 44,
+    "dropped": {
+     "repeat": 31,
+     "trivial": 3
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 3,
+    "lines_counted": 192,
+    "newest_change": "2026-07-03",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  }
+ ],
+ "why_how": {
+  "status": "slot: Han writes ~10 questions and a rubric (T5) before any map exists",
+  "questions": []
+ }
+}

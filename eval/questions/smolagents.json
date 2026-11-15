@@ -1,0 +1,2609 @@
+{
+ "repo": "smolagents",
+ "url": "https://github.com/huggingface/smolagents",
+ "commit": "e1249d373d58db6abc73882ee394f6bb3854c89f",
+ "commit_date": "2026-11-15T20:34:42+01:00",
+ "generator_version": "1",
+ "seed": 0,
+ "cutoff": "2026-06-30",
+ "blame_rule": [
+  "git blame -w -M -C --first-parent at the pinned commit; committer",
+  "time per line (a branch merged later is dated by its merge; moved",
+  "or copied lines keep their original date)",
+  "a question is 'after' when at least half of its key's non-blank",
+  "lines changed after the cutoff day (23:59:59 UTC)",
+  "key lines: locate = the function; callers = the call lines of",
+  "key callers and open disputes; flow = every candidate hop's",
+  "function"
+ ],
+ "scope": {
+  "code": "every tracked .py outside tests/, test/, examples/, docs/",
+  "trace": "src/smolagents/",
+  "scoring": {
+   "locate": "file + function; a function nested inside the key function also counts",
+   "callers": "the set of direct callers (file + function, or file + <module> for top-level code), outside tests/, examples/, docs/",
+   "flow": "the required hops Han marks, recalled, in order (LCS); hops in neither the trace nor the AST count as invented"
+  }
+ },
+ "trace": {
+  "path": "outputs/trace_smolagents.json",
+  "sha256": "469bc58a250bd6f7c3be6e7cc0aecfc6de04d98bdb4dafbd03884bfbffec1590"
+ },
+ "flow_rules": [
+  "keep: the subtree under the question's entry call(s), repo",
+  "      calls only (the T3 filter: package source, no tests)",
+  "drop with callees: logging and metrics:",
+  "      AgentLogger.*, Monitor.*, Timing.*, TokenUsage.*",
+  "drop with callees: folded calls (fold = one hop, callees",
+  "      belong to another question)",
+  "drop, keep callees: generator re-entries (resume events);",
+  "      a generator counts once, where it was created",
+  "drop, keep callees: properties, __post_init__, dunders",
+  "      other than __init__ and __call__",
+  "drop, keep callees: trivial functions (one statement: a",
+  "      return with no call, or a get_/is_/has_ return)",
+  "merge: a function called again counts once, at its first",
+  "      call (layers, loop iterations, decode steps)"
+ ],
+ "ast_resolution": {
+  "name": "plain name: same-module function, nested function or import",
+  "class": "class called by name -> its __init__ (found up the repo bases)",
+  "self": "self.m() / cls.m() -> m on the class or its repo bases",
+  "override": "self.m() -> an override of m in a repo subclass (class hierarchy analysis)",
+  "super": "super().m() -> m on a repo base class",
+  "module": "module.f() on an imported repo module",
+  "classattr": "Class.m() on a repo class named in the code"
+ },
+ "dispute_kinds": {
+  "attr": "obj.m() on an object whose type the AST cannot see; m matches the target by name only",
+  "getattr": "getattr(obj, 'm') with the target's name as a string",
+  "reference": "the target passed or stored without being called (callback, registry, decorator)"
+ },
+ "presentation_order": [
+  "sa-loc-04",
+  "sa-loc-11",
+  "sa-cal-07",
+  "sa-cal-06",
+  "sa-loc-06",
+  "sa-loc-01",
+  "sa-loc-08",
+  "sa-flo-05",
+  "sa-flo-08",
+  "sa-cal-03",
+  "sa-cal-09",
+  "sa-flo-04",
+  "sa-cal-10",
+  "sa-loc-03",
+  "sa-cal-08",
+  "sa-loc-05",
+  "sa-flo-02",
+  "sa-loc-07",
+  "sa-loc-12",
+  "sa-flo-01",
+  "sa-loc-10",
+  "sa-flo-07",
+  "sa-cal-04",
+  "sa-cal-05",
+  "sa-loc-09",
+  "sa-loc-02",
+  "sa-cal-02",
+  "sa-flo-03",
+  "sa-cal-01",
+  "sa-flo-06"
+ ],
+ "questions": [
+  {
+   "id": "sa-loc-01",
+   "type": "locate",
+   "text": "Where is a query sent to the Exa API, with each result's title, URL and highlights turned into a result entry?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/default_tools.py",
+    "qual": "WebSearchTool.search_exa",
+    "lines": [
+     455,
+     488
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 31,
+    "newest_change": "2026-05-26",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-02",
+   "type": "locate",
+   "text": "Where are arbitrary values, bytes included, turned into a string that is safe to print to the console, with ASCII control characters replaced by visible escape codes?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/utils.py",
+    "qual": "sanitize_for_rich",
+    "lines": [
+     64,
+     89
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 25,
+    "newest_change": "2026-03-01",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-03",
+   "type": "locate",
+   "text": "Where is the limit on how long model-written code may run enforced, by running it in a one-worker thread pool and raising an error if it hasn't finished in time?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/local_python_executor.py",
+    "qual": "timeout",
+    "lines": [
+     285,
+     320
+    ],
+    "also_accept": [
+     "timeout.<locals>.decorator",
+     "timeout.<locals>.decorator.<locals>.wrapper"
+    ]
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 29,
+    "newest_change": "2026-01-14",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-04",
+   "type": "locate",
+   "text": "When code runs in a remote sandbox, where is the encoded answer it sends back decoded, choosing JSON or pickle by a prefix and rejecting pickle unless it was allowed?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/remote_executors.py",
+    "qual": "RemotePythonExecutor._deserialize_final_answer",
+    "lines": [
+     306,
+     332
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 23,
+    "newest_change": "2026-03-29",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-05",
+   "type": "locate",
+   "text": "Where are Python values such as tuples, sets, bytes, dates, numpy arrays and images converted into plain JSON structures tagged with type markers?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/serialization.py",
+    "qual": "SafeSerializer.to_json_safe",
+    "lines": [
+     75,
+     171
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 81,
+    "newest_change": "2026-02-15",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-06",
+   "type": "locate",
+   "text": "Where is a value encoded into a prefixed string for the remote executor, JSON-only by default, falling back to pickle with a warning only when that is allowed?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/serialization.py",
+    "qual": "SafeSerializer.dumps",
+    "lines": [
+     251,
+     292
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 38,
+    "newest_change": "2026-02-15",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-07",
+   "type": "locate",
+   "text": "Where is model-written code rewritten so that assigning to a variable with the same name as the answer-returning tool does not shadow that tool?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/local_python_executor.py",
+    "qual": "fix_final_answer_code",
+    "lines": [
+     332,
+     357
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 24,
+    "newest_change": "2025-01-08",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-08",
+   "type": "locate",
+   "text": "After a model has returned its full reply, where is that text trimmed at the stop strings (shared helper, and a reply with no content is passed through unchanged)?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/models.py",
+    "qual": "remove_content_after_stop_sequences",
+    "lines": [
+     79,
+     91
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 11,
+    "newest_change": "2025-10-27",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-09",
+   "type": "locate",
+   "text": "Where is long output shortened to a maximum length by keeping its first and last halves with a notice in between?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/utils.py",
+    "qual": "truncate_content",
+    "lines": [
+     257,
+     265
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 9,
+    "newest_change": "2025-01-18",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-10",
+   "type": "locate",
+   "text": "Before a tool runs, where are string arguments that match the name of a stored value swapped for that value?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/agents.py",
+    "qual": "ToolCallingAgent._substitute_state_variables",
+    "lines": [
+     1444,
+     1451
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 8,
+    "newest_change": "2025-04-25",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-11",
+   "type": "locate",
+   "text": "Where are streamed chunks of a model reply merged into one message, concatenating partial tool-call arguments by index and adding up token counts?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/models.py",
+    "qual": "agglomerate_stream_deltas",
+    "lines": [
+     220,
+     279
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 59,
+    "newest_change": "2025-06-20",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-loc-12",
+   "type": "locate",
+   "text": "Where does a model client sleep so that its requests stay under a requests-per-minute limit?",
+   "phrasing": "hand",
+   "key": {
+    "file": "src/smolagents/utils.py",
+    "qual": "RateLimiter.throttle",
+    "lines": [
+     517,
+     525
+    ],
+    "also_accept": []
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 9,
+    "newest_change": "2025-07-04",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": [],
+   "loose_leaks": []
+  },
+  {
+   "id": "sa-cal-01",
+   "type": "callers",
+   "text": "What calls `sanitize_for_rich` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/utils.py",
+    "qual": "sanitize_for_rich",
+    "lines": [
+     64,
+     89
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/monitoring.py",
+      "qual": "AgentLogger.log_error",
+      "source": "ast",
+      "ast_lines": [
+       150
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/monitoring.py",
+      "qual": "AgentLogger.log_task",
+      "source": "both",
+      "ast_lines": [
+       205,
+       206
+      ],
+      "trace_lines": [
+       205,
+       206
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 3,
+    "newest_change": "2026-03-13",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-02",
+   "type": "callers",
+   "text": "What calls `timeout` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/local_python_executor.py",
+    "qual": "timeout",
+    "lines": [
+     285,
+     320
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_python_code",
+      "source": "both",
+      "ast_lines": [
+       1665
+      ],
+      "trace_lines": [
+       1665
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "src/smolagents/default_tools.py",
+     "caller": "WebSearchTool.search_exa",
+     "lines": [
+      477
+     ],
+     "kinds": [
+      "getattr"
+     ],
+     "name": "timeout",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 2,
+    "newest_change": "2026-05-26",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-03",
+   "type": "callers",
+   "text": "What calls `SafeSerializer.dumps` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/serialization.py",
+    "qual": "SafeSerializer.dumps",
+    "lines": [
+     251,
+     292
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/remote_executors.py",
+      "qual": "RemotePythonExecutor.send_variables",
+      "source": "ast",
+      "ast_lines": [
+       125
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "classattr"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 1,
+    "newest_change": "2026-02-15",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-04",
+   "type": "callers",
+   "text": "What calls `SafeSerializer.from_json_safe` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/serialization.py",
+    "qual": "SafeSerializer.from_json_safe",
+    "lines": [
+     173,
+     249
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/remote_executors.py",
+      "qual": "RemotePythonExecutor._deserialize_final_answer",
+      "source": "ast",
+      "ast_lines": [
+       326
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "classattr"
+      ]
+     },
+     {
+      "file": "src/smolagents/serialization.py",
+      "qual": "SafeSerializer.from_json_safe",
+      "source": "ast",
+      "ast_lines": [
+       198,
+       200,
+       204,
+       206,
+       244,
+       246,
+       248
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "classattr"
+      ]
+     },
+     {
+      "file": "src/smolagents/serialization.py",
+      "qual": "SafeSerializer.loads",
+      "source": "ast",
+      "ast_lines": [
+       312
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "classattr"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "src/smolagents/serialization.py",
+     "caller": "SafeSerializer.get_deserializer_code",
+     "lines": [
+      468
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "from_json_safe",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/serialization.py",
+     "caller": "SafeSerializer.get_safe_serializer_code",
+     "lines": [
+      392
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "from_json_safe",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 11,
+    "newest_change": "2026-02-15",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-05",
+   "type": "callers",
+   "text": "What calls `CodeAgent._step_stream` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/agents.py",
+    "qual": "CodeAgent._step_stream",
+    "lines": [
+     1638,
+     1764
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._run_stream",
+      "source": "both",
+      "ast_lines": [
+       578
+      ],
+      "trace_lines": [
+       578
+      ],
+      "ast_via": [
+       "override"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.step",
+      "source": "ast",
+      "ast_lines": [
+       787
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "override"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 2,
+    "newest_change": "2025-06-19",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-06",
+   "type": "callers",
+   "text": "What calls `OpenAIModel.generate` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/models.py",
+    "qual": "OpenAIModel.generate",
+    "lines": [
+     1761,
+     1793
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent._step_stream",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       1677
+      ],
+      "ast_via": []
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent._step_stream",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       1309
+      ],
+      "ast_via": []
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "Model.__call__",
+      "source": "ast",
+      "ast_lines": [
+       581
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "override"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "src/smolagents/agents.py",
+     "caller": "MultiStepAgent._generate_planning_step",
+     "lines": [
+      672,
+      730
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/agents.py",
+     "caller": "MultiStepAgent.provide_final_answer",
+     "lines": [
+      847
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/default_tools.py",
+     "caller": "SpeechToTextTool.forward",
+     "lines": [
+      672
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/models.py",
+     "caller": "TransformersModel.generate",
+     "lines": [
+      1069
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/models.py",
+     "caller": "TransformersModel.generate_stream",
+     "lines": [
+      1115
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    },
+    {
+     "file": "src/smolagents/models.py",
+     "caller": "VLLMModel.generate",
+     "lines": [
+      731
+     ],
+     "kinds": [
+      "attr"
+     ],
+     "name": "generate",
+     "only_repo_def_with_this_name": false,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [
+    {
+     "file": "src/smolagents/agents.py",
+     "caller": "CodeAgent._step_stream",
+     "line": 1677,
+     "name": "generate",
+     "kind": "attr"
+    },
+    {
+     "file": "src/smolagents/agents.py",
+     "caller": "ToolCallingAgent._step_stream",
+     "line": 1309,
+     "name": "generate",
+     "kind": "attr"
+    }
+   ],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 10,
+    "newest_change": "2025-05-20",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-07",
+   "type": "callers",
+   "text": "What calls `Monitor.update_metrics` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/monitoring.py",
+    "qual": "Monitor.update_metrics",
+    "lines": [
+     100,
+     117
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "CallbackRegistry.callback",
+      "source": "trace",
+      "ast_lines": [],
+      "trace_lines": [
+       316
+      ],
+      "ast_via": []
+     }
+    ]
+   },
+   "disputes_for_han": [
+    {
+     "file": "src/smolagents/agents.py",
+     "caller": "MultiStepAgent._setup_step_callbacks",
+     "lines": [
+      434
+     ],
+     "kinds": [
+      "reference"
+     ],
+     "name": "update_metrics",
+     "only_repo_def_with_this_name": true,
+     "mark": null
+    }
+   ],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 2,
+    "newest_change": "2025-06-30",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-08",
+   "type": "callers",
+   "text": "What calls `populate_template` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/agents.py",
+    "qual": "populate_template",
+    "lines": [
+     102,
+     107
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent.initialize_system_prompt",
+      "source": "both",
+      "ast_lines": [
+       1621
+      ],
+      "trace_lines": [
+       1621
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.__call__",
+      "source": "ast",
+      "ast_lines": [
+       872,
+       881
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._generate_planning_step",
+      "source": "ast",
+      "ast_lines": [
+       650,
+       690,
+       701
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.provide_final_answer",
+      "source": "ast",
+      "ast_lines": [
+       839
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.initialize_system_prompt",
+      "source": "both",
+      "ast_lines": [
+       1266
+      ],
+      "trace_lines": [
+       1266
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 8,
+    "newest_change": "2025-02-06",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-09",
+   "type": "callers",
+   "text": "What calls `truncate_content` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/utils.py",
+    "qual": "truncate_content",
+    "lines": [
+     257,
+     265
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent._step_stream",
+      "source": "both",
+      "ast_lines": [
+       1752
+      ],
+      "trace_lines": [
+       1752
+      ],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.__call__",
+      "source": "ast",
+      "ast_lines": [
+       888
+      ],
+      "trace_lines": [],
+      "ast_via": [
+       "name"
+      ]
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_python_code.<locals>._execute_code",
+      "source": "both",
+      "ast_lines": [
+       1644,
+       1650,
+       1656
+      ],
+      "trace_lines": [
+       1650
+      ],
+      "ast_via": [
+       "name"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 5,
+    "newest_change": "2025-06-27",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-cal-10",
+   "type": "callers",
+   "text": "What calls `ToolCallingAgent.execute_tool_call` directly? List every caller in the repo (tests and examples excluded).",
+   "target": {
+    "file": "src/smolagents/agents.py",
+    "qual": "ToolCallingAgent.execute_tool_call",
+    "lines": [
+     1453,
+     1502
+    ],
+    "in_trace_scope": true
+   },
+   "key": {
+    "callers": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.process_tool_calls.<locals>.process_single_tool_call",
+      "source": "both",
+      "ast_lines": [
+       1390
+      ],
+      "trace_lines": [
+       1390
+      ],
+      "ast_via": [
+       "self"
+      ]
+     }
+    ]
+   },
+   "disputes_for_han": [],
+   "unresolved_sites_already_in_key": [],
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 1,
+    "newest_change": "2025-06-10",
+    "subset_by_authored_commit": "before",
+    "basis": "key callers and open disputes"
+   },
+   "names_target": true,
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-01",
+   "type": "flow",
+   "text": "OpenAIModel(model_id='canned-model', client=<fake OpenAI client>) with all other arguments at their defaults. Which repo functions run, in order?",
+   "trace_phase": "model_init",
+   "entries": [
+    {
+     "qual": "OpenAIModel.__init__",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "OpenAIModel.__init__",
+      "lines": [
+       1671,
+       1695
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "ApiModel.__init__",
+      "lines": [
+       1161,
+       1183
+      ],
+      "calls": 1,
+      "first_caller": "OpenAIModel.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "Model.__init__",
+      "lines": [
+       484,
+       496
+      ],
+      "calls": 1,
+      "first_caller": "ApiModel.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "RateLimiter.__init__",
+      "lines": [
+       512,
+       515
+      ],
+      "calls": 1,
+      "first_caller": "ApiModel.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "Retrying.__init__",
+      "lines": [
+       531,
+       549
+      ],
+      "calls": 1,
+      "first_caller": "ApiModel.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 5,
+    "dropped": {},
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 84,
+    "newest_change": "2025-10-28",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-02",
+   "type": "flow",
+   "text": "CodeAgent(tools=[add], model=model) where add is a @tool-decorated function add(a: int, b: int) -> int and model is that OpenAIModel; every other argument at its default (local executor). Which repo functions run, in order? (Count setting up the tools, and the step callbacks, as one step each.)",
+   "trace_phase": "code_agent_init",
+   "entries": [
+    {
+     "qual": "CodeAgent.__init__",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "MultiStepAgent._setup_tools",
+    "MultiStepAgent._setup_step_callbacks"
+   ],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent.__init__",
+      "lines": [
+       1527,
+       1585
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.__init__",
+      "lines": [
+       294,
+       352
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._validate_name",
+      "lines": [
+       364,
+       367
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._setup_managed_agents",
+      "lines": [
+       369,
+       387
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._setup_tools",
+      "lines": [
+       389,
+       402
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._validate_tools_and_managed_agents",
+      "lines": [
+       404,
+       414
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent.initialize_system_prompt",
+      "lines": [
+       1620,
+       1636
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "populate_template",
+      "lines": [
+       102,
+       107
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent.initialize_system_prompt",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/tools.py",
+      "qual": "Tool.to_code_prompt",
+      "lines": [
+       258,
+       287
+      ],
+      "calls": 2,
+      "first_caller": "populate_template",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "AgentMemory.__init__",
+      "lines": [
+       228,
+       230
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._setup_step_callbacks",
+      "lines": [
+       416,
+       434
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.__init__",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent.create_python_executor",
+      "lines": [
+       1598,
+       1618
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor.__init__",
+      "lines": [
+       1708,
+       1725
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent.create_python_executor",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor._check_authorized_imports_are_installed",
+      "lines": [
+       1727,
+       1745
+      ],
+      "calls": 1,
+      "first_caller": "LocalPythonExecutor.__init__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 29,
+    "dropped": {
+     "logging": 2,
+     "property": 1,
+     "repeat": 1,
+     "under fold": 11
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 285,
+    "newest_change": "2026-05-29",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-03",
+   "type": "flow",
+   "text": "That CodeAgent: agent.run('What is 2 + 3?') where the model's one reply is a thought plus code calling add(2, 3) and final_answer(result). Which repo functions does run call, in order? (Count each agent step as one step; what happens inside a step is another question.)",
+   "trace_phase": "code_agent_run",
+   "entries": [
+    {
+     "qual": "MultiStepAgent.run",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "CodeAgent._step_stream",
+    "CodeAgent.initialize_system_prompt"
+   ],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.run",
+      "lines": [
+       436,
+       538
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent.initialize_system_prompt",
+      "lines": [
+       1620,
+       1636
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.run",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "AgentMemory.reset",
+      "lines": [
+       232,
+       234
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor.send_variables",
+      "lines": [
+       1760,
+       1761
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor.send_tools",
+      "lines": [
+       1763,
+       1765
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._run_stream",
+      "lines": [
+       540,
+       611
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.run",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent._step_stream",
+      "lines": [
+       1638,
+       1764
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent._run_stream",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent._finalize_step",
+      "lines": [
+       620,
+       623
+      ],
+      "calls": 2,
+      "first_caller": "MultiStepAgent._run_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "CallbackRegistry.callback",
+      "lines": [
+       300,
+       316
+      ],
+      "calls": 2,
+      "first_caller": "MultiStepAgent._finalize_step",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agent_types.py",
+      "qual": "handle_agent_output_types",
+      "lines": [
+       263,
+       281
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent._run_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 96,
+    "dropped": {
+     "logging": 5,
+     "property": 1,
+     "repeat": 2,
+     "resume": 6,
+     "under fold": 72,
+     "under logging": 6
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 336,
+    "newest_change": "2025-12-18",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-04",
+   "type": "flow",
+   "text": "In that CodeAgent run, the single step: CodeAgent._step_stream for step 1. Which repo functions run, in order, from building the messages to the code's output? (Count the model call and the code execution as one step each.)",
+   "trace_phase": "code_agent_run",
+   "entries": [
+    {
+     "qual": "CodeAgent._step_stream",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "OpenAIModel.generate",
+    "LocalPythonExecutor.__call__"
+   ],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "CodeAgent._step_stream",
+      "lines": [
+       1638,
+       1764
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.write_memory_to_messages",
+      "lines": [
+       758,
+       770
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "SystemPromptStep.to_messages",
+      "lines": [
+       203,
+       206
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.write_memory_to_messages",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "TaskStep.to_messages",
+      "lines": [
+       191,
+       196
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.write_memory_to_messages",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "OpenAIModel.generate",
+      "lines": [
+       1761,
+       1793
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "parse_code_blobs",
+      "lines": [
+       198,
+       251
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "extract_code_from_text",
+      "lines": [
+       189,
+       195
+      ],
+      "calls": 1,
+      "first_caller": "parse_code_blobs",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "fix_final_answer_code",
+      "lines": [
+       332,
+       357
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor.__call__",
+      "lines": [
+       1747,
+       1758
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "truncate_content",
+      "lines": [
+       257,
+       265
+      ],
+      "calls": 1,
+      "first_caller": "CodeAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 70,
+    "dropped": {
+     "dataclass": 2,
+     "logging": 3,
+     "resume": 1,
+     "under fold": 53,
+     "under logging": 2
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 275,
+    "newest_change": "2026-01-14",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-05",
+   "type": "flow",
+   "text": "In that CodeAgent step, the model call: OpenAIModel.generate with the system and task messages and stop sequences, against the fake client. Which repo functions run, in order?",
+   "trace_phase": "code_agent_run",
+   "entries": [
+    {
+     "qual": "OpenAIModel.generate",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "OpenAIModel.generate",
+      "lines": [
+       1761,
+       1793
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "Model._prepare_completion_kwargs",
+      "lines": [
+       502,
+       551
+      ],
+      "calls": 1,
+      "first_caller": "OpenAIModel.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "get_clean_message_list",
+      "lines": [
+       332,
+       397
+      ],
+      "calls": 1,
+      "first_caller": "Model._prepare_completion_kwargs",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "supports_stop_parameter",
+      "lines": [
+       418,
+       438
+      ],
+      "calls": 2,
+      "first_caller": "Model._prepare_completion_kwargs",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "ApiModel._apply_rate_limit",
+      "lines": [
+       1189,
+       1191
+      ],
+      "calls": 1,
+      "first_caller": "OpenAIModel.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "RateLimiter.throttle",
+      "lines": [
+       517,
+       525
+      ],
+      "calls": 1,
+      "first_caller": "ApiModel._apply_rate_limit",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "Retrying.__call__",
+      "lines": [
+       551,
+       606
+      ],
+      "calls": 1,
+      "first_caller": "OpenAIModel.generate",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 14,
+    "dropped": {
+     "dataclass": 1,
+     "logging": 1,
+     "property": 2,
+     "repeat": 1,
+     "trivial": 2
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 221,
+    "newest_change": "2025-12-17",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-06",
+   "type": "flow",
+   "text": "In that CodeAgent step, the code execution: the default LocalPythonExecutor called on 'result = add(2, 3)\\nfinal_answer(result)'. Which repo functions run, in order? (Count each tool call as one step.)",
+   "trace_phase": "code_agent_run",
+   "entries": [
+    {
+     "qual": "LocalPythonExecutor.__call__",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "Tool.__call__"
+   ],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "LocalPythonExecutor.__call__",
+      "lines": [
+       1747,
+       1758
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_python_code",
+      "lines": [
+       1583,
+       1667
+      ],
+      "calls": 1,
+      "first_caller": "LocalPythonExecutor.__call__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "PrintContainer.__init__",
+      "lines": [
+       241,
+       242
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "timeout",
+      "lines": [
+       285,
+       320
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "timeout.<locals>.decorator",
+      "lines": [
+       304,
+       318
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "timeout.<locals>.decorator.<locals>.wrapper",
+      "lines": [
+       305,
+       316
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_python_code.<locals>._execute_code",
+      "lines": [
+       1639,
+       1661
+      ],
+      "calls": 1,
+      "first_caller": "timeout.<locals>.decorator.<locals>.wrapper",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "safer_eval.<locals>._check_return",
+      "lines": [
+       196,
+       206
+      ],
+      "calls": 7,
+      "first_caller": "evaluate_python_code.<locals>._execute_code",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_ast",
+      "lines": [
+       1416,
+       1569
+      ],
+      "calls": 7,
+      "first_caller": "safer_eval.<locals>._check_return",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_assign",
+      "lines": [
+       770,
+       791
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_ast",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_call",
+      "lines": [
+       825,
+       918
+      ],
+      "calls": 2,
+      "first_caller": "evaluate_ast",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "check_safer_result",
+      "lines": [
+       156,
+       182
+      ],
+      "calls": 5,
+      "first_caller": "safer_eval.<locals>._check_return",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/tools.py",
+      "qual": "Tool.__call__",
+      "lines": [
+       231,
+       249
+      ],
+      "calls": 2,
+      "first_caller": "evaluate_call",
+      "thread": "worker-1",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "set_value",
+      "lines": [
+       794,
+       822
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_assign",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_name",
+      "lines": [
+       941,
+       959
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_ast",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "evaluate_python_code.<locals>.final_answer",
+      "lines": [
+       1633,
+       1634
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_call",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/local_python_executor.py",
+      "qual": "FinalAnswerException.__init__",
+      "lines": [
+       1579,
+       1580
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code.<locals>.final_answer",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/utils.py",
+      "qual": "truncate_content",
+      "lines": [
+       257,
+       265
+      ],
+      "calls": 1,
+      "first_caller": "evaluate_python_code.<locals>._execute_code",
+      "thread": "worker-1",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 41,
+    "dropped": {
+     "dunder": 2,
+     "repeat": 18,
+     "under fold": 3
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 492,
+    "newest_change": "2026-01-14",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-07",
+   "type": "flow",
+   "text": "ToolCallingAgent(tools=[add], model=<the same fake OpenAIModel>) running 'What is 2 + 3?': its first step, ToolCallingAgent._step_stream, where the model replies with one tool call add(a=2, b=3). Which repo functions run, in order? (Count the model call and the tool execution as one step each.)",
+   "trace_phase": "tool_agent_run",
+   "entries": [
+    {
+     "qual": "ToolCallingAgent._step_stream",
+     "call_index": 0
+    }
+   ],
+   "fold": [
+    "OpenAIModel.generate",
+    "ToolCallingAgent.execute_tool_call"
+   ],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent._step_stream",
+      "lines": [
+       1276,
+       1359
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "MultiStepAgent.write_memory_to_messages",
+      "lines": [
+       758,
+       770
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "SystemPromptStep.to_messages",
+      "lines": [
+       203,
+       206
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.write_memory_to_messages",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/memory.py",
+      "qual": "TaskStep.to_messages",
+      "lines": [
+       191,
+       196
+      ],
+      "calls": 1,
+      "first_caller": "MultiStepAgent.write_memory_to_messages",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "OpenAIModel.generate",
+      "lines": [
+       1761,
+       1793
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent._step_stream",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/models.py",
+      "qual": "parse_json_if_needed",
+      "lines": [
+       193,
+       200
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.process_tool_calls",
+      "lines": [
+       1361,
+       1442
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent._step_stream",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.process_tool_calls.<locals>.process_single_tool_call",
+      "lines": [
+       1383,
+       1414
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent.process_tool_calls",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.execute_tool_call",
+      "lines": [
+       1453,
+       1502
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent.process_tool_calls.<locals>.process_single_tool_call",
+      "thread": "main",
+      "folded": true,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 40,
+    "dropped": {
+     "dataclass": 2,
+     "logging": 3,
+     "property": 1,
+     "resume": 5,
+     "under fold": 24,
+     "under logging": 1
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 260,
+    "newest_change": "2025-11-17",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  },
+  {
+   "id": "sa-flo-08",
+   "type": "flow",
+   "text": "In that first step, the tool execution: ToolCallingAgent.execute_tool_call('add', {'a': 2, 'b': 3}). Which repo functions run, in order, until the result returns?",
+   "trace_phase": "tool_agent_run",
+   "entries": [
+    {
+     "qual": "ToolCallingAgent.execute_tool_call",
+     "call_index": 0
+    }
+   ],
+   "fold": [],
+   "trace_config": {
+    "model": "OpenAIModel(model_id='canned-model', client=FakeOpenAIClient)",
+    "fake client": "chat.completions.create returns canned replies in order",
+    "tool": "@tool add(a: int, b: int) -> int",
+    "task": "What is 2 + 3?",
+    "CodeAgent": "CodeAgent(tools=[add], model=...) defaults: local executor, verbosity INFO, max_steps 20; 1 step",
+    "CodeAgent reply": "Thought + <code> result = add(2, 3); final_answer(result) (no closing tag)",
+    "ToolCallingAgent": "ToolCallingAgent(tools=[add], model=...) defaults; 2 steps (add, then final_answer)"
+   },
+   "key": {
+    "candidate_hops": [
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent.execute_tool_call",
+      "lines": [
+       1453,
+       1502
+      ],
+      "calls": 1,
+      "first_caller": "",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agents.py",
+      "qual": "ToolCallingAgent._substitute_state_variables",
+      "lines": [
+       1444,
+       1451
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent.execute_tool_call",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/tools.py",
+      "qual": "validate_tool_arguments",
+      "lines": [
+       1361,
+       1412
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent.execute_tool_call",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/_function_type_hints_utils.py",
+      "qual": "_get_json_schema_type",
+      "lines": [
+       415,
+       431
+      ],
+      "calls": 2,
+      "first_caller": "validate_tool_arguments",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/tools.py",
+      "qual": "Tool.__call__",
+      "lines": [
+       231,
+       249
+      ],
+      "calls": 1,
+      "first_caller": "ToolCallingAgent.execute_tool_call",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agent_types.py",
+      "qual": "handle_agent_input_types",
+      "lines": [
+       257,
+       260
+      ],
+      "calls": 1,
+      "first_caller": "Tool.__call__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/tools.py",
+      "qual": "tool.<locals>.wrapped_function",
+      "lines": [
+       1096,
+       1098
+      ],
+      "calls": 1,
+      "first_caller": "Tool.__call__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     },
+     {
+      "file": "src/smolagents/agent_types.py",
+      "qual": "handle_agent_output_types",
+      "lines": [
+       263,
+       281
+      ],
+      "calls": 1,
+      "first_caller": "Tool.__call__",
+      "thread": "main",
+      "folded": false,
+      "cached": false,
+      "mark": null
+     }
+    ],
+    "raw_calls": 9,
+    "dropped": {
+     "repeat": 1
+    },
+    "status": "candidates; Han marks each hop required or optional"
+   },
+   "cutoff": {
+    "subset": "before",
+    "lines_after": 0,
+    "lines_counted": 151,
+    "newest_change": "2025-07-29",
+    "subset_by_authored_commit": "before"
+   },
+   "leaks": []
+  }
+ ],
+ "why_how": {
+  "status": "slot: Han writes ~10 questions and a rubric (T5) before any map exists",
+  "questions": []
+ }
+}

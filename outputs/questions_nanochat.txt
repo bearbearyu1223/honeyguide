@@ -1,0 +1,140 @@
+Eval questions and keys: nanochat
+==========================================================================
+  repo           https://github.com/karpathy/nanochat
+  commit         92d63d4e8bb4df75c3b71618f31ddde2378b2bcd
+  commit date    2026-07-03T22:54:57+00:00
+  generator      v1, seed 0
+  cutoff         2026-06-30 (a parameter until verified)
+  trace          outputs/trace_nanochat.json
+                 sha256 4db4e84c76403494...
+
+Questions by type and subset (cutoff 2026-06-30)
+--------------------------------------------------------------------------
+  type        total  before  after  none
+  locate         12       6      6     0
+  callers        10       7      3     0
+  flow            5       5      0     0
+  all            27      18      9     0
+  why/how      slot  Han writes ~10 (T5); not generated
+  tag differs if dated by authored commit instead of merge: 1
+
+Blame rule
+--------------------------------------------------------------------------
+  git blame -w -M -C --first-parent at the pinned commit; committer
+  time per line (a branch merged later is dated by its merge; moved
+  or copied lines keep their original date)
+  a question is 'after' when at least half of its key's non-blank
+  lines changed after the cutoff day (23:59:59 UTC)
+  key lines: locate = the function; callers = the call lines of
+  key callers and open disputes; flow = every candidate hop's
+  function
+
+After-cutoff counts at other cutoffs (same questions)
+--------------------------------------------------------------------------
+  cutoff         locate  callers     flow    all
+  2025-12-31          7        3        4     14
+  2026-03-31          6        2        0      8
+
+Leakage (key names or file names verbatim in the text)
+--------------------------------------------------------------------------
+  locate: key function, class or file named        0 of 12
+  locate: all words of a key name present (loose)   0 of 12
+  callers: target named (by design)                10 of 10
+  callers: a key caller or its file named            0 of 10
+  flow: a hop's function named (not the entry's)    0 of 5
+
+Callers keys: where each key caller came from
+--------------------------------------------------------------------------
+  key callers 23: ast only 15, trace only 2, both 6
+  id        target                               ast trace both  han
+  nc-cal-01 GPT.estimate_decode_flops              0     0    0    1
+  nc-cal-02 get_peak_bandwidth                     1     0    0    0
+  nc-cal-03 load_hub_dataset                       5     0    0    0
+  nc-cal-04 KVCache.prefill                        0     1    0    0
+  nc-cal-05 sample_next_token                      0     0    1    0
+  nc-cal-06 norm                                   0     0    3    1
+  nc-cal-07 flash_attn_with_kvcache                0     1    0    2
+  nc-cal-08 GPT._precompute_rotary_embeddings      0     0    2    0
+  nc-cal-09 compute_init                           8     0    0    0
+  nc-cal-10 use_calculator                         1     0    0    0
+  han = call sites the AST can't resolve and the trace didn't
+  confirm (getattr, obj.m() on an unknown type, callbacks)
+  AST resolution rules:
+    name: plain name: same-module function, nested function or import
+    class: class called by name -> its __init__ (found up the repo bases)
+    self: self.m() / cls.m() -> m on the class or its repo bases
+    override: self.m() -> an override of m in a repo subclass (class
+      hierarchy analysis)
+    super: super().m() -> m on a repo base class
+    module: module.f() on an imported repo module
+    classattr: Class.m() on a repo class named in the code
+
+Flow keys: trace pre-filter
+--------------------------------------------------------------------------
+  keep: the subtree under the question's entry call(s), repo
+        calls only (the T3 filter: package source, no tests)
+  drop with callees: logging and metrics:
+        print0
+  drop with callees: folded calls (fold = one hop, callees
+        belong to another question)
+  drop, keep callees: generator re-entries (resume events);
+        a generator counts once, where it was created
+  drop, keep callees: properties, __post_init__, dunders
+        other than __init__ and __call__
+  drop, keep callees: trivial functions (one statement: a
+        return with no call, or a get_/is_/has_ return)
+  merge: a function called again counts once, at its first
+        call (layers, loop iterations, decode steps)
+  id        phase               raw  hops  dropped
+  nc-flo-01 build                16     7  logging 1, repeat 4, trivial 4
+  nc-flo-02 forward_loss         40     9  repeat 31
+  nc-flo-03 optimizer_step       34     8  repeat 26
+  nc-flo-04 engine_generate     239     8  repeat 12, resume 4, trivial 4,
+                                           under fold 215
+  nc-flo-05 engine_generate      44    10  repeat 31, trivial 3
+  raw = repo calls in the entry's subtree (T3 filter); hops =
+  candidates Han marks
+
+Examples
+--------------------------------------------------------------------------
+  nc-loc-01 [after] Where does the code look up a GPU's peak memory
+    bandwidth from its device name, the ceiling that decode speed is
+    compared against?
+    key: nanochat/common.py get_peak_bandwidth lines 281-328
+
+  nc-loc-02 [after] Where is the forward compute needed to produce one new
+    token at a given context length estimated, with each layer's attention
+    capped at its window?
+    key: nanochat/gpt.py GPT.estimate_decode_flops lines 351-360
+
+  nc-cal-01 [after] What calls `GPT.estimate_decode_flops` directly? List
+    every caller in the repo (tests and examples excluded).
+    key: none; 1 disputed caller for Han
+
+  nc-cal-02 [after] What calls `get_peak_bandwidth` directly? List every
+    caller in the repo (tests and examples excluded).
+    key: main (ast)
+
+  nc-flo-01 [before] With config GPTConfig(sequence_len=32, n_layer=2,
+    n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL'), the model is
+    built with GPT(config) on the meta device, moved with
+    to_empty(device='cpu'), then model.init_weights() is called. Which
+    repo functions run, in order?
+    candidates: GPT.__init__ > GPT._compute_window_sizes > Block.__init__
+      > CausalSelfAttention.__init__ > MLP.__init__ >
+      GPT._precompute_rotary_embeddings > GPT.init_weights
+
+  nc-flo-02 [before] Same toy GPTConfig on CPU (n_layer=2, n_embd=32,
+    float32, torch.compile off): loss = model(x, y) with x and y random
+    token ids of shape (2, 16). Which repo functions run, in order, from
+    GPT.forward until the loss is returned?
+    candidates: GPT.forward > norm > Linear.forward > Block.forward >
+      CausalSelfAttention.forward > apply_rotary_emb > flash_attn_func >
+      _sdpa_attention > MLP.forward
+
+What Han marks
+--------------------------------------------------------------------------
+  flow hops (required / optional)     42 in 5 questions
+  callers disputes (caller / not)      4 in 3 questions
+  sheets: eval/questions/nanochat_flow_hops_to_mark.md,
+          eval/questions/nanochat_callers_disputes.md
