@@ -667,7 +667,10 @@ def test_header_uses_memory_state(tmp_path_factory, chrome):
         n = m["rechecked_since_visit"]
         assert f"{n} claim{'s' if n != 1 else ''} re-checked since your last visit" in mem
         live = m["freshness"]["current"] + m["freshness"]["stale"]
-        assert f"{live} claims" in mem and f"{m['freshness']['stale']} stale" in mem
+        # review r2: the count says which claims are the map's and which are in answers
+        on_map = sum(c.get("freshness") in ("current", "stale") for c in info["store_obj"].load("map")["claims"])
+        said = f"{on_map} claim{'s' if on_map != 1 else ''} on the map" + (f", {live - on_map} in answers" if live > on_map else "")
+        assert said in " ".join(mem.split()) and f"{m['freshness']['stale']} stale" in mem
         # the refresh row: the Checker re-checking, its avatar at 22 and at work (T7.12)
         rf = c.js("(() => { const s = document.querySelector('.rf-w .av.working > svg'); "
                   "return s && [s.getAttribute('width'), s.getAttribute('class'), s.getAnimations({subtree: true}).length]; })()")

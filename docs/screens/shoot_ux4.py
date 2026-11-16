@@ -28,9 +28,13 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 from cdp import Chrome  # noqa: E402
 
-MAPS = {"nanochat": ("http://127.0.0.1:8792/", "q_d7c4fd23c771", "mod-gpt", "chat-reply", "mod-engine"),
-        "waku": ("http://127.0.0.1:8793/", None, "mod-loop", "turn", "mod-loop")}
+# url, answered question, module, flow, component for full screen / the panel, component for focus mode
+# (review r2: focus on gpt.py, as the demo GIF does, so the post's tour follows one component)
+MAPS = {"nanochat": ("http://127.0.0.1:8792/", "q_d7c4fd23c771", "mod-gpt", "chat-reply", "mod-engine", "mod-gpt"),
+        "waku": ("http://127.0.0.1:8793/", None, "mod-loop", "turn", "mod-loop", "mod-loop")}
 SHOTS = {}
+# review r2: a window as tall as the swimlane needs once the whole of it is on screen (no empty lower third)
+FLOW_H = {"chat-reply": 680}
 
 
 def shot(name: str):
@@ -97,12 +101,15 @@ def s_graph(c, m):
 
 @shot("graph-focus")
 def s_focus(c, m):
+    """The whole map (every band and every lit curve) just under the sticky section header, the focus card below it
+    (review r2: the T7.17 shot scrolled to the component and cut off the Entry points band and its callers)."""
     open_at(c, m[0], height=1100)
-    cid = comp_id(c, m[4])
+    cid = comp_id(c, m[5])
     c.js(f"document.querySelector('#ovgraph .dg-node[data-comp=\"{cid}\"]').dispatchEvent(new MouseEvent('click', {{bubbles: true}}))")
-    scroll_to(c, "#ovgraph", 40)
-    c.js(f"(() => {{ const n = document.querySelector('#ovgraph .dg-node[data-comp=\"{cid}\"]'), m = document.getElementById('main'); "
-         "m.scrollTop += n.getBoundingClientRect().top - 260; })()")
+    settle(c)
+    c.js("(() => { const s = document.querySelector('#ovgraph .dgwrap > svg'), m = document.getElementById('main'), "
+         "h = document.querySelector('#main .sh'); const top = h ? h.getBoundingClientRect().height : 54; "
+         "m.scrollTop += s.getBoundingClientRect().top - m.getBoundingClientRect().top - top - 2; })()")
     settle(c)
 
 
@@ -124,11 +131,22 @@ def s_fs(c, m):
 
 @shot("flow-fullscreen")
 def s_flow(c, m):
-    open_at(c, m[0])
+    open_at(c, m[0], height=FLOW_H.get(m[3], 900))
     c.js(f"document.querySelector('.flow[data-flow=\"{m[3]}\"] .flow-h').click()")
     settle(c)
     c.js(f"document.querySelector('.fig[data-key=\"map:{m[3]}\"] [data-z=\"fs\"]').click()")
     settle(c, 600)
+    # review r2: at Fit a wide swimlane stops at the readable floor (85%) and its right-hand lanes run off the screen;
+    # zoom out (the toolbar's minus) until the whole swimlane is on screen
+    fig = f".fig[data-key=\"map:{m[3]}\"]"
+    c.js(f"document.querySelector('{fig} [data-z=\"fit\"]').click()")
+    settle(c, 300)
+    for _ in range(6):
+        if c.js(f"(() => {{ const w = document.querySelector('{fig} .dgwrap'); return w.scrollWidth <= w.clientWidth + 1 && w.scrollHeight <= w.clientHeight + 1; }})()"):
+            break
+        c.js(f"document.querySelector('{fig} [data-z=\"out\"]').click()")
+        settle(c, 300)
+    settle(c, 300)
 
 
 @shot("panel")
@@ -137,6 +155,13 @@ def s_panel(c, m):
         open_at(c, m[0], f"#q={m[1]}")
         settle(c, 400)
         c.js("document.getElementById('pbody').scrollTop = 0")
+        # when the question's passage is no longer in the map (it was rewritten since), the page cannot scroll to it:
+        # show the module the question is about beside the panel, as the passage's own scroll would
+        if not c.js("!!document.querySelector('#main .hl, #main mark, #main [data-cur]')"):
+            scroll_to(c, f"#m-{m[2]}", 72)
+            c.js(f"(() => {{ const w = [...document.querySelectorAll('#m-{m[2]} .design, #m-{m[2]} [class*=design]')][0]; "
+                 "if (w) { const mm = document.getElementById('main'); mm.scrollTop += w.getBoundingClientRect().top - 140; } })()")
+            settle(c)
     else:   # no answers on this map: the panel as "Ask about this component" opens it
         open_at(c, m[0])
         cid = comp_id(c, m[4])
@@ -184,6 +209,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--maps", nargs="*", default=list(MAPS))
+    ap.add_argument("--url", nargs="*", default=[], metavar="MAP=URL", help="serve a map on another port, e.g. nanochat=http://127.0.0.1:8795/")
     ap.add_argument("--out", default=str(ROOT / "docs/screens/ux4"))
     ap.add_argument("--compose", help="the directory of the before shots: write the design-*.png pairs and stop")
     args = ap.parse_args()
@@ -192,8 +218,9 @@ def main() -> int:
     if args.compose:
         compose(Path(args.compose), out)
         return 0
+    urls = dict(u.split("=", 1) for u in args.url)
     for mname in args.maps:
-        m = MAPS[mname]
+        m = (urls.get(mname, MAPS[mname][0]),) + MAPS[mname][1:]
         for name, f in SHOTS.items():
             if args.only and name not in args.only:
                 continue

@@ -38,12 +38,14 @@ const HGD = (() => {
     for (const h of M.hops) for (const l of [h.from, h.to]) if (l && !ids.includes(l)) ids.push(l);
     return ids.map(id => { const l = M.lanes[id] || { name: id, sub: "" }; return { id, name: l.name, sub: l.sub || "", file: l.file || null }; });
   }
-  /* where a hop's data goes: back to whoever acts next ("ret"), or it stays in the callee's lane as a pill ("data") */
+  /* where a hop's data goes: on a self-call, or when the callee makes the next hop, it stays in the callee's lane as a
+     pill ("data"); otherwise it returns to the hop's own caller ("ret"), never to a lane that merely acts next (review
+     r2: a nested call, engine -> tokenizer, followed by a call from the root lane drew its return to the root lane) */
   function edgeOf(P, i) {
     const h = P[i];
     if (!h.edge) return null;
-    const nx = P[i + 1], dest = nx ? nx.from : h.from, src = h.to;
-    return dest === src ? { kind: "data", lane: src } : { kind: "ret", from: src, to: dest };
+    const nx = P[i + 1], src = h.to;
+    return h.from === src || (nx && nx.from === src) ? { kind: "data", lane: src } : { kind: "ret", from: src, to: h.from };
   }
 
   /* ------------------------------------------------------------------------------------- (A) sequence diagram */

@@ -935,6 +935,8 @@ body.fs-on .top{display:none}
 .gf-e{display:flex;align-items:baseline;gap:8px}
 .gf-c{font:600 13px var(--mono);color:var(--ink);border-radius:6px}
 .gf-c:hover{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.gf-c code{font:inherit;background:none;padding:0;color:inherit}
+.gf-more{margin-left:6px;font:500 12px var(--sans);color:var(--muted);white-space:nowrap}
 .gf-n{font-size:12px;color:var(--muted)}
 .gf-go{font-size:12px;color:var(--brand);margin-left:auto}
 .gf-go:hover{text-decoration:underline;text-underline-offset:3px}

@@ -906,11 +906,19 @@ function callChips(c) {
   if (!h) return `<code>${esc(c.fn)}</code>`;
   return `<code>${esc(c.fn)}</code>${h.chip !== null && h.chip !== undefined ? `<button class="chip" data-claim="${esc(h.claim)}" data-i="${h.chip}" aria-label="Show ${esc(h.a)}">${esc(h.a)}</button>` : ""}<span class="gf-in">${inlineCode(m.title)}, hop ${c.hop + 1}</span>`;
 }
+/* a component in the focus card is named as its box is: its first file, and "+N files" when it groups more (listed on
+   hover). Review r2: without the badge, "chat_sft.py" read as the caller of a call made in chat_rl.py, a file the same
+   component holds */
+function compLabelHTML(id) {
+  const n = GL.G.N[id], files = FIGS.get("graph")?.comps.find(x => x.id === id)?.files || [];
+  const more = files.length > 1 ? `<span class="gf-more" title="${esc(files.join(", "))}">+${plural(files.length - 1, "file")}</span>` : "";
+  return `<code>${esc(n?.name || id)}</code>${more}`;
+}
 function focusCardHTML(id) {
   const G = GL.G, gm = FIGS.get("graph"), b = G.N[id];
   const ins = gm.edges.filter(e => e.to === id), outs = gm.edges.filter(e => e.from === id);
-  const list = (es, other, verb) => es.length ? `<div class="gf-sec">${verb} <span>${es.length}</span></div><ul class="gf-l">${es.map(e => `<li><div class="gf-e"><button type="button" class="gf-c" data-gfocus="${esc(e[other])}">${esc(G.N[e[other]]?.name || e[other])}</button><span class="gf-n">${plural(e.calls.length, "call")}</span><button type="button" class="gf-go" data-gcalls="${esc(e.from)}|${esc(e.to)}">in the flows</button></div><ul class="gf-calls">${e.calls.map(c => `<li>${callChips(c)}</li>`).join("")}</ul></li>`).join("")}</ul>` : "";
-  return `<div class="gf-h"><div><div class="gf-k">${esc(HGD.MAP && b.kind === "entry" ? "Entry point" : b.kind === "leaf" ? "Leaf" : "Stage")}</div><div class="gf-t"><code>${esc(b.name)}</code></div>${b.role ? `<div class="gf-r">${esc(b.role)}</div>` : ""}</div><button type="button" class="x" data-gfx aria-label="Leave focus">×</button></div>`
+  const list = (es, other, verb) => es.length ? `<div class="gf-sec">${verb} <span>${es.length}</span></div><ul class="gf-l">${es.map(e => `<li><div class="gf-e"><button type="button" class="gf-c" data-gfocus="${esc(e[other])}">${compLabelHTML(e[other])}</button><span class="gf-n">${plural(e.calls.length, "call")}</span><button type="button" class="gf-go" data-gcalls="${esc(e.from)}|${esc(e.to)}">in the flows</button></div><ul class="gf-calls">${e.calls.map(c => `<li>${callChips(c)}</li>`).join("")}</ul></li>`).join("")}</ul>` : "";
+  return `<div class="gf-h"><div><div class="gf-k">${esc(HGD.MAP && b.kind === "entry" ? "Entry point" : b.kind === "leaf" ? "Leaf" : "Stage")}</div><div class="gf-t">${compLabelHTML(id)}</div>${b.role ? `<div class="gf-r">${esc(b.role)}</div>` : ""}</div><button type="button" class="x" data-gfx aria-label="Leave focus">×</button></div>`
     + `<div class="gf-acts"><button type="button" class="gf-ask" data-gask="${esc(id)}">${ICON.msg}Ask about this component</button>${b.module ? `<a href="#" data-gomod="${esc(b.module)}">Open its module</a>` : ""}</div>`
     + list(ins, "from", "Called by") + list(outs, "to", "Calls")
     + `<div class="gf-foot">Esc or a click on empty space leaves focus</div>`;
@@ -1263,9 +1271,13 @@ function renderHeader() {
   } else {
     h = `<span class="mem-i">${ICON.ok}</span><span data-tip="The map is at <code>${esc(short(m.head))}</code>, which is HEAD, and no claim waits for a re-check.">${headline}</span>`;
   }
+  /* review r2: the count covers answers too, so it says which is which ("260 claims on the map, 22 in answers"); a
+     reader comparing it with the map's own count otherwise sees two numbers */
   const live = (fr.current || 0) + (fr.stale || 0);
+  const onMap = mapClaims.filter(c => c.freshness === "current" || c.freshness === "stale").length;
+  const inAnswers = Math.max(0, live - onMap);
   const parts = [fr.stale ? `${fr.stale} stale` : "", fr.retired ? `${fr.retired} retired` : ""].filter(Boolean);
-  h += `<span class="sep">·</span><span data-tip="Claims on the map and in answers">${plural(live, "claim")}${parts.length ? ", " + parts.join(", ") : ", every anchor resolved"}</span>`;
+  h += `<span class="sep">·</span><span data-tip="Live claims: the map's own, and those in answers to questions">${plural(onMap, "claim")} on the map${inAnswers ? `, ${inAnswers} in answers` : ""}${parts.length ? ", " + parts.join(", ") : ", every anchor resolved"}</span>`;
   const since = m.rechecked_since_visit || 0;
   if (since) h += `<span class="sep">·</span><span class="since">${plural(since, "claim")} re-checked since your last visit</span>`;
   if (m.dirty && m.dirty.tracked) h += `<span class="sep">·</span><span data-tip="${m.dirty.tracked} uncommitted change(s) in the working tree. The map and previews read committed code only.">uncommitted changes not mapped</span>`;

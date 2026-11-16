@@ -5,6 +5,14 @@ answers; waku-agent at `2c7e7e6`), 1440x900 at 2x, light and dark, by `docs/scre
 shots in `before/` are the T7.16 page on the same nanochat map, taken just before this change. Design notes:
 `docs/design/ux-v4.md`.
 
+**Review r2 (re-shot, nanochat only):** `nanochat-{top,module,graph-focus,flow-fullscreen,panel}-{light,dark}.png`
+were re-taken by `shoot_ux4.py --maps nanochat` on a copy of the store after the re-check (map revision
+`323cb08936ea`, three live answers), with three page fixes: a flow's return arrow goes back to the hop's caller (row 7
+of `chat-reply` returned to `chat_cli.py`; it now returns to `engine.py`), the focus card names a multi-file component
+with its "+N files" chip, and the repo card's foot says "N claims on the map, M in answers". Focus mode is now on
+`gpt.py` with the whole map in frame; the flow is zoomed out until the whole swimlane is on screen (2880x1360). The
+waku-agent shots are unchanged.
+
 Look first: `design-component-graph.png`, `nanochat-graph-focus-light.png`, `waku-graph-fullscreen-zoomed-dark.png`,
 `nanochat-top-light.png`.
 

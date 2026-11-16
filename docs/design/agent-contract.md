@@ -329,8 +329,8 @@ How the page draws a path (T7.4: the Steps rail and the swimlane diagram, from t
   ": "). The flow starts in the first hop's `from` lane (a start dot); there is no
   separate entry hop.
 - Data: `returns` + `data` show as one pill, `[returns, data]` (`["returns", returns]` or `["data", data]` when only
-  one is given). It goes back to whoever makes the next hop (a return arrow) or, when that is the callee's own lane,
-  stays on that lane as a pill.
+  one is given). It goes back to the hop's caller (a return arrow) or, when the callee makes the next hop or calls
+  itself, stays on that lane as a pill.
 - Evidence shape: the hop claim's, withheld while the claim is stale, retired or (in the panel) unchecked.
 - Module graph: calls between two lanes with different `path`s, across `document.flows`; lanes without a `path`
   (libraries) are left out. Boxes stay files; each file of a component leads to that component's module.
