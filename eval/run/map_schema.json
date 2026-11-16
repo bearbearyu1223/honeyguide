@@ -1,0 +1,10 @@
+{
+ "type": "object",
+ "properties": {
+  "target": {"type": "string"},
+  "mode": {"type": "string"},
+  "document": {"type": "object"},
+  "claims": {"type": "array", "items": {"type": "object"}}
+ },
+ "required": ["target", "mode", "document", "claims"]
+}

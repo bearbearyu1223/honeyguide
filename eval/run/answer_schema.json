@@ -1,0 +1,21 @@
+{
+ "type": "object",
+ "properties": {
+  "items": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "file": {"type": "string"},
+     "symbol": {"type": "string"},
+     "line": {"type": "integer"}
+    },
+    "required": ["file", "symbol"],
+    "additionalProperties": false
+   }
+  },
+  "text": {"type": "string"}
+ },
+ "required": ["items", "text"],
+ "additionalProperties": false
+}
