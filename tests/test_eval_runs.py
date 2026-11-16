@@ -12,7 +12,7 @@ cap = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cap)
 
 STORE = "github.com__someone__toy__0123456789ab"
-BLOCKS = ["runs", "maps", "checker", "readability", "demo", "examples"]
+BLOCKS = ["runs", "maps", "checker", "recheck", "readability", "demo", "examples"]
 SENTENCE = ("The toy repo trains a tiny model on one machine and writes every result to a single "
             "file so that a reader can follow the whole run from one place.")
 
@@ -29,9 +29,8 @@ def claim(cid, check="supported", repairs=(), text="a claim", evidence="read_in_
     return c
 
 
-def rep(rnd, action, text, anchors):
-    return {"round": rnd, "action": action, "at": "2026-01-01T00:00:00Z", "check_note": "n", "text": text,
-            "anchors": anchors}
+def rep(rnd, action, text, anchors, at="2026-01-01T00:00:00Z"):
+    return {"round": rnd, "action": action, "at": at, "check_note": "n", "text": text, "anchors": anchors}
 
 
 def write_json(path, obj):
@@ -72,12 +71,24 @@ def archive(tmp_path):
             claim("c_4", check="not_supported"),
         ]}
     write_json(root / "after-repair" / STORE / "map.json", final_map)
+    # The re-check (rounds at T1, T2): c_1 anchor then rewrite; c_2 (repaired before, so its history labels
+    # this pass's round-1 repair as round 2) still not supported; c_3 untouched; c_4 rewritten in round 1.
+    t1, t2, later = "2026-01-02T00:10:00Z", "2026-01-02T00:20:00Z", "2026-01-02T00:30:00Z"
+    c1, c2, c3, c4 = (json.loads(json.dumps(c)) for c in final_map["claims"])
+    c1.update(text="exact", checked_at=later, repairs=[rep(1, "anchor", "a claim", ["a.py:1-1"], t1),
+                                                       rep(2, "rewrite", "a claim", ["a.py:1-2"], t2)])
+    c2.update(check="not_supported", check_note="still wrong", checked_at=later,
+              repairs=c2["repairs"] + [rep(2, "anchor", "a claim", ["a.py:1-5"], t1)])
+    c4.update(check="supported", text="fixed", checked_at=later,
+              repairs=[rep(1, "rewrite", "a claim", ["a.py:1-1"], t1)])
+    write_json(root / "after-recheck" / STORE / "map.json", dict(final_map, claims=[c1, c2, c3, c4]))
     write_json(root / "after-repair" / STORE / "answers.json", {
         "questions": [{"id": "q_1", "text": "Where?", "agent": "tracer", "response": "r_1",
                        "created_at": "2026-01-01T01:00:00Z", "answered_at": "2026-01-01T01:01:30Z"}],
         "responses": [{"id": "r_1", "claims": [claim("c_9"), claim("c_8", check="not_supported")]}]})
     for sub, start, end in (("run2", "2026-01-01T00:00:00Z", "2026-01-01T00:30:00Z"),
-                            ("repair", "2026-01-01T00:40:00Z", "2026-01-01T00:46:00Z")):
+                            ("repair", "2026-01-01T00:40:00Z", "2026-01-01T00:46:00Z"),
+                            ("recheck", "2026-01-02T00:00:00Z", "2026-01-02T00:12:00Z")):
         d = root / sub / "toy"
         d.mkdir(parents=True)
         (d / "start").write_text(start + "\n")
@@ -124,6 +135,22 @@ def test_numbers(archive):
     assert "    Checker           supported 1, not supported 1" in out
     assert "    posted->answered  90 s (answers.json timestamps)" in out
     assert "      c_3 (toy, repair round 2)" in out
+    # maps: after repair (3 supported, 1 not) then after re-check (3 and 1, different claims)
+    assert out.count("    Checker verdicts    supported 3, not supported 1") == 2
+    assert "  toy, run 2 after re-check" in out
+
+
+def test_recheck_block(archive):
+    out = cap.render(archive)
+    assert "  toy              12.0      3        $2.00             0" in out
+    assert "  toy                   4           3                3                1" in out
+    assert "  toy         before repair                  0         3         0       0" in out
+    assert "  toy         after repair round 1           1         2         0       0" in out
+    assert "  toy         after repair round 2           2         1         0       0" in out
+    assert "  toy             1                 2          1        0" in out
+    assert "  toy             2                 0          1        0" in out
+    assert f"  (e) {cap.WRONGLY_PASSED} after the re-check" in out
+    assert f"(f) {cap.RECHECK_REWRITTEN}" not in out   # absent from the toy archive: block omitted
 
 
 def test_claim_state_rounds():
@@ -141,3 +168,17 @@ def test_helpers():
     assert cap.anchor_lines([anchor("b.py", 2, 3)]) == {("b.py", 2), ("b.py", 3)}
     s = cap.repair_summary([claim("c", anchors=[anchor("a.py", 1, 5)], repairs=[rep(1, "anchor", "t", ["a.py:1-1"])])])
     assert s == {1: {"anchor": 1, "rewrite": 0, "retire": 0, "wider": 1}}
+
+
+def test_recheck_helpers():
+    old = [rep(1, "anchor", "t", [])]
+    after = claim("c", repairs=old + [rep(2, "rewrite", "t", [], "2026-01-02T00:00:00Z")])
+    assert cap.new_repairs(claim("c", repairs=old), after) == after["repairs"][1:]
+    assert cap.new_repairs({}, after) == after["repairs"]
+    before = [dict(claim("a"), checked_at="2026-01-01T00:00:00Z"), dict(claim("b"), checked_at="2026-01-01T00:00:00Z"),
+              dict(claim("c"), checked_at="2026-01-01T00:00:00Z")]
+    later = [dict(before[0], checked_at="2026-01-03T00:00:00Z"), dict(before[1], text="changed"), before[2]]
+    assert cap.rechecked_ids(before, later) == ["a", "b"]
+    reps = [rep(2, "anchor", "t", [], "2026-01-02T00:10:00Z"), rep(1, "anchor", "t", [], "2026-01-02T00:10:00Z"),
+            rep(2, "rewrite", "t", [], "2026-01-02T00:20:00Z")]
+    assert [r["round"] for r in cap.pass_rounds(reps)] == [1, 1, 2]

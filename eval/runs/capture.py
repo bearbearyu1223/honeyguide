@@ -1,10 +1,10 @@
-"""Print the receipts of the real Honeyguide runs (run 1, run 2, repair, live demo).
+"""Print the receipts of the real Honeyguide runs (run 1, run 2, repair, re-check, live demo).
 
     uv run python eval/runs/capture.py > outputs/runs.txt 2> outputs/runs.err
 
 Reads the run archive (default ~/Documents/GitHub/honeyguide-targets/_runs,
-or --archive DIR) and never writes to it. Prints six labelled blocks: runs,
-maps, checker, readability, demo, examples. Every number is read from the
+or --archive DIR) and never writes to it. Prints seven labelled blocks: runs,
+maps, checker, recheck, readability, demo, examples. Every number is read from the
 archive; a value the archive does not hold prints as "not recorded".
 Repos are printed by name, never by path. Standard library only (plus
 honeyguide.readability for the readability block).
@@ -34,6 +34,7 @@ TOPICS = ("purpose", "users", "capabilities", "commands", "entry-points", "compo
 STATES = ("supported", "not_supported", "unchecked", "retired")
 NARROWED_RULE = "the first claim in id order (both repos) with a 'rewrite' repair"
 WRONGLY_PASSED = "c_20b0bb0d778f"
+RECHECK_REWRITTEN = "c_b9a4c59e2e08"
 
 
 def status(msg):
@@ -121,6 +122,57 @@ def repair_summary(claims):
     return out
 
 
+def new_repairs(before, after):
+    """Repair entries in ``after``'s history that ``before``'s history does not hold (the later pass's)."""
+    old = before.get("repairs") or []
+    new = after.get("repairs") or []
+    if new[:len(old)] == old:
+        return new[len(old):]
+    return [r for r in new if r not in old]
+
+
+def rechecked_ids(before_claims, after_claims):
+    """Ids of claims the later pass checked again: a checked_at later than every checked_at in ``before``,
+    or a changed check, check_note, anchors or text."""
+    before = {c["id"]: c for c in before_claims}
+    latest = max((c.get("checked_at") or "" for c in before_claims), default="")
+    out = []
+    for c in after_claims:
+        b = before.get(c["id"])
+        if b is None:
+            continue
+        if (c.get("checked_at") or "") > latest or any(b.get(k) != c.get(k)
+                                                        for k in ("check", "check_note", "anchors", "text")):
+            out.append(c["id"])
+    return out
+
+
+def pass_rounds(repairs):
+    """Renumber one pass's repair entries by the pass's own rounds: the n-th distinct ``at`` timestamp is
+    round n. A saved entry's ``round`` counts that claim's repair history, so a claim already repaired in an
+    earlier pass records its first repair of this pass as round 2."""
+    stamps = sorted({r["at"] for r in repairs if r.get("at")})
+    return [dict(r, round=stamps.index(r["at"]) + 1) if r.get("at") else dict(r) for r in repairs]
+
+
+def recheck_summary(before_claims, after_claims):
+    """The re-check pass from two map snapshots: claims re-checked, their state before repair and after each
+    round of this pass (from the repairs it added, renumbered by pass_rounds), and its actions per round."""
+    before = {c["id"]: c for c in before_claims}
+    ids = set(rechecked_ids(before_claims, after_claims))
+    added = {c["id"]: new_repairs(before[c["id"]], c) for c in after_claims if c["id"] in ids}
+    renumbered = iter(pass_rounds([r for reps in added.values() for r in reps]))
+    pruned = [dict(c, repairs=[next(renumbered) for _ in added[c["id"]]])
+              for c in after_claims if c["id"] in ids]
+    rounds = {}
+    for c in pruned:
+        for r in c["repairs"]:
+            row = rounds.setdefault(r.get("round", 0), {"anchor": 0, "rewrite": 0, "retire": 0})
+            row[r.get("action")] = row.get(r.get("action"), 0) + 1
+    return {"claims": len(after_claims), "rechecked": len(pruned),
+            "stages": {k: stage_counts(pruned, k) for k in (0, 1, 2)}, "rounds": rounds}
+
+
 def map_stats(layer):
     doc = layer.get("document") or {}
     sections = [s for s in doc.get("sections") or [] if isinstance(s, dict)]
@@ -180,14 +232,15 @@ def stores(root):
 
 
 def load(archive):
-    a = {"run1": stores(archive / "run1"), "final": stores(archive / "after-repair")}
-    a["repos"] = sorted(set(a["run1"]) | set(a["final"]))
+    a = {"run1": stores(archive / "run1"), "final": stores(archive / "after-repair"),
+         "recheck": stores(archive / "after-recheck")}
+    a["repos"] = sorted(set(a["run1"]) | set(a["final"]) | set(a["recheck"]))
     a["passes"] = {}
     run1_start = read_text(archive / "run1" / "start")
     for repo in a["repos"]:
         a["passes"][(repo, "run 1")] = {"start": run1_start, "end": None, "exit": None,
                                         "result": read_json(archive / "run1" / f"{repo}-result.json")}
-        for name, sub in (("run 2", "run2"), ("repair", "repair")):
+        for name, sub in (("run 2", "run2"), ("repair", "repair"), ("re-check", "recheck")):
             d = archive / sub / repo
             a["passes"][(repo, name)] = {"start": read_text(d / "start"), "end": read_text(d / "end"),
                                          "exit": read_text(d / "exit"), "result": read_json(d / "result.json")}
@@ -273,9 +326,11 @@ def block_runs(a):
 
 def block_maps(a):
     lines = header("maps", "Run 1 (old Cartographer brief) against run 2 (Cartographer v2, start over), as saved "
-                           "after the repair pass.")
+                           "after the repair pass and after the re-check (the final state). Checker verdicts "
+                           "are each claim's saved check.")
     for repo in a["repos"]:
-        for name, store in (("run 1", a["run1"]), ("run 2 after repair", a["final"])):
+        for name, store in (("run 1", a["run1"]), ("run 2 after repair", a["final"]),
+                            ("run 2 after re-check", a["recheck"])):
             m = layer(store, repo)
             lines.append(f"  {repo}, {name}")
             if m is None:
@@ -289,6 +344,9 @@ def block_maps(a):
             lines.append(f"    module blocks       {s['modules']} ({s['components']} with more than one file)")
             lines.append(f"    flows               {s['flows']} ({s['hops']} hops)")
             lines.append(f"    claims              {s['claims']}")
+            v = Counter(claim_state(c, 99) for c in m.get("claims") or [])
+            lines.append(f"    Checker verdicts    supported {v['supported']}, not supported {v['not_supported']}"
+                         + "".join(f", {k} {v[k]}" for k in ("unchecked", "retired") if v[k]))
             ev = ", ".join(f"{k} {v}" for k, v in s["evidence"])
             lines += textwrap.wrap(ev, WIDTH, initial_indent="    evidence labels     ",
                                    subsequent_indent=" " * 24)
@@ -328,6 +386,62 @@ def block_checker(a):
     lines += wrap("anchors replaced = the claim's text kept, its anchors replaced; cite more lines = of those, "
                   "the new anchors cover more source lines than the old; rewritten = the claim's text "
                   "changed to say only what the cited lines show.", "  ")
+    return lines
+
+
+def block_recheck(a):
+    lines = header("recheck", "After the repair pass, a batch run re-checked every map claim that states a "
+                              "value under the Checker's new \"Compute, don't quote\" rule, then ran the repair "
+                              "pass (at most 2 rounds). Wall clock from the launcher's start/end files; turns "
+                              "and cost from claude -p's JSON result (cost at API list price). Claims re-checked: "
+                              "a checked_at later than every one in the map saved after repair, or a changed "
+                              "check, note, anchors or text. States and repairs come from the repairs history "
+                              "entries this pass added, numbered by this pass's rounds (the order of their "
+                              "timestamps); a repair at round r means not supported after round r-1.")
+    lines.append(f"  {'repo':<12}{'wall min':>9}{'turns':>7}{'cost (list)':>13}{'exit':>14}")
+    for repo in a["repos"]:
+        p = a["passes"][(repo, "re-check")]
+        r = p["result"] or {}
+        turns, cost = r.get("num_turns"), r.get("total_cost_usd")
+        lines.append(f"  {repo:<12}{fmt_min(minutes_between(p['start'], p['end'])):>9}"
+                     f"{NOT_RECORDED if turns is None else turns:>7}"
+                     f"{NOT_RECORDED if cost is None else f'${cost:.2f}':>13}"
+                     f"{p['exit'] if p['exit'] is not None else NOT_RECORDED:>14}")
+    sums = {}
+    for repo in a["repos"]:
+        before, after = layer(a["final"], repo), layer(a["recheck"], repo)
+        if before and after:
+            sums[repo] = recheck_summary(before["claims"], after["claims"])
+    lines.append("")
+    lines.append(f"  {'repo':<12}{'map claims':>11}{'re-checked':>12}{'newly not supp.':>17}{'still not supp.':>17}")
+    for repo in a["repos"]:
+        s = sums.get(repo)
+        if s is None:
+            lines.append(f"  {repo:<12}{NOT_RECORDED:>11}")
+            continue
+        lines.append(f"  {repo:<12}{s['claims']:>11}{s['rechecked']:>12}{s['stages'][0]['not_supported']:>17}"
+                     f"{s['stages'][2]['not_supported']:>17}")
+    lines += wrap("newly not supported = re-checked claims the re-check found not supported (before repair); "
+                  "still not supported = of those, not supported after repair round 2.", "  ")
+    lines.append("")
+    lines.append("  Re-checked claims by state:")
+    lines.append(f"  {'repo':<12}{'stage':<22}{'supported':>10}{'not supp.':>10}{'unchecked':>10}{'retired':>8}")
+    for repo in a["repos"]:
+        s = sums.get(repo)
+        for stage, label in ((0, "before repair"), (1, "after repair round 1"), (2, "after repair round 2")):
+            if s is None:
+                continue
+            c = s["stages"][stage]
+            lines.append(f"  {repo:<12}{label:<22}{c['supported']:>10}{c['not_supported']:>10}"
+                         f"{c['unchecked']:>10}{c['retired']:>8}")
+    lines.append("")
+    lines.append("  What this pass's repair did, per round (one row per repair action):")
+    lines.append(f"  {'repo':<12}{'round':>5}{'anchors replaced':>18}{'rewritten':>11}{'retired':>9}")
+    for repo in a["repos"]:
+        s = sums.get(repo) or {"rounds": {}}
+        for rnd in sorted(s["rounds"]):
+            r = s["rounds"][rnd]
+            lines.append(f"  {repo:<12}{rnd:>5}{r['anchor']:>18}{r['rewrite']:>11}{r['retire']:>9}")
     return lines
 
 
@@ -456,6 +570,58 @@ def block_examples(a):
             lines += wrap(an.get("anchor", ""), "        ")
     else:
         lines.append(f"      {NOT_RECORDED}")
+    lines.append("")
+    lines.append(f"  (e) {WRONGLY_PASSED} after the re-check")
+    lines += claim_after_recheck(a, WRONGLY_PASSED, with_before=False)
+    rp, _, _ = find_claim(a, "recheck", RECHECK_REWRITTEN)
+    if rp:
+        lines.append("")
+        lines.append(f"  (f) {RECHECK_REWRITTEN}, before and after the re-check")
+        lines += claim_after_recheck(a, RECHECK_REWRITTEN, with_before=True)
+    return lines
+
+
+def find_claim(a, store, cid):
+    for rp in a["repos"]:
+        m = layer(a[store], rp)
+        c = next((x for x in (m or {}).get("claims") or [] if x.get("id") == cid), None)
+        if c:
+            return rp, m, c
+    return None, None, None
+
+
+def claim_lines(claim, indent="      "):
+    lines = [f"{indent}text"]
+    lines += wrap(claim.get("text", ""), indent + "  ")
+    lines.append(f"{indent}check     {claim.get('check')}")
+    note = claim.get("check_note")
+    lines.append(f"{indent}note      {'(empty)' if not note else ''}".rstrip())
+    if note:
+        lines += wrap(note, indent + "  ")
+    for an in claim.get("anchors") or []:
+        lines.append(f"{indent}anchor    {an.get('path')}:{an.get('start')}-{an.get('end')}")
+        lines += wrap(an.get("anchor", ""), indent + "  ")
+    return lines
+
+
+def claim_after_recheck(a, cid, with_before):
+    rp, _, after = find_claim(a, "recheck", cid)
+    if not after:
+        return [f"      {NOT_RECORDED}"]
+    _, _, before = find_claim(a, "final", cid)
+    lines = [f"      repo      {rp}"]
+    if with_before:
+        lines.append("      before (after repair):")
+        lines += claim_lines(before, "        ") if before else [f"        {NOT_RECORDED}"]
+        lines.append("      after (after re-check):")
+        lines += claim_lines(after, "        ")
+    else:
+        lines += claim_lines(after)
+    added = new_repairs(before or {}, after)
+    lines.append(f"      re-check repairs  {len(added)}")
+    for r in sorted(pass_rounds(added), key=lambda r: r.get("round", 0)):
+        lines.append(f"      round {r.get('round')} {r.get('action')}, the Checker's note:")
+        lines += wrap(r.get("check_note", ""), "        ")
     return lines
 
 
@@ -465,7 +631,8 @@ def render(archive):
     lines = ["Honeyguide runs: receipts", rule("="),
              f"  archive   {archive.parent.name}/{archive.name} (read only)",
              f"  repos     {', '.join(a['repos'])}"]
-    for block in (block_runs, block_maps, block_checker, block_readability, block_demo, block_examples):
+    for block in (block_runs, block_maps, block_checker, block_recheck, block_readability, block_demo,
+                  block_examples):
         status(f"block {block.__name__[6:]}")
         lines += block(a)
     return "\n".join(line.rstrip() for line in lines) + "\n"
