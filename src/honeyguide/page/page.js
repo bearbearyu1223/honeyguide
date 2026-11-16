@@ -932,10 +932,16 @@ function askComponent(id) {
   applyOverlays();
   render(true);
   const cin = $("#cin");
-  cin.value = `What does ${c.name} do, and how do the components around it use it?`;
+  cin.value = `What does ${compSubject(c)} do, and how do the components around it use it?`;
   autoGrow();
   cin.focus();
   cin.setSelectionRange(cin.value.length, cin.value.length);
+}
+/* the component as a question names it, from its files (never its box's "+N" badge): "engine.py" for one file,
+   "engine.py (and 1 more file)" for several */
+function compSubject(c) {
+  const files = c.files || [], head = HGD.compName({ id: c.id, files: files.slice(0, 1) });
+  return files.length > 1 ? `${head} (and ${plural(files.length - 1, "more file")})` : head;
 }
 function toggleExpand(id) {
   UI.gexp.has(id) ? UI.gexp.delete(id) : UI.gexp.add(id);
@@ -1914,12 +1920,16 @@ function findHits(q) {
 }
 function applyFindFilter() {
   const q = FIND.q;
+  /* matched against the outline's data (section titles, sub-section labels), never its rendered text: that also
+     holds the section's initial and its question-count badge */
+  const secs = new Map((D.map?.document?.sections || []).map(s => [s.id, s]));
   for (const li of $$("#toc li.ts")) {
-    const subs = $$(".tsub li", li);
-    const secHit = !q || $("a[data-sec]", li).textContent.toLowerCase().includes(q);
+    const subs = $$(".tsub li", li), id = $("a[data-sec]", li).dataset.sec, sec = secs.get(id);
+    const labels = new Map(sec ? tocSubs(sec).map(([sid, label]) => [sid, label]) : []);
+    const secHit = !q || (sec?.title || "").toLowerCase().includes(q);
     let any = false;
-    for (const x of subs) { const hit = !q || secHit || x.textContent.toLowerCase().includes(q); x.hidden = !hit; any = any || hit; }
-    li.hidden = !(secHit || any || FIND.hits.some(h => blockAt(h[0])?.sec?.id === $("a[data-sec]", li).dataset.sec));
+    for (const x of subs) { const hit = !q || secHit || (labels.get($("a[data-sub]", x)?.dataset.sub) || "").toLowerCase().includes(q); x.hidden = !hit; any = any || hit; }
+    li.hidden = !(secHit || any || FIND.hits.some(h => blockAt(h[0])?.sec?.id === id));
   }
 }
 function findMarks() {

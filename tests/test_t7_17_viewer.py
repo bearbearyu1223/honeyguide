@@ -164,6 +164,27 @@ def test_ask_about_this_component_prefills_the_ask_box(site, chrome):
     c.js("document.querySelector('[data-cancel]').click()")
 
 
+def test_ask_about_a_multi_file_component_names_it_without_the_badge(site, chrome):
+    # train.py + optim.py: the box shows "train.py" and a "+1" badge; the question is built from the files, so the
+    # badge never leaks into it ("What does train.py +1 do" was the bug)
+    c = chrome
+    fresh(c, site["url"])
+    c.click_el(f'{SVG} .dg-node[data-comp="m-train"] .gbox')
+    c.click_el("#gfocus [data-gask]")
+    c.wait("document.body.classList.contains('popen')", 5)
+    q = c.js("document.getElementById('cin').value")
+    assert q == "What does train.py (and 1 more file) do, and how do the components around it use it?"
+    assert "+1" not in q and "+ 1" not in q
+    assert c.js("!!document.querySelector('.mod[data-block=\"m-train\"] .mk.pend')")
+    c.js("document.querySelector('[data-cancel]').click()")
+    # single-file: unchanged
+    c.click_el(f'{SVG} .dg-node[data-comp="m-engine"] .gbox')
+    c.click_el("#gfocus [data-gask]")
+    c.wait("document.body.classList.contains('popen')", 5)
+    assert c.js("document.getElementById('cin').value") == "What does engine.py do, and how do the components around it use it?"
+    c.js("document.querySelector('[data-cancel]').click()")
+
+
 # -- the viewer: zoom, pan, fit, full screen ------------------------------------------------------------------------
 
 
@@ -305,6 +326,18 @@ def test_find_filters_the_outline_and_finds_text(site, chrome):
     assert c.js("document.getElementById('find').value") == "" and c.js("document.querySelectorAll('#col .fd').length") == 0
     # find marks never change the text: selection offsets come from the leaves, as before
     assert c.js("[...document.querySelectorAll('#toc li.ts')].every(l => !l.hidden)")
+
+
+def test_outline_filter_matches_titles_not_the_initial_or_badge(site, chrome):
+    # the Modules entry renders as "M" (its initial) + "Modules" + a count badge; "mm" is in that text but not in
+    # any title or label, so filtering on it (with no text hits) hides the section
+    c = chrome
+    fresh(c, site["url"])
+    assert "mm" in c.js("document.querySelector('#toc a[data-sec=\"modules\"]').textContent").lower()
+    shown = c.js("(() => { FIND.q = 'mm'; FIND.hits = []; applyFindFilter(); const r = !document.querySelector('#toc a[data-sec=\"modules\"]').closest('li').hidden; FIND.q = ''; applyFindFilter(); return r; })()")
+    assert shown is False
+    kept = c.js("(() => { FIND.q = 'training loop'; FIND.hits = []; applyFindFilter(); const li = document.querySelector('#toc a[data-sec=\"modules\"]').closest('li'); const r = [li.hidden, [...li.querySelectorAll('.tsub li')].filter(x => !x.hidden).map(x => x.querySelector('a').dataset.sub)]; FIND.q = ''; applyFindFilter(); return r; })()")
+    assert kept == [False, ["m-m-train"]]
 
 
 # -- the repo card -----------------------------------------------------------------------------------------------------
