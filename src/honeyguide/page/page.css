@@ -62,7 +62,18 @@ svg.i{width:16px;height:16px;flex:none}
 .logo{display:inline-flex;flex:none}
 .railbtn{color:var(--faint);padding:4px;border-radius:6px;display:inline-flex;transition:color var(--t),background var(--t)}
 .railbtn:hover{color:var(--ink);background:var(--sunken)}
-.repo{font:12px var(--mono);color:var(--muted);margin:2px 0 28px 32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the repo line under the name: the repo, then, quieter, "mapped at <sha>" (the map's commit, linked on GitHub).
+   flex:none: a flex item with overflow:hidden may shrink to nothing, and the line was cut when the sidebar was short */
+.repo{flex:none;margin:2px 0 28px 32px;min-width:0;line-height:1.45}
+.repo-n{font-size:13px;font-weight:550;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repo-at{font-size:12px;color:var(--faint);white-space:nowrap}
+.repo-at code{font:12px/1 var(--mono);background:none;padding:0;color:var(--muted)}
+.repo-at a{text-decoration:none;border-radius:4px}
+.repo-at a:hover code{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+/* sidebar chrome is never selectable, so a drag from the map never paints it in the note colour (::selection) and
+   it can never be asked about or annotated; the Find box still takes text */
+.side{user-select:none;-webkit-user-select:none}
+.side input{user-select:text;-webkit-user-select:text}
 .toc{list-style:none;margin:0;padding:0;font-size:13px;font-weight:500}
 .toc a{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);text-decoration:none;padding:6px 8px 6px 12px;border-radius:6px;margin:0 0 2px;transition:background var(--t),color var(--t)}
 .toc a .tt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

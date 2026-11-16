@@ -451,7 +451,7 @@ function renderNoMap() {
     <p class="quiet">Memory for this repo lives outside the checkout, in <code>~/.honeyguide/</code> (or <code>$HONEYGUIDE_HOME</code>).</p></div>`;
   $("#toc").innerHTML = "";
   $("#needs").innerHTML = "";
-  $("#repo").textContent = REPO_NAME;
+  setRepoLine(REPO_NAME);
   document.body.classList.add("nomap-on");
 }
 /* UX v4: the contents outline: each section, and under it its sub-sections (the Overview's topics and the component
@@ -1223,6 +1223,25 @@ function answerOverlays() {
 }
 
 /* ---------------------------------------------------------------- memory header */
+/* the sidebar's repo line, under the name: the repo, and below it, quieter, the commit the map describes (the map's
+   commit, as the repo card's "mapped at"; never HEAD). The short sha links to that commit on GitHub when the repo is
+   on GitHub, else it is plain text. Sidebar chrome: never selectable, so never highlighted or annotated. */
+function repoLineHTML(name, sha, card) {
+  let h = `<div class="repo-n">${esc(name || "")}</div>`;
+  if (!sha) return h;
+  const date = card?.commit?.sha === sha ? fmtDate(card.commit.date) : "";
+  const tip = `This map describes the code at commit <code>${esc(sha.slice(0, 12))}</code>${date ? ` (${esc(date)})` : ""}`;
+  const gh = card?.url && (card.host === "github.com" || /^https:\/\/github\.com\//.test(card.url));
+  const code = `<code>${esc(short(sha))}</code>`;
+  return h + `<div class="repo-at">mapped at ${gh
+    ? `<a href="${esc(card.url.replace(/\/+$/, ""))}/commit/${esc(sha)}" target="_blank" rel="noopener noreferrer" data-tip="${esc(tip)}">${code}</a>`
+    : `<span tabindex="0" data-tip="${esc(tip)}">${code}</span>`}</div>`;
+}
+let repoLine = null;
+function setRepoLine(name, sha, card) {
+  const h = repoLineHTML(name, sha, card);
+  if (h !== repoLine) { $("#repo").innerHTML = h; repoLine = h; }   /* renderHeader runs on every poll */
+}
 function allClaims() { return [...claimsById().values()]; }
 function renderHeader() {
   const s = D.state;
@@ -1251,7 +1270,7 @@ function renderHeader() {
   if (since) h += `<span class="sep">·</span><span class="since">${plural(since, "claim")} re-checked since your last visit</span>`;
   if (m.dirty && m.dirty.tracked) h += `<span class="sep">·</span><span data-tip="${m.dirty.tracked} uncommitted change(s) in the working tree. The map and previews read committed code only.">uncommitted changes not mapped</span>`;
   $("#mem").innerHTML = h;
-  $("#repo").textContent = `${doc.title || ""} @ ${short(m.head || s.head)}`;
+  setRepoLine(doc.title || doc.repo?.name || REPO_NAME, s.map_commit || m.map_commit || doc.repo?.commit?.sha, doc.repo);
   /* the refresh since the last visit */
   const last = m.last_refresh;
   const show = last && (!m.previous_visit || last.at > m.previous_visit) && UI.dismissed !== last.at;
@@ -1723,7 +1742,7 @@ document.addEventListener("mouseover", e => {
   else if (!pinned && !e.target.closest(".prev") && PREV.style.display === "block") { clearTimeout(hideT); hideT = setTimeout(() => { if (!pinned) PREV.style.display = "none"; }, 220); }
   const d = e.target.closest("[data-tip]");
   if (!d) { TIP.classList.remove("on"); return; }
-  showTip(d, d.dataset.tip, !!d.closest(".prev"));
+  showTip(d, d.dataset.tip, !!d.closest(".prev,#repo"));   /* the repo line's tip opens below, off the name */
 });
 document.addEventListener("focusin", e => { const d = e.target.closest?.("[data-tip]"); if (d && e.target.matches(":focus-visible")) showTip(d, d.dataset.tip); else TIP.classList.remove("on"); });
 function hideTip() { TIP.classList.remove("on"); }
