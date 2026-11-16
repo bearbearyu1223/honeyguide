@@ -1,0 +1,1807 @@
+{
+ "status": "drafted by Claude, confirmed by Han 2026-11-16 (no flips); entered into eval/human/answers/hops_*.json",
+ "rule": "Required: the hops that carry the flow the question asks about, judged by its own text: the entry point, the first call into each component that does the named work (stages, blocks, compute steps, model/tool calls), each step the question says to count, and the hop that produces the result asked for. Optional: repeated low-level helpers (norm, Linear, rotary), wrappers and plumbing (metering, observers, schema getters, graph construction calls, schedulers), config/env checks, string/format helpers, and hops that are a detail of a required parent or that do nothing in this scenario (hooks, plugins, Waku Memory, reports, slot gate off).",
+ "questions": [
+  {
+   "repo": "nanochat",
+   "id": "nc-flo-01",
+   "text": "With config GPTConfig(sequence_len=32, n_layer=2, n_head=2, n_kv_head=2, n_embd=32, window_pattern='SSSL'), the model is built with GPT(config) on the meta device, moved with to_empty(device='cpu'), then model.init_weights() is called. Which repo functions run, in order?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "GPT.__init__",
+     "file": "nanochat/gpt.py",
+     "line": 157,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Builds the model: embeddings, blocks, lm_head, scalars, buffers (on meta)."
+    },
+    {
+     "index": 1,
+     "function": "GPT._compute_window_sizes",
+     "file": "nanochat/gpt.py",
+     "line": 287,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Small helper inside GPT.__init__ turning 'SSSL' into per-layer windows."
+    },
+    {
+     "index": 2,
+     "function": "Block.__init__",
+     "file": "nanochat/gpt.py",
+     "line": 145,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Builds each transformer block (attention + MLP)."
+    },
+    {
+     "index": 3,
+     "function": "CausalSelfAttention.__init__",
+     "file": "nanochat/gpt.py",
+     "line": 68,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Builds each layer's q/k/v/proj projections and value-embedding gate."
+    },
+    {
+     "index": 4,
+     "function": "MLP.__init__",
+     "file": "nanochat/gpt.py",
+     "line": 132,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Builds each layer's MLP projections."
+    },
+    {
+     "index": 5,
+     "function": "GPT._precompute_rotary_embeddings",
+     "file": "nanochat/gpt.py",
+     "line": 270,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Rotary cos/sin buffer helper, detail of __init__ and init_weights."
+    },
+    {
+     "index": 6,
+     "function": "GPT.init_weights",
+     "file": "nanochat/gpt.py",
+     "line": 203,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "The step that actually initializes every parameter after to_empty."
+    }
+   ]
+  },
+  {
+   "repo": "nanochat",
+   "id": "nc-flo-02",
+   "text": "Same toy GPTConfig on CPU (n_layer=2, n_embd=32, float32, torch.compile off): loss = model(x, y) with x and y random token ids of shape (2, 16). Which repo functions run, in order, from GPT.forward until the loss is returned?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "GPT.forward",
+     "file": "nanochat/gpt.py",
+     "line": 459,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point: embeds, runs blocks, computes logits and the loss."
+    },
+    {
+     "index": 1,
+     "function": "norm",
+     "file": "nanochat/gpt.py",
+     "line": 42,
+     "count": 10,
+     "tags": [
+      "x10"
+     ],
+     "draft": "optional",
+     "why": "RMSNorm helper called many times inside required steps."
+    },
+    {
+     "index": 2,
+     "function": "Linear.forward",
+     "file": "nanochat/gpt.py",
+     "line": 49,
+     "count": 15,
+     "tags": [
+      "x15"
+     ],
+     "draft": "optional",
+     "why": "Linear wrapper (dtype cast) called many times inside required steps."
+    },
+    {
+     "index": 3,
+     "function": "Block.forward",
+     "file": "nanochat/gpt.py",
+     "line": 150,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Each transformer layer of the forward pass."
+    },
+    {
+     "index": 4,
+     "function": "CausalSelfAttention.forward",
+     "file": "nanochat/gpt.py",
+     "line": 84,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Attention block named by the flow."
+    },
+    {
+     "index": 5,
+     "function": "apply_rotary_emb",
+     "file": "nanochat/gpt.py",
+     "line": 57,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Rotary helper inside attention."
+    },
+    {
+     "index": 6,
+     "function": "flash_attn_func",
+     "file": "nanochat/flash_attention.py",
+     "line": 115,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "First call into the attention kernel module (training path, no cache)."
+    },
+    {
+     "index": 7,
+     "function": "_sdpa_attention",
+     "file": "nanochat/flash_attention.py",
+     "line": 77,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "CPU SDPA fallback inside flash_attn_func; detail of its parent."
+    },
+    {
+     "index": 8,
+     "function": "MLP.forward",
+     "file": "nanochat/gpt.py",
+     "line": 137,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "MLP block named by the flow."
+    }
+   ]
+  },
+  {
+   "repo": "nanochat",
+   "id": "nc-flo-03",
+   "text": "Same toy model on CPU, one process (world size 1), after loss.backward(): optimizer.step() on the optimizer returned by model.setup_optimizer() with default arguments, with torch.compile disabled. Which repo functions run, in order?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "MuonAdamW.step",
+     "file": "nanochat/optim.py",
+     "line": 428,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point; runs the reduce, compute, gather phases."
+    },
+    {
+     "index": 1,
+     "function": "MuonAdamW._reduce_adamw",
+     "file": "nanochat/optim.py",
+     "line": 274,
+     "count": 6,
+     "tags": [
+      "x6"
+     ],
+     "draft": "optional",
+     "why": "World size 1: no communication, only wraps grads per param."
+    },
+    {
+     "index": 2,
+     "function": "MuonAdamW._reduce_muon",
+     "file": "nanochat/optim.py",
+     "line": 295,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "World size 1: no communication, only stacks grads."
+    },
+    {
+     "index": 3,
+     "function": "MuonAdamW._compute_adamw",
+     "file": "nanochat/optim.py",
+     "line": 320,
+     "count": 6,
+     "tags": [
+      "x6"
+     ],
+     "draft": "required",
+     "why": "AdamW compute step: state init and per-param update."
+    },
+    {
+     "index": 4,
+     "function": "adamw_step_fused",
+     "file": "nanochat/optim.py",
+     "line": 23,
+     "count": 8,
+     "tags": [
+      "x8"
+     ],
+     "draft": "required",
+     "why": "The AdamW update math itself."
+    },
+    {
+     "index": 5,
+     "function": "MuonAdamW._compute_muon",
+     "file": "nanochat/optim.py",
+     "line": 362,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "required",
+     "why": "Muon compute step: momentum buffers and stacked update."
+    },
+    {
+     "index": 6,
+     "function": "muon_step_fused",
+     "file": "nanochat/optim.py",
+     "line": 111,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "required",
+     "why": "The Muon update math (momentum, orthogonalization) itself."
+    },
+    {
+     "index": 7,
+     "function": "MuonAdamW._finish_gathers",
+     "file": "nanochat/optim.py",
+     "line": 419,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Copies updated Muon stack back into params; without it Muon params unchanged."
+    }
+   ]
+  },
+  {
+   "repo": "nanochat",
+   "id": "nc-flo-04",
+   "text": "Same toy model and its trained toy tokenizer on CPU: Engine(model, tokenizer).generate(prompt_ids, num_samples=1, max_tokens=4, temperature=0.6, top_k=50, seed=42), consumed to the end. Which repo functions does Engine.generate call, in order? (Count each pass through the model as one step; what happens inside it is another question.)",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Engine.__init__",
+     "file": "nanochat/engine.py",
+     "line": 171,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Constructor only stores model and tokenizer; not called by generate."
+    },
+    {
+     "index": 1,
+     "function": "Engine.generate",
+     "file": "nanochat/engine.py",
+     "line": 175,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point: prefill, cache replication, sampling loop."
+    },
+    {
+     "index": 2,
+     "function": "RustBPETokenizer.encode_special",
+     "file": "nanochat/tokenizer.py",
+     "line": 89,
+     "count": 5,
+     "tags": [
+      "x5",
+      "(cached)"
+     ],
+     "draft": "optional",
+     "why": "Cached special-token id lookups for the tool-use state machine."
+    },
+    {
+     "index": 3,
+     "function": "KVCache.__init__",
+     "file": "nanochat/engine.py",
+     "line": 92,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Allocates the prefill and decode KV caches."
+    },
+    {
+     "index": 4,
+     "function": "GPT.forward",
+     "file": "nanochat/gpt.py",
+     "line": 459,
+     "count": 5,
+     "tags": [
+      "x5",
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Each model pass (prefill and per-token decode)."
+    },
+    {
+     "index": 5,
+     "function": "KVCache.prefill",
+     "file": "nanochat/engine.py",
+     "line": 123,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Copies the prompt's KV into the decode cache."
+    },
+    {
+     "index": 6,
+     "function": "RowState.__init__",
+     "file": "nanochat/engine.py",
+     "line": 162,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Per-row bookkeeping object, plain state holder."
+    },
+    {
+     "index": 7,
+     "function": "sample_next_token",
+     "file": "nanochat/engine.py",
+     "line": 140,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "required",
+     "why": "Samples each new token (temperature, top-k)."
+    }
+   ]
+  },
+  {
+   "repo": "nanochat",
+   "id": "nc-flo-05",
+   "text": "In that generate call, the first model forward pass: GPT.forward on the 9-token prompt (batch 1) with a fresh KV cache (kv_cache passed, no targets). Which repo functions run, in order, until the logits are returned?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "GPT.forward",
+     "file": "nanochat/gpt.py",
+     "line": 459,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point: embeds, runs blocks, returns logits."
+    },
+    {
+     "index": 1,
+     "function": "norm",
+     "file": "nanochat/gpt.py",
+     "line": 42,
+     "count": 10,
+     "tags": [
+      "x10"
+     ],
+     "draft": "optional",
+     "why": "RMSNorm helper called many times inside required steps."
+    },
+    {
+     "index": 2,
+     "function": "Linear.forward",
+     "file": "nanochat/gpt.py",
+     "line": 49,
+     "count": 15,
+     "tags": [
+      "x15"
+     ],
+     "draft": "optional",
+     "why": "Linear wrapper (dtype cast) called many times inside required steps."
+    },
+    {
+     "index": 3,
+     "function": "Block.forward",
+     "file": "nanochat/gpt.py",
+     "line": 150,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Each transformer layer of the forward pass."
+    },
+    {
+     "index": 4,
+     "function": "CausalSelfAttention.forward",
+     "file": "nanochat/gpt.py",
+     "line": 84,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Attention block; uses the KV cache path here."
+    },
+    {
+     "index": 5,
+     "function": "apply_rotary_emb",
+     "file": "nanochat/gpt.py",
+     "line": 57,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Rotary helper inside attention."
+    },
+    {
+     "index": 6,
+     "function": "flash_attn_with_kvcache",
+     "file": "nanochat/flash_attention.py",
+     "line": 139,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "First call into the attention module on the cached path; writes the cache."
+    },
+    {
+     "index": 7,
+     "function": "_sdpa_attention",
+     "file": "nanochat/flash_attention.py",
+     "line": 77,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "CPU SDPA fallback inside flash_attn_with_kvcache; detail of its parent."
+    },
+    {
+     "index": 8,
+     "function": "MLP.forward",
+     "file": "nanochat/gpt.py",
+     "line": 137,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "MLP block of each layer."
+    },
+    {
+     "index": 9,
+     "function": "KVCache.advance",
+     "file": "nanochat/engine.py",
+     "line": 119,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Moves the cache position after the last layer; the cache-specific step."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-01",
+   "text": "Waku(settings, client=<scripted fake model client>) with a fresh home (empty SQLite state.db), no MCP servers or plugins, graph_workflows off, consolidate_every=3. Which repo functions does building the agent run, in order? (Count setting up memory, and building the tool registry, as one step each.)",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Waku.__init__",
+     "file": "waku/app.py",
+     "line": 69,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point that builds the agent."
+    },
+    {
+     "index": 1,
+     "function": "Settings.ensure_home",
+     "file": "waku/config.py",
+     "line": 314,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Creates home folders; setup plumbing."
+    },
+    {
+     "index": 2,
+     "function": "connect",
+     "file": "waku/db.py",
+     "line": 111,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Opens state.db and creates the schema."
+    },
+    {
+     "index": 3,
+     "function": "_migrate",
+     "file": "waku/db.py",
+     "line": 83,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Idempotent column upgrades; no-op on a fresh schema."
+    },
+    {
+     "index": 4,
+     "function": "Memory.__init__",
+     "file": "waku/memory/__init__.py",
+     "line": 60,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Setting up memory, one step per the question."
+    },
+    {
+     "index": 5,
+     "function": "build_registry",
+     "file": "waku/tools/__init__.py",
+     "line": 14,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Building the tool registry, one step per the question."
+    },
+    {
+     "index": 6,
+     "function": "remember_via",
+     "file": "waku/tools/waku_memory.py",
+     "line": 101,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "index": 7,
+     "function": "_server",
+     "file": "waku/tools/waku_memory.py",
+     "line": 67,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Server lookup helper; None without a bridge."
+    },
+    {
+     "index": 8,
+     "function": "consolidation_every",
+     "file": "waku/tools/waku_memory.py",
+     "line": 55,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Config getter; returns settings.consolidate_every unchanged here."
+    },
+    {
+     "index": 9,
+     "function": "search_via",
+     "file": "waku/tools/waku_memory.py",
+     "line": 128,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "index": 10,
+     "function": "get_via",
+     "file": "waku/tools/waku_memory.py",
+     "line": 152,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "index": 11,
+     "function": "tool_name",
+     "file": "waku/tools/waku_memory.py",
+     "line": 188,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Name lookup; None without Waku Memory."
+    },
+    {
+     "index": 12,
+     "function": "ToolRegistry.get",
+     "file": "waku/tools/registry.py",
+     "line": 44,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Registry lookup; finds no remember tool."
+    },
+    {
+     "index": 13,
+     "function": "Session.__init__",
+     "file": "waku/runtime/session.py",
+     "line": 86,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Builds the conversation session that composes prompts."
+    },
+    {
+     "index": 14,
+     "function": "enabled",
+     "file": "waku/plugins/store.py",
+     "line": 75,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Plugin store read; no plugins installed."
+    },
+    {
+     "index": 15,
+     "function": "read",
+     "file": "waku/plugins/store.py",
+     "line": 57,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Plugin store file read; detail of enabled."
+    },
+    {
+     "index": 16,
+     "function": "folder",
+     "file": "waku/plugins/store.py",
+     "line": 38,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Path helper inside the plugin store."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-02",
+   "text": "That agent's first turn: waku.respond(<a request to remember an agenda for Alex>), where the model saves it with one save_note call and then replies. Which repo functions does respond call, in order? (Count running the turn, the consolidation check and the receipt as one step each.)",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Waku.respond",
+     "file": "waku/app.py",
+     "line": 136,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point for the turn."
+    },
+    {
+     "index": 1,
+     "function": "compose",
+     "file": "waku/ops/tracing.py",
+     "line": 217,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Observer fan-out plumbing."
+    },
+    {
+     "index": 2,
+     "function": "Waku._before_turn",
+     "file": "waku/app.py",
+     "line": 281,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Plugin hooks; returns at once without hooks."
+    },
+    {
+     "index": 3,
+     "function": "Waku._run_full_turn",
+     "file": "waku/app.py",
+     "line": 392,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Running the turn, one step per the question."
+    },
+    {
+     "index": 4,
+     "function": "kept_body",
+     "file": "waku/memory/reports.py",
+     "line": 176,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Report extraction; no report in this turn."
+    },
+    {
+     "index": 5,
+     "function": "saved_by_model",
+     "file": "waku/memory/reports.py",
+     "line": 156,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Report helper; no remember tool call this turn."
+    },
+    {
+     "index": 6,
+     "function": "find",
+     "file": "waku/memory/reports.py",
+     "line": 88,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Report marker search; finds none."
+    },
+    {
+     "index": 7,
+     "function": "save",
+     "file": "waku/memory/reports.py",
+     "line": 260,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Report upload step; no report and no Waku Memory, reply unchanged."
+    },
+    {
+     "index": 8,
+     "function": "Waku.respond.<locals>._status",
+     "file": "waku/app.py",
+     "line": 211,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Per-tool status label for the turn's meta."
+    },
+    {
+     "index": 9,
+     "function": "Session.add_exchange",
+     "file": "waku/runtime/session.py",
+     "line": 140,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Records the exchange in history and chat log."
+    },
+    {
+     "index": 10,
+     "function": "note",
+     "file": "waku/memory/tool_note.py",
+     "line": 46,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Compact tool note, detail of add_exchange."
+    },
+    {
+     "index": 11,
+     "function": "_short",
+     "file": "waku/memory/tool_note.py",
+     "line": 38,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "String clipping helper."
+    },
+    {
+     "index": 12,
+     "function": "Memory.log_chat",
+     "file": "waku/memory/__init__.py",
+     "line": 144,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Chat-log insert, detail of add_exchange."
+    },
+    {
+     "index": 13,
+     "function": "Waku._recalled",
+     "file": "waku/app.py",
+     "line": 358,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Builds the recalled text passed to consolidation; argument prep."
+    },
+    {
+     "index": 14,
+     "function": "tool_name",
+     "file": "waku/tools/waku_memory.py",
+     "line": 188,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Name lookup; None without Waku Memory."
+    },
+    {
+     "index": 15,
+     "function": "_server",
+     "file": "waku/tools/waku_memory.py",
+     "line": 67,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Server lookup helper; None without a bridge."
+    },
+    {
+     "index": 16,
+     "function": "Memory.maybe_consolidate",
+     "file": "waku/memory/__init__.py",
+     "line": 271,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "The consolidation check, one step per the question."
+    },
+    {
+     "index": 17,
+     "function": "Memory.export_markdown",
+     "file": "waku/memory/__init__.py",
+     "line": 213,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Mirrors memory to MEMORY.md after every turn."
+    },
+    {
+     "index": 18,
+     "function": "Memory.export_fact_files",
+     "file": "waku/memory/__init__.py",
+     "line": 240,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Per-fact files, detail of export_markdown."
+    },
+    {
+     "index": 19,
+     "function": "_fact_file_text",
+     "file": "waku/memory/__init__.py",
+     "line": 46,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Formatting helper for one fact file."
+    },
+    {
+     "index": 20,
+     "function": "_fact_file_text.<locals>.one_line",
+     "file": "waku/memory/__init__.py",
+     "line": 52,
+     "count": 3,
+     "tags": [
+      "x3"
+     ],
+     "draft": "optional",
+     "why": "Whitespace helper."
+    },
+    {
+     "index": 21,
+     "function": "Waku._receipt",
+     "file": "waku/app.py",
+     "line": 379,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "The receipt, one step per the question."
+    },
+    {
+     "index": 22,
+     "function": "Waku._after_turn",
+     "file": "waku/app.py",
+     "line": 341,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Stop hook; returns at once without hooks."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-03",
+   "text": "In that first turn, building the system prompt: Session.build_system on the message, where the small model's gate replies retrieve=true with query 'alex' and memory is still empty. Which repo functions run, in order?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Session.build_system",
+     "file": "waku/runtime/session.py",
+     "line": 100,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point that assembles the system prompt."
+    },
+    {
+     "index": 1,
+     "function": "load_soul",
+     "file": "waku/runtime/session.py",
+     "line": 73,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Reads (creates) SOUL.md, the prompt's first part."
+    },
+    {
+     "index": 2,
+     "function": "unavailable",
+     "file": "waku/tools/treg.py",
+     "line": 95,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Unavailable-tools filter; config check."
+    },
+    {
+     "index": 3,
+     "function": "own_key",
+     "file": "waku/tools/treg.py",
+     "line": 70,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Env-var check inside unavailable."
+    },
+    {
+     "index": 4,
+     "function": "Memory.gated_retrieve",
+     "file": "waku/memory/__init__.py",
+     "line": 118,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Gated memory retrieval, the core of this question."
+    },
+    {
+     "index": 5,
+     "function": "metered.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 249,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 6,
+     "function": "_MeteredMessages.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 227,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 7,
+     "function": "should_retrieve",
+     "file": "waku/memory/retrieval_gate.py",
+     "line": 36,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "The small model's gate decision (retrieve=true, query 'alex')."
+    },
+    {
+     "index": 8,
+     "function": "_MeteredMessages.create",
+     "file": "waku/ops/tracing.py",
+     "line": 230,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper around the gate's model call; detail of should_retrieve."
+    },
+    {
+     "index": 9,
+     "function": "SqliteFactStore.search",
+     "file": "waku/memory/semantic/store.py",
+     "line": 100,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Searches semantic facts for 'alex'."
+    },
+    {
+     "index": 10,
+     "function": "_fts_query",
+     "file": "waku/memory/semantic/store.py",
+     "line": 31,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "FTS query-string helper."
+    },
+    {
+     "index": 11,
+     "function": "select",
+     "file": "waku/memory/slot_gate.py",
+     "line": 66,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Slot gate; off by default, passes facts through."
+    },
+    {
+     "index": 12,
+     "function": "SqliteEpisodeStore.search",
+     "file": "waku/memory/episodic/store.py",
+     "line": 27,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Searches episodic memory for 'alex'."
+    },
+    {
+     "index": 13,
+     "function": "Memory.matching_skills",
+     "file": "waku/memory/__init__.py",
+     "line": 139,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Adds matching skill instructions, the prompt's procedural part."
+    },
+    {
+     "index": 14,
+     "function": "SkillLoader.match",
+     "file": "waku/memory/procedural/loader.py",
+     "line": 77,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Keyword matching, detail of matching_skills."
+    },
+    {
+     "index": 15,
+     "function": "SkillLoader._scan_sig",
+     "file": "waku/memory/procedural/loader.py",
+     "line": 58,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Skill-file change check for reloads."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-04",
+   "text": "In that first turn, the loop: run_loop where the model's first reply asks for save_note(subject='alex', content=<the agenda>) and its second reply is plain text. Which repo functions are called, in order, until the reply is returned?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "run_loop",
+     "file": "waku/loop/agent.py",
+     "line": 91,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point: the reason-act loop."
+    },
+    {
+     "index": 1,
+     "function": "ToolRegistry.schemas",
+     "file": "waku/tools/registry.py",
+     "line": 47,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Tool schema getter for each model call."
+    },
+    {
+     "index": 2,
+     "function": "ToolRegistry.execute",
+     "file": "waku/tools/registry.py",
+     "line": 50,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Dispatches the save_note call."
+    },
+    {
+     "index": 3,
+     "function": "make_tool.<locals>.save_note",
+     "file": "waku/tools/notes.py",
+     "line": 35,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "The tool that saves the agenda."
+    },
+    {
+     "index": 4,
+     "function": "chain.<locals>.run",
+     "file": "waku/loop/trim.py",
+     "line": 60,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Trim chain plumbing before the second call."
+    },
+    {
+     "index": 5,
+     "function": "shrink_read",
+     "file": "waku/memory/reports.py",
+     "line": 186,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Report trimming; no report here."
+    },
+    {
+     "index": 6,
+     "function": "shrink_seen",
+     "file": "waku/loop/trim.py",
+     "line": 40,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Long-result trimming; save_note result is short."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-05",
+   "text": "The second turn, with settings.max_iterations=2: run_loop where the model asks for manage_memory (search 'alex', a 4,800-character result) and then send_message, so the limit is reached. Which repo functions are called, in order, until the reply is returned? (Count each tool's execution as one step.)",
+   "hops": [
+    {
+     "index": 0,
+     "function": "run_loop",
+     "file": "waku/loop/agent.py",
+     "line": 91,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point: the reason-act loop."
+    },
+    {
+     "index": 1,
+     "function": "ToolRegistry.schemas",
+     "file": "waku/tools/registry.py",
+     "line": 47,
+     "count": 3,
+     "tags": [
+      "x3"
+     ],
+     "draft": "optional",
+     "why": "Tool schema getter for each model call."
+    },
+    {
+     "index": 2,
+     "function": "ToolRegistry.execute",
+     "file": "waku/tools/registry.py",
+     "line": 50,
+     "count": 2,
+     "tags": [
+      "x2",
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Runs manage_memory and send_message."
+    },
+    {
+     "index": 3,
+     "function": "chain.<locals>.run",
+     "file": "waku/loop/trim.py",
+     "line": 60,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Trim chain plumbing."
+    },
+    {
+     "index": 4,
+     "function": "shrink_read",
+     "file": "waku/memory/reports.py",
+     "line": 186,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "optional",
+     "why": "Report trimming; no report here."
+    },
+    {
+     "index": 5,
+     "function": "shrink_seen",
+     "file": "waku/loop/trim.py",
+     "line": 40,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Cuts the 4,800-character result before the final call."
+    },
+    {
+     "index": 6,
+     "function": "_final_answer",
+     "file": "waku/loop/agent.py",
+     "line": 203,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Tools-off final call once the iteration limit is reached."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-06",
+   "text": "The third turn ends with six unconsolidated chat rows (consolidate_every=3): Memory.maybe_consolidate, where the small model proposes two facts (one about the user's meeting times, one an account balance) and one episode. Which repo functions run, in order?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Memory.maybe_consolidate",
+     "file": "waku/memory/__init__.py",
+     "line": 271,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point for consolidation."
+    },
+    {
+     "index": 1,
+     "function": "metered.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 249,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 2,
+     "function": "_MeteredMessages.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 227,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 3,
+     "function": "kept_if_due",
+     "file": "waku/memory/consolidation.py",
+     "line": 161,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Does the consolidation: due check, model call, filtering, storing."
+    },
+    {
+     "index": 4,
+     "function": "clip",
+     "file": "waku/memory/tool_note.py",
+     "line": 62,
+     "count": 6,
+     "tags": [
+      "x6"
+     ],
+     "draft": "optional",
+     "why": "Clips old tool notes in the log."
+    },
+    {
+     "index": 5,
+     "function": "_saved_reports",
+     "file": "waku/memory/consolidation.py",
+     "line": 297,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Collects saved report titles; none here."
+    },
+    {
+     "index": 6,
+     "function": "_MeteredMessages.create",
+     "file": "waku/ops/tracing.py",
+     "line": 230,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Metering wrapper around the summarizer call; detail of kept_if_due."
+    },
+    {
+     "index": 7,
+     "function": "is_ops_state",
+     "file": "waku/memory/consolidation.py",
+     "line": 375,
+     "count": 2,
+     "tags": [
+      "x2"
+     ],
+     "draft": "required",
+     "why": "Drops the account-balance fact the question sets up."
+    },
+    {
+     "index": 8,
+     "function": "is_memory_state",
+     "file": "waku/memory/consolidation.py",
+     "line": 401,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Second filter; drops nothing here."
+    },
+    {
+     "index": 9,
+     "function": "keep",
+     "file": "waku/memory/slot_gate.py",
+     "line": 83,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Slot gate; off by default, keeps all."
+    },
+    {
+     "index": 10,
+     "function": "enabled",
+     "file": "waku/memory/slot_gate.py",
+     "line": 44,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Env check inside the slot gate."
+    },
+    {
+     "index": 11,
+     "function": "SqliteFactStore.add",
+     "file": "waku/memory/semantic/store.py",
+     "line": 71,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Stores the kept meeting-times fact."
+    },
+    {
+     "index": 12,
+     "function": "SqliteEpisodeStore.add",
+     "file": "waku/memory/episodic/store.py",
+     "line": 20,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Stores the episode."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-07",
+   "text": "The fourth turn, with settings.graph_workflows=True: waku.respond('thanks!'), where the triage model answers 'quick'. Which repo functions does Waku._respond_via_graph run, in order, until the quick reply is returned?",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Waku._respond_via_graph",
+     "file": "waku/app.py",
+     "line": 436,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point for the graph turn."
+    },
+    {
+     "index": 1,
+     "function": "build_triage_graph",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 89,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Builds the triage graph."
+    },
+    {
+     "index": 2,
+     "function": "Graph.add_node",
+     "file": "waku/graph/engine.py",
+     "line": 71,
+     "count": 5,
+     "tags": [
+      "x5"
+     ],
+     "draft": "optional",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "index": 3,
+     "function": "Graph.add_edge",
+     "file": "waku/graph/engine.py",
+     "line": 76,
+     "count": 6,
+     "tags": [
+      "x6"
+     ],
+     "draft": "optional",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "index": 4,
+     "function": "key_router",
+     "file": "waku/graph/nodes.py",
+     "line": 65,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Router factory; detail of graph building."
+    },
+    {
+     "index": 5,
+     "function": "Graph.add_router",
+     "file": "waku/graph/engine.py",
+     "line": 84,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "index": 6,
+     "function": "run_graph",
+     "file": "waku/graph/engine.py",
+     "line": 106,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Runs the graph workflow."
+    },
+    {
+     "index": 7,
+     "function": "run_graph.<locals>.next_wave",
+     "file": "waku/graph/engine.py",
+     "line": 128,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Scheduler helper inside run_graph."
+    },
+    {
+     "index": 8,
+     "function": "run_graph.<locals>.run_one",
+     "file": "waku/graph/engine.py",
+     "line": 141,
+     "count": 4,
+     "tags": [
+      "x4",
+      "[worker-1, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Node-runner plumbing inside run_graph."
+    },
+    {
+     "index": 9,
+     "function": "build_triage_graph.<locals>.classify",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 97,
+     "count": 1,
+     "tags": [
+      "[worker-1, wave-1]"
+     ],
+     "draft": "required",
+     "why": "The classify node."
+    },
+    {
+     "index": 10,
+     "function": "metered.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 249,
+     "count": 2,
+     "tags": [
+      "x2",
+      "[worker-1, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 11,
+     "function": "_MeteredMessages.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 227,
+     "count": 2,
+     "tags": [
+      "x2",
+      "[worker-1, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 12,
+     "function": "classify_message",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 52,
+     "count": 1,
+     "tags": [
+      "[worker-1, wave-1]"
+     ],
+     "draft": "required",
+     "why": "Triage model call that answers 'quick'."
+    },
+    {
+     "index": 13,
+     "function": "_MeteredMessages.create",
+     "file": "waku/ops/tracing.py",
+     "line": 230,
+     "count": 2,
+     "tags": [
+      "x2",
+      "[worker-1, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper around the triage and quick-reply model calls."
+    },
+    {
+     "index": 14,
+     "function": "todays_events",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 73,
+     "count": 1,
+     "tags": [
+      "[worker-2, wave-1]"
+     ],
+     "draft": "required",
+     "why": "Calendar node running in parallel; feeds the quick reply."
+    },
+    {
+     "index": 15,
+     "function": "key_router.<locals>.route",
+     "file": "waku/graph/nodes.py",
+     "line": 69,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "The router decision that picks quick_reply."
+    },
+    {
+     "index": 16,
+     "function": "Waku._respond_via_graph.<locals>.quick_reply",
+     "file": "waku/app.py",
+     "line": 448,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Produces the quick reply asked for."
+    },
+    {
+     "index": 17,
+     "function": "with_context",
+     "file": "waku/app.py",
+     "line": 50,
+     "count": 1,
+     "tags": [],
+     "draft": "optional",
+     "why": "No plugin context; returns the message unchanged."
+    }
+   ]
+  },
+  {
+   "repo": "waku-agent",
+   "id": "wk-flo-08",
+   "text": "The fifth turn, graph_workflows still on: a question about Alex, where the triage model answers 'full'. Which repo functions does Waku._respond_via_graph run, in order? (Count building the graph, and the full turn it hands over to, as one step each.)",
+   "hops": [
+    {
+     "index": 0,
+     "function": "Waku._respond_via_graph",
+     "file": "waku/app.py",
+     "line": 436,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Entry point for the graph turn."
+    },
+    {
+     "index": 1,
+     "function": "build_triage_graph",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 89,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "Building the graph, one step per the question."
+    },
+    {
+     "index": 2,
+     "function": "run_graph",
+     "file": "waku/graph/engine.py",
+     "line": 106,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "Runs the graph workflow."
+    },
+    {
+     "index": 3,
+     "function": "run_graph.<locals>.next_wave",
+     "file": "waku/graph/engine.py",
+     "line": 128,
+     "count": 4,
+     "tags": [
+      "x4"
+     ],
+     "draft": "optional",
+     "why": "Scheduler helper inside run_graph."
+    },
+    {
+     "index": 4,
+     "function": "run_graph.<locals>.run_one",
+     "file": "waku/graph/engine.py",
+     "line": 141,
+     "count": 4,
+     "tags": [
+      "x4",
+      "[worker-3, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Node-runner plumbing inside run_graph."
+    },
+    {
+     "index": 5,
+     "function": "build_triage_graph.<locals>.classify",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 97,
+     "count": 1,
+     "tags": [
+      "[worker-3, wave-1]"
+     ],
+     "draft": "required",
+     "why": "The classify node."
+    },
+    {
+     "index": 6,
+     "function": "metered.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 249,
+     "count": 1,
+     "tags": [
+      "[worker-3, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 7,
+     "function": "_MeteredMessages.__init__",
+     "file": "waku/ops/tracing.py",
+     "line": 227,
+     "count": 1,
+     "tags": [
+      "[worker-3, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "index": 8,
+     "function": "classify_message",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 52,
+     "count": 1,
+     "tags": [
+      "[worker-3, wave-1]"
+     ],
+     "draft": "required",
+     "why": "Triage model call that answers 'full'."
+    },
+    {
+     "index": 9,
+     "function": "_MeteredMessages.create",
+     "file": "waku/ops/tracing.py",
+     "line": 230,
+     "count": 1,
+     "tags": [
+      "[worker-3, wave-1]"
+     ],
+     "draft": "optional",
+     "why": "Metering wrapper around the triage model call."
+    },
+    {
+     "index": 10,
+     "function": "todays_events",
+     "file": "waku/graph/workflows/triage.py",
+     "line": 73,
+     "count": 1,
+     "tags": [
+      "[worker-4, wave-1]"
+     ],
+     "draft": "required",
+     "why": "Calendar node running in parallel with classify."
+    },
+    {
+     "index": 11,
+     "function": "key_router.<locals>.route",
+     "file": "waku/graph/nodes.py",
+     "line": 69,
+     "count": 1,
+     "tags": [],
+     "draft": "required",
+     "why": "The router decision that picks full_agent."
+    },
+    {
+     "index": 12,
+     "function": "Waku._run_full_turn",
+     "file": "waku/app.py",
+     "line": 392,
+     "count": 1,
+     "tags": [
+      "(fold)"
+     ],
+     "draft": "required",
+     "why": "The full turn it hands over to, one step per the question."
+    }
+   ]
+  }
+ ]
+}

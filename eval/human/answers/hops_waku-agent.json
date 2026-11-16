@@ -1,0 +1,957 @@
+{
+ "chore": "T6a flow hops",
+ "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+ "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by Han 2026-11-16 without changes.",
+ "questions": {
+  "wk-flo-01": {
+   "hops": [
+    {
+     "file": "waku/app.py",
+     "index": 0,
+     "line": 69,
+     "mark": "required",
+     "qual": "Waku.__init__",
+     "why": "Entry point that builds the agent."
+    },
+    {
+     "file": "waku/config.py",
+     "index": 1,
+     "line": 314,
+     "mark": "optional",
+     "qual": "Settings.ensure_home",
+     "why": "Creates home folders; setup plumbing."
+    },
+    {
+     "file": "waku/db.py",
+     "index": 2,
+     "line": 111,
+     "mark": "required",
+     "qual": "connect",
+     "why": "Opens state.db and creates the schema."
+    },
+    {
+     "file": "waku/db.py",
+     "index": 3,
+     "line": 83,
+     "mark": "optional",
+     "qual": "_migrate",
+     "why": "Idempotent column upgrades; no-op on a fresh schema."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 4,
+     "line": 60,
+     "mark": "required",
+     "qual": "Memory.__init__",
+     "why": "Setting up memory, one step per the question."
+    },
+    {
+     "file": "waku/tools/__init__.py",
+     "index": 5,
+     "line": 14,
+     "mark": "required",
+     "qual": "build_registry",
+     "why": "Building the tool registry, one step per the question."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 6,
+     "line": 101,
+     "mark": "optional",
+     "qual": "remember_via",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 7,
+     "line": 67,
+     "mark": "optional",
+     "qual": "_server",
+     "why": "Server lookup helper; None without a bridge."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 8,
+     "line": 55,
+     "mark": "optional",
+     "qual": "consolidation_every",
+     "why": "Config getter; returns settings.consolidate_every unchanged here."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 9,
+     "line": 128,
+     "mark": "optional",
+     "qual": "search_via",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 10,
+     "line": 152,
+     "mark": "optional",
+     "qual": "get_via",
+     "why": "Waku Memory wiring; returns None without MCP servers."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 11,
+     "line": 188,
+     "mark": "optional",
+     "qual": "tool_name",
+     "why": "Name lookup; None without Waku Memory."
+    },
+    {
+     "file": "waku/tools/registry.py",
+     "index": 12,
+     "line": 44,
+     "mark": "optional",
+     "qual": "ToolRegistry.get",
+     "why": "Registry lookup; finds no remember tool."
+    },
+    {
+     "file": "waku/runtime/session.py",
+     "index": 13,
+     "line": 86,
+     "mark": "required",
+     "qual": "Session.__init__",
+     "why": "Builds the conversation session that composes prompts."
+    },
+    {
+     "file": "waku/plugins/store.py",
+     "index": 14,
+     "line": 75,
+     "mark": "optional",
+     "qual": "enabled",
+     "why": "Plugin store read; no plugins installed."
+    },
+    {
+     "file": "waku/plugins/store.py",
+     "index": 15,
+     "line": 57,
+     "mark": "optional",
+     "qual": "read",
+     "why": "Plugin store file read; detail of enabled."
+    },
+    {
+     "file": "waku/plugins/store.py",
+     "index": 16,
+     "line": 38,
+     "mark": "optional",
+     "qual": "folder",
+     "why": "Path helper inside the plugin store."
+    }
+   ]
+  },
+  "wk-flo-02": {
+   "hops": [
+    {
+     "file": "waku/app.py",
+     "index": 0,
+     "line": 136,
+     "mark": "required",
+     "qual": "Waku.respond",
+     "why": "Entry point for the turn."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 1,
+     "line": 217,
+     "mark": "optional",
+     "qual": "compose",
+     "why": "Observer fan-out plumbing."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 2,
+     "line": 281,
+     "mark": "optional",
+     "qual": "Waku._before_turn",
+     "why": "Plugin hooks; returns at once without hooks."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 3,
+     "line": 392,
+     "mark": "required",
+     "qual": "Waku._run_full_turn",
+     "why": "Running the turn, one step per the question."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 4,
+     "line": 176,
+     "mark": "optional",
+     "qual": "kept_body",
+     "why": "Report extraction; no report in this turn."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 5,
+     "line": 156,
+     "mark": "optional",
+     "qual": "saved_by_model",
+     "why": "Report helper; no remember tool call this turn."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 6,
+     "line": 88,
+     "mark": "optional",
+     "qual": "find",
+     "why": "Report marker search; finds none."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 7,
+     "line": 260,
+     "mark": "optional",
+     "qual": "save",
+     "why": "Report upload step; no report and no Waku Memory, reply unchanged."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 8,
+     "line": 211,
+     "mark": "optional",
+     "qual": "Waku.respond.<locals>._status",
+     "why": "Per-tool status label for the turn's meta."
+    },
+    {
+     "file": "waku/runtime/session.py",
+     "index": 9,
+     "line": 140,
+     "mark": "required",
+     "qual": "Session.add_exchange",
+     "why": "Records the exchange in history and chat log."
+    },
+    {
+     "file": "waku/memory/tool_note.py",
+     "index": 10,
+     "line": 46,
+     "mark": "optional",
+     "qual": "note",
+     "why": "Compact tool note, detail of add_exchange."
+    },
+    {
+     "file": "waku/memory/tool_note.py",
+     "index": 11,
+     "line": 38,
+     "mark": "optional",
+     "qual": "_short",
+     "why": "String clipping helper."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 12,
+     "line": 144,
+     "mark": "optional",
+     "qual": "Memory.log_chat",
+     "why": "Chat-log insert, detail of add_exchange."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 13,
+     "line": 358,
+     "mark": "optional",
+     "qual": "Waku._recalled",
+     "why": "Builds the recalled text passed to consolidation; argument prep."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 14,
+     "line": 188,
+     "mark": "optional",
+     "qual": "tool_name",
+     "why": "Name lookup; None without Waku Memory."
+    },
+    {
+     "file": "waku/tools/waku_memory.py",
+     "index": 15,
+     "line": 67,
+     "mark": "optional",
+     "qual": "_server",
+     "why": "Server lookup helper; None without a bridge."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 16,
+     "line": 271,
+     "mark": "required",
+     "qual": "Memory.maybe_consolidate",
+     "why": "The consolidation check, one step per the question."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 17,
+     "line": 213,
+     "mark": "required",
+     "qual": "Memory.export_markdown",
+     "why": "Mirrors memory to MEMORY.md after every turn."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 18,
+     "line": 240,
+     "mark": "optional",
+     "qual": "Memory.export_fact_files",
+     "why": "Per-fact files, detail of export_markdown."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 19,
+     "line": 46,
+     "mark": "optional",
+     "qual": "_fact_file_text",
+     "why": "Formatting helper for one fact file."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 20,
+     "line": 52,
+     "mark": "optional",
+     "qual": "_fact_file_text.<locals>.one_line",
+     "why": "Whitespace helper."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 21,
+     "line": 379,
+     "mark": "required",
+     "qual": "Waku._receipt",
+     "why": "The receipt, one step per the question."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 22,
+     "line": 341,
+     "mark": "optional",
+     "qual": "Waku._after_turn",
+     "why": "Stop hook; returns at once without hooks."
+    }
+   ]
+  },
+  "wk-flo-03": {
+   "hops": [
+    {
+     "file": "waku/runtime/session.py",
+     "index": 0,
+     "line": 100,
+     "mark": "required",
+     "qual": "Session.build_system",
+     "why": "Entry point that assembles the system prompt."
+    },
+    {
+     "file": "waku/runtime/session.py",
+     "index": 1,
+     "line": 73,
+     "mark": "required",
+     "qual": "load_soul",
+     "why": "Reads (creates) SOUL.md, the prompt's first part."
+    },
+    {
+     "file": "waku/tools/treg.py",
+     "index": 2,
+     "line": 95,
+     "mark": "optional",
+     "qual": "unavailable",
+     "why": "Unavailable-tools filter; config check."
+    },
+    {
+     "file": "waku/tools/treg.py",
+     "index": 3,
+     "line": 70,
+     "mark": "optional",
+     "qual": "own_key",
+     "why": "Env-var check inside unavailable."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 4,
+     "line": 118,
+     "mark": "required",
+     "qual": "Memory.gated_retrieve",
+     "why": "Gated memory retrieval, the core of this question."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 5,
+     "line": 249,
+     "mark": "optional",
+     "qual": "metered.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 6,
+     "line": 227,
+     "mark": "optional",
+     "qual": "_MeteredMessages.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/memory/retrieval_gate.py",
+     "index": 7,
+     "line": 36,
+     "mark": "required",
+     "qual": "should_retrieve",
+     "why": "The small model's gate decision (retrieve=true, query 'alex')."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 8,
+     "line": 230,
+     "mark": "optional",
+     "qual": "_MeteredMessages.create",
+     "why": "Metering wrapper around the gate's model call; detail of should_retrieve."
+    },
+    {
+     "file": "waku/memory/semantic/store.py",
+     "index": 9,
+     "line": 100,
+     "mark": "required",
+     "qual": "SqliteFactStore.search",
+     "why": "Searches semantic facts for 'alex'."
+    },
+    {
+     "file": "waku/memory/semantic/store.py",
+     "index": 10,
+     "line": 31,
+     "mark": "optional",
+     "qual": "_fts_query",
+     "why": "FTS query-string helper."
+    },
+    {
+     "file": "waku/memory/slot_gate.py",
+     "index": 11,
+     "line": 66,
+     "mark": "optional",
+     "qual": "select",
+     "why": "Slot gate; off by default, passes facts through."
+    },
+    {
+     "file": "waku/memory/episodic/store.py",
+     "index": 12,
+     "line": 27,
+     "mark": "required",
+     "qual": "SqliteEpisodeStore.search",
+     "why": "Searches episodic memory for 'alex'."
+    },
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 13,
+     "line": 139,
+     "mark": "required",
+     "qual": "Memory.matching_skills",
+     "why": "Adds matching skill instructions, the prompt's procedural part."
+    },
+    {
+     "file": "waku/memory/procedural/loader.py",
+     "index": 14,
+     "line": 77,
+     "mark": "optional",
+     "qual": "SkillLoader.match",
+     "why": "Keyword matching, detail of matching_skills."
+    },
+    {
+     "file": "waku/memory/procedural/loader.py",
+     "index": 15,
+     "line": 58,
+     "mark": "optional",
+     "qual": "SkillLoader._scan_sig",
+     "why": "Skill-file change check for reloads."
+    }
+   ]
+  },
+  "wk-flo-04": {
+   "hops": [
+    {
+     "file": "waku/loop/agent.py",
+     "index": 0,
+     "line": 91,
+     "mark": "required",
+     "qual": "run_loop",
+     "why": "Entry point: the reason-act loop."
+    },
+    {
+     "file": "waku/tools/registry.py",
+     "index": 1,
+     "line": 47,
+     "mark": "optional",
+     "qual": "ToolRegistry.schemas",
+     "why": "Tool schema getter for each model call."
+    },
+    {
+     "file": "waku/tools/registry.py",
+     "index": 2,
+     "line": 50,
+     "mark": "required",
+     "qual": "ToolRegistry.execute",
+     "why": "Dispatches the save_note call."
+    },
+    {
+     "file": "waku/tools/notes.py",
+     "index": 3,
+     "line": 35,
+     "mark": "required",
+     "qual": "make_tool.<locals>.save_note",
+     "why": "The tool that saves the agenda."
+    },
+    {
+     "file": "waku/loop/trim.py",
+     "index": 4,
+     "line": 60,
+     "mark": "optional",
+     "qual": "chain.<locals>.run",
+     "why": "Trim chain plumbing before the second call."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 5,
+     "line": 186,
+     "mark": "optional",
+     "qual": "shrink_read",
+     "why": "Report trimming; no report here."
+    },
+    {
+     "file": "waku/loop/trim.py",
+     "index": 6,
+     "line": 40,
+     "mark": "optional",
+     "qual": "shrink_seen",
+     "why": "Long-result trimming; save_note result is short."
+    }
+   ]
+  },
+  "wk-flo-05": {
+   "hops": [
+    {
+     "file": "waku/loop/agent.py",
+     "index": 0,
+     "line": 91,
+     "mark": "required",
+     "qual": "run_loop",
+     "why": "Entry point: the reason-act loop."
+    },
+    {
+     "file": "waku/tools/registry.py",
+     "index": 1,
+     "line": 47,
+     "mark": "optional",
+     "qual": "ToolRegistry.schemas",
+     "why": "Tool schema getter for each model call."
+    },
+    {
+     "file": "waku/tools/registry.py",
+     "index": 2,
+     "line": 50,
+     "mark": "required",
+     "qual": "ToolRegistry.execute",
+     "why": "Runs manage_memory and send_message."
+    },
+    {
+     "file": "waku/loop/trim.py",
+     "index": 3,
+     "line": 60,
+     "mark": "optional",
+     "qual": "chain.<locals>.run",
+     "why": "Trim chain plumbing."
+    },
+    {
+     "file": "waku/memory/reports.py",
+     "index": 4,
+     "line": 186,
+     "mark": "optional",
+     "qual": "shrink_read",
+     "why": "Report trimming; no report here."
+    },
+    {
+     "file": "waku/loop/trim.py",
+     "index": 5,
+     "line": 40,
+     "mark": "required",
+     "qual": "shrink_seen",
+     "why": "Cuts the 4,800-character result before the final call."
+    },
+    {
+     "file": "waku/loop/agent.py",
+     "index": 6,
+     "line": 203,
+     "mark": "required",
+     "qual": "_final_answer",
+     "why": "Tools-off final call once the iteration limit is reached."
+    }
+   ]
+  },
+  "wk-flo-06": {
+   "hops": [
+    {
+     "file": "waku/memory/__init__.py",
+     "index": 0,
+     "line": 271,
+     "mark": "required",
+     "qual": "Memory.maybe_consolidate",
+     "why": "Entry point for consolidation."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 1,
+     "line": 249,
+     "mark": "optional",
+     "qual": "metered.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 2,
+     "line": 227,
+     "mark": "optional",
+     "qual": "_MeteredMessages.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/memory/consolidation.py",
+     "index": 3,
+     "line": 161,
+     "mark": "required",
+     "qual": "kept_if_due",
+     "why": "Does the consolidation: due check, model call, filtering, storing."
+    },
+    {
+     "file": "waku/memory/tool_note.py",
+     "index": 4,
+     "line": 62,
+     "mark": "optional",
+     "qual": "clip",
+     "why": "Clips old tool notes in the log."
+    },
+    {
+     "file": "waku/memory/consolidation.py",
+     "index": 5,
+     "line": 297,
+     "mark": "optional",
+     "qual": "_saved_reports",
+     "why": "Collects saved report titles; none here."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 6,
+     "line": 230,
+     "mark": "optional",
+     "qual": "_MeteredMessages.create",
+     "why": "Metering wrapper around the summarizer call; detail of kept_if_due."
+    },
+    {
+     "file": "waku/memory/consolidation.py",
+     "index": 7,
+     "line": 375,
+     "mark": "required",
+     "qual": "is_ops_state",
+     "why": "Drops the account-balance fact the question sets up."
+    },
+    {
+     "file": "waku/memory/consolidation.py",
+     "index": 8,
+     "line": 401,
+     "mark": "optional",
+     "qual": "is_memory_state",
+     "why": "Second filter; drops nothing here."
+    },
+    {
+     "file": "waku/memory/slot_gate.py",
+     "index": 9,
+     "line": 83,
+     "mark": "optional",
+     "qual": "keep",
+     "why": "Slot gate; off by default, keeps all."
+    },
+    {
+     "file": "waku/memory/slot_gate.py",
+     "index": 10,
+     "line": 44,
+     "mark": "optional",
+     "qual": "enabled",
+     "why": "Env check inside the slot gate."
+    },
+    {
+     "file": "waku/memory/semantic/store.py",
+     "index": 11,
+     "line": 71,
+     "mark": "required",
+     "qual": "SqliteFactStore.add",
+     "why": "Stores the kept meeting-times fact."
+    },
+    {
+     "file": "waku/memory/episodic/store.py",
+     "index": 12,
+     "line": 20,
+     "mark": "required",
+     "qual": "SqliteEpisodeStore.add",
+     "why": "Stores the episode."
+    }
+   ]
+  },
+  "wk-flo-07": {
+   "hops": [
+    {
+     "file": "waku/app.py",
+     "index": 0,
+     "line": 436,
+     "mark": "required",
+     "qual": "Waku._respond_via_graph",
+     "why": "Entry point for the graph turn."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 1,
+     "line": 89,
+     "mark": "required",
+     "qual": "build_triage_graph",
+     "why": "Builds the triage graph."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 2,
+     "line": 71,
+     "mark": "optional",
+     "qual": "Graph.add_node",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 3,
+     "line": 76,
+     "mark": "optional",
+     "qual": "Graph.add_edge",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "file": "waku/graph/nodes.py",
+     "index": 4,
+     "line": 65,
+     "mark": "optional",
+     "qual": "key_router",
+     "why": "Router factory; detail of graph building."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 5,
+     "line": 84,
+     "mark": "optional",
+     "qual": "Graph.add_router",
+     "why": "Graph construction detail inside build_triage_graph."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 6,
+     "line": 106,
+     "mark": "required",
+     "qual": "run_graph",
+     "why": "Runs the graph workflow."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 7,
+     "line": 128,
+     "mark": "optional",
+     "qual": "run_graph.<locals>.next_wave",
+     "why": "Scheduler helper inside run_graph."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 8,
+     "line": 141,
+     "mark": "optional",
+     "qual": "run_graph.<locals>.run_one",
+     "why": "Node-runner plumbing inside run_graph."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 9,
+     "line": 97,
+     "mark": "required",
+     "qual": "build_triage_graph.<locals>.classify",
+     "why": "The classify node."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 10,
+     "line": 249,
+     "mark": "optional",
+     "qual": "metered.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 11,
+     "line": 227,
+     "mark": "optional",
+     "qual": "_MeteredMessages.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 12,
+     "line": 52,
+     "mark": "required",
+     "qual": "classify_message",
+     "why": "Triage model call that answers 'quick'."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 13,
+     "line": 230,
+     "mark": "optional",
+     "qual": "_MeteredMessages.create",
+     "why": "Metering wrapper around the triage and quick-reply model calls."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 14,
+     "line": 73,
+     "mark": "required",
+     "qual": "todays_events",
+     "why": "Calendar node running in parallel; feeds the quick reply."
+    },
+    {
+     "file": "waku/graph/nodes.py",
+     "index": 15,
+     "line": 69,
+     "mark": "required",
+     "qual": "key_router.<locals>.route",
+     "why": "The router decision that picks quick_reply."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 16,
+     "line": 448,
+     "mark": "required",
+     "qual": "Waku._respond_via_graph.<locals>.quick_reply",
+     "why": "Produces the quick reply asked for."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 17,
+     "line": 50,
+     "mark": "optional",
+     "qual": "with_context",
+     "why": "No plugin context; returns the message unchanged."
+    }
+   ]
+  },
+  "wk-flo-08": {
+   "hops": [
+    {
+     "file": "waku/app.py",
+     "index": 0,
+     "line": 436,
+     "mark": "required",
+     "qual": "Waku._respond_via_graph",
+     "why": "Entry point for the graph turn."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 1,
+     "line": 89,
+     "mark": "required",
+     "qual": "build_triage_graph",
+     "why": "Building the graph, one step per the question."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 2,
+     "line": 106,
+     "mark": "required",
+     "qual": "run_graph",
+     "why": "Runs the graph workflow."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 3,
+     "line": 128,
+     "mark": "optional",
+     "qual": "run_graph.<locals>.next_wave",
+     "why": "Scheduler helper inside run_graph."
+    },
+    {
+     "file": "waku/graph/engine.py",
+     "index": 4,
+     "line": 141,
+     "mark": "optional",
+     "qual": "run_graph.<locals>.run_one",
+     "why": "Node-runner plumbing inside run_graph."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 5,
+     "line": 97,
+     "mark": "required",
+     "qual": "build_triage_graph.<locals>.classify",
+     "why": "The classify node."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 6,
+     "line": 249,
+     "mark": "optional",
+     "qual": "metered.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 7,
+     "line": 227,
+     "mark": "optional",
+     "qual": "_MeteredMessages.__init__",
+     "why": "Metering wrapper construction."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 8,
+     "line": 52,
+     "mark": "required",
+     "qual": "classify_message",
+     "why": "Triage model call that answers 'full'."
+    },
+    {
+     "file": "waku/ops/tracing.py",
+     "index": 9,
+     "line": 230,
+     "mark": "optional",
+     "qual": "_MeteredMessages.create",
+     "why": "Metering wrapper around the triage model call."
+    },
+    {
+     "file": "waku/graph/workflows/triage.py",
+     "index": 10,
+     "line": 73,
+     "mark": "required",
+     "qual": "todays_events",
+     "why": "Calendar node running in parallel with classify."
+    },
+    {
+     "file": "waku/graph/nodes.py",
+     "index": 11,
+     "line": 69,
+     "mark": "required",
+     "qual": "key_router.<locals>.route",
+     "why": "The router decision that picks full_agent."
+    },
+    {
+     "file": "waku/app.py",
+     "index": 12,
+     "line": 392,
+     "mark": "required",
+     "qual": "Waku._run_full_turn",
+     "why": "The full turn it hands over to, one step per the question."
+    }
+   ]
+  }
+ },
+ "questions_json_sha256": "7ac8799c8429b0e4b01d685854b2d91108d6fa827976c20bdd5d101b62bbfae4",
+ "repo": "waku-agent",
+ "saved_at": "2026-11-16T17:25:06Z",
+ "schema": 1,
+ "url": "https://github.com/ShenSeanChen/waku-agent"
+}

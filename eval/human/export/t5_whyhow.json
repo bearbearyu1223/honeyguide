@@ -1,0 +1,301 @@
+{
+ "frozen_manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "chore": "T5 why/how questions and rubrics",
+ "repos": {
+  "nanochat": {
+   "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+   "source": "eval/t5/han_why_how_2026-11-16.md (Han's chat message, imported verbatim; rubric sentence split into bullets at its commas)",
+   "questions": [
+    {
+     "id": "nc-why-01",
+     "relevant": "nanochat/gpt.py; scripts/base_train.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain how depth determines other architecture and training settings",
+      "why this simplifies scaling experiments",
+      "what tradeoffs remain"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why does nanochat use transformer depth as its main model-scaling parameter?"
+    },
+    {
+     "id": "nc-why-02",
+     "relevant": "nanochat/gpt.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Cover embedding dimensions",
+      "transformer blocks",
+      "attention",
+      "MLP",
+      "output prediction, how configuration affects tensor shapes"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does nanochat construct a GPT model from its configuration?"
+    },
+    {
+     "id": "nc-why-03",
+     "relevant": "nanochat/dataloader.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain rank-dependent data assignment",
+      "batch and sequence boundaries",
+      "shard progression",
+      "avoiding unintended overlap"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the distributed data loader partition training tokens across processes?"
+    },
+    {
+     "id": "nc-why-04",
+     "relevant": "nanochat/optim.py; scripts/base_train.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain parameter-group differences",
+      "optimizer update behavior",
+      "why different tensor types may benefit from different optimizers"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why does nanochat combine AdamW and Muon rather than use one optimizer for all parameters?"
+    },
+    {
+     "id": "nc-why-05",
+     "relevant": "scripts/base_train.py; nanochat/checkpoint_manager.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Trace data loading",
+      "loss calculation",
+      "backward pass",
+      "optimizer and scheduler updates",
+      "evaluation intervals, checkpoint writes"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the base-training loop coordinate forward passes, gradient updates, evaluation, and checkpointing?"
+    },
+    {
+     "id": "nc-why-06",
+     "relevant": "nanochat/loss_eval.py; nanochat/tokenizer.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain dependence of token loss on tokenization",
+      "byte normalization",
+      "why this enables more meaningful comparisons"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why does nanochat report bits per byte rather than relying only on token-level loss?"
+    },
+    {
+     "id": "nc-why-07",
+     "relevant": "nanochat/engine.py; nanochat/gpt.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain prompt prefill",
+      "cached attention keys/values",
+      "incremental decoding",
+      "cache position management",
+      "memory/speed tradeoffs"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the inference engine reuse the KV cache during autoregressive generation?"
+    },
+    {
+     "id": "nc-why-08",
+     "relevant": "scripts/chat_sft.py; nanochat/tokenizer.py; tasks/common.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Describe chat formatting",
+      "supervised targets",
+      "loss masking where applicable",
+      "dataset mixtures",
+      "checkpoint initialization"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does supervised fine-tuning transform a pretrained model into a chat model?"
+    },
+    {
+     "id": "nc-why-09",
+     "relevant": "scripts/chat_rl.py; nanochat/engine.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Explain candidate generation",
+      "reward or scoring signals",
+      "policy updates",
+      "the absence of a conventional next-token supervised target for every action"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the reinforcement-learning stage differ from supervised fine-tuning?"
+    },
+    {
+     "id": "nc-why-10",
+     "relevant": "nanochat/checkpoint_manager.py; scripts/chat_cli.py",
+     "repo": "nanochat",
+     "rubric_must": [
+      "Cover model state",
+      "optimizer/training metadata as applicable",
+      "reconstruction",
+      "device placement",
+      "compatibility constraints"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How are model checkpoints saved and restored across training and inference?"
+    }
+   ]
+  },
+  "waku-agent": {
+   "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+   "source": "eval/t5/han_why_how_2026-11-16.md (Han's chat message, imported verbatim; rubric sentence split into bullets at its commas)",
+   "questions": [
+    {
+     "id": "wk-why-01",
+     "relevant": "waku/; docs/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain transport-specific input/output handling",
+      "shared agent behavior",
+      "reuse",
+      "isolation of integration concerns"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why does waku-agent separate gateway integrations from the core agent loop?"
+    },
+    {
+     "id": "wk-why-02",
+     "relevant": "waku/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Cover model request",
+      "tool-call detection",
+      "dispatch",
+      "result messages",
+      "iteration, termination conditions"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the agent loop decide whether to execute a tool or return a response?"
+    },
+    {
+     "id": "wk-why-03",
+     "relevant": "waku/; sql/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain persistence across sessions",
+      "local ownership",
+      "structured queries",
+      "tradeoffs against purely in-context memory"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why does waku-agent maintain persistent memory in SQLite?"
+    },
+    {
+     "id": "wk-why-04",
+     "relevant": "waku/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain the gate's decision point",
+      "relevance/retention criteria",
+      "storage path",
+      "why not every conversation should be saved"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the memory gate decide whether an interaction should be remembered?"
+    },
+    {
+     "id": "wk-why-05",
+     "relevant": "waku/; docs/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain the information each represents",
+      "how it is used during agent execution",
+      "the problems with treating all memory as one category"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why distinguish semantic, episodic, and procedural memory?"
+    },
+    {
+     "id": "wk-why-06",
+     "relevant": "waku/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Trace query/context preparation",
+      "retrieval",
+      "selected memories",
+      "prompt/context assembly",
+      "model invocation"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does memory retrieval influence the next model request?"
+    },
+    {
+     "id": "wk-why-07",
+     "relevant": "waku/; sql/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain deduplication or reconciliation where implemented",
+      "retention",
+      "updating knowledge",
+      "handling conflicting information"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does memory consolidation differ from simply appending new records?"
+    },
+    {
+     "id": "wk-why-08",
+     "relevant": "waku/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain normalization of messages",
+      "tool-call representation",
+      "model responses",
+      "provider-specific differences",
+      "limitations"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How does the provider adapter let the same agent loop work with different LLM APIs?"
+    },
+    {
+     "id": "wk-why-09",
+     "relevant": "evals/; docs/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain reproducible assertions versus semantic judgments",
+      "where each is appropriate",
+      "the risks of nondeterministic grading"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "Why combine deterministic tests with LLM-as-judge evaluations?"
+    },
+    {
+     "id": "wk-why-10",
+     "relevant": "waku/; evals/",
+     "repo": "waku-agent",
+     "rubric_must": [
+      "Explain captured execution events",
+      "evaluation outcomes",
+      "thresholds or release decisions",
+      "the limits of tracing alone"
+     ],
+     "rubric_partial": "",
+     "rubric_wrong": "",
+     "text": "How do tracing and release gates support debugging and regression prevention?"
+    }
+   ]
+  }
+ }
+}

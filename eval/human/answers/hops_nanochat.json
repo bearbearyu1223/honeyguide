@@ -1,0 +1,369 @@
+{
+ "chore": "T6a flow hops",
+ "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+ "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by Han 2026-11-16 without changes.",
+ "questions": {
+  "nc-flo-01": {
+   "hops": [
+    {
+     "file": "nanochat/gpt.py",
+     "index": 0,
+     "line": 157,
+     "mark": "required",
+     "qual": "GPT.__init__",
+     "why": "Builds the model: embeddings, blocks, lm_head, scalars, buffers (on meta)."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 1,
+     "line": 287,
+     "mark": "optional",
+     "qual": "GPT._compute_window_sizes",
+     "why": "Small helper inside GPT.__init__ turning 'SSSL' into per-layer windows."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 2,
+     "line": 145,
+     "mark": "required",
+     "qual": "Block.__init__",
+     "why": "Builds each transformer block (attention + MLP)."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 3,
+     "line": 68,
+     "mark": "required",
+     "qual": "CausalSelfAttention.__init__",
+     "why": "Builds each layer's q/k/v/proj projections and value-embedding gate."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 4,
+     "line": 132,
+     "mark": "required",
+     "qual": "MLP.__init__",
+     "why": "Builds each layer's MLP projections."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 5,
+     "line": 270,
+     "mark": "optional",
+     "qual": "GPT._precompute_rotary_embeddings",
+     "why": "Rotary cos/sin buffer helper, detail of __init__ and init_weights."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 6,
+     "line": 203,
+     "mark": "required",
+     "qual": "GPT.init_weights",
+     "why": "The step that actually initializes every parameter after to_empty."
+    }
+   ]
+  },
+  "nc-flo-02": {
+   "hops": [
+    {
+     "file": "nanochat/gpt.py",
+     "index": 0,
+     "line": 459,
+     "mark": "required",
+     "qual": "GPT.forward",
+     "why": "Entry point: embeds, runs blocks, computes logits and the loss."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 1,
+     "line": 42,
+     "mark": "optional",
+     "qual": "norm",
+     "why": "RMSNorm helper called many times inside required steps."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 2,
+     "line": 49,
+     "mark": "optional",
+     "qual": "Linear.forward",
+     "why": "Linear wrapper (dtype cast) called many times inside required steps."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 3,
+     "line": 150,
+     "mark": "required",
+     "qual": "Block.forward",
+     "why": "Each transformer layer of the forward pass."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 4,
+     "line": 84,
+     "mark": "required",
+     "qual": "CausalSelfAttention.forward",
+     "why": "Attention block named by the flow."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 5,
+     "line": 57,
+     "mark": "optional",
+     "qual": "apply_rotary_emb",
+     "why": "Rotary helper inside attention."
+    },
+    {
+     "file": "nanochat/flash_attention.py",
+     "index": 6,
+     "line": 115,
+     "mark": "required",
+     "qual": "flash_attn_func",
+     "why": "First call into the attention kernel module (training path, no cache)."
+    },
+    {
+     "file": "nanochat/flash_attention.py",
+     "index": 7,
+     "line": 77,
+     "mark": "optional",
+     "qual": "_sdpa_attention",
+     "why": "CPU SDPA fallback inside flash_attn_func; detail of its parent."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 8,
+     "line": 137,
+     "mark": "required",
+     "qual": "MLP.forward",
+     "why": "MLP block named by the flow."
+    }
+   ]
+  },
+  "nc-flo-03": {
+   "hops": [
+    {
+     "file": "nanochat/optim.py",
+     "index": 0,
+     "line": 428,
+     "mark": "required",
+     "qual": "MuonAdamW.step",
+     "why": "Entry point; runs the reduce, compute, gather phases."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 1,
+     "line": 274,
+     "mark": "optional",
+     "qual": "MuonAdamW._reduce_adamw",
+     "why": "World size 1: no communication, only wraps grads per param."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 2,
+     "line": 295,
+     "mark": "optional",
+     "qual": "MuonAdamW._reduce_muon",
+     "why": "World size 1: no communication, only stacks grads."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 3,
+     "line": 320,
+     "mark": "required",
+     "qual": "MuonAdamW._compute_adamw",
+     "why": "AdamW compute step: state init and per-param update."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 4,
+     "line": 23,
+     "mark": "required",
+     "qual": "adamw_step_fused",
+     "why": "The AdamW update math itself."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 5,
+     "line": 362,
+     "mark": "required",
+     "qual": "MuonAdamW._compute_muon",
+     "why": "Muon compute step: momentum buffers and stacked update."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 6,
+     "line": 111,
+     "mark": "required",
+     "qual": "muon_step_fused",
+     "why": "The Muon update math (momentum, orthogonalization) itself."
+    },
+    {
+     "file": "nanochat/optim.py",
+     "index": 7,
+     "line": 419,
+     "mark": "required",
+     "qual": "MuonAdamW._finish_gathers",
+     "why": "Copies updated Muon stack back into params; without it Muon params unchanged."
+    }
+   ]
+  },
+  "nc-flo-04": {
+   "hops": [
+    {
+     "file": "nanochat/engine.py",
+     "index": 0,
+     "line": 171,
+     "mark": "optional",
+     "qual": "Engine.__init__",
+     "why": "Constructor only stores model and tokenizer; not called by generate."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 1,
+     "line": 175,
+     "mark": "required",
+     "qual": "Engine.generate",
+     "why": "Entry point: prefill, cache replication, sampling loop."
+    },
+    {
+     "file": "nanochat/tokenizer.py",
+     "index": 2,
+     "line": 89,
+     "mark": "optional",
+     "qual": "RustBPETokenizer.encode_special",
+     "why": "Cached special-token id lookups for the tool-use state machine."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 3,
+     "line": 92,
+     "mark": "required",
+     "qual": "KVCache.__init__",
+     "why": "Allocates the prefill and decode KV caches."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 4,
+     "line": 459,
+     "mark": "required",
+     "qual": "GPT.forward",
+     "why": "Each model pass (prefill and per-token decode)."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 5,
+     "line": 123,
+     "mark": "required",
+     "qual": "KVCache.prefill",
+     "why": "Copies the prompt's KV into the decode cache."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 6,
+     "line": 162,
+     "mark": "optional",
+     "qual": "RowState.__init__",
+     "why": "Per-row bookkeeping object, plain state holder."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 7,
+     "line": 140,
+     "mark": "required",
+     "qual": "sample_next_token",
+     "why": "Samples each new token (temperature, top-k)."
+    }
+   ]
+  },
+  "nc-flo-05": {
+   "hops": [
+    {
+     "file": "nanochat/gpt.py",
+     "index": 0,
+     "line": 459,
+     "mark": "required",
+     "qual": "GPT.forward",
+     "why": "Entry point: embeds, runs blocks, returns logits."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 1,
+     "line": 42,
+     "mark": "optional",
+     "qual": "norm",
+     "why": "RMSNorm helper called many times inside required steps."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 2,
+     "line": 49,
+     "mark": "optional",
+     "qual": "Linear.forward",
+     "why": "Linear wrapper (dtype cast) called many times inside required steps."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 3,
+     "line": 150,
+     "mark": "required",
+     "qual": "Block.forward",
+     "why": "Each transformer layer of the forward pass."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 4,
+     "line": 84,
+     "mark": "required",
+     "qual": "CausalSelfAttention.forward",
+     "why": "Attention block; uses the KV cache path here."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 5,
+     "line": 57,
+     "mark": "optional",
+     "qual": "apply_rotary_emb",
+     "why": "Rotary helper inside attention."
+    },
+    {
+     "file": "nanochat/flash_attention.py",
+     "index": 6,
+     "line": 139,
+     "mark": "required",
+     "qual": "flash_attn_with_kvcache",
+     "why": "First call into the attention module on the cached path; writes the cache."
+    },
+    {
+     "file": "nanochat/flash_attention.py",
+     "index": 7,
+     "line": 77,
+     "mark": "optional",
+     "qual": "_sdpa_attention",
+     "why": "CPU SDPA fallback inside flash_attn_with_kvcache; detail of its parent."
+    },
+    {
+     "file": "nanochat/gpt.py",
+     "index": 8,
+     "line": 137,
+     "mark": "required",
+     "qual": "MLP.forward",
+     "why": "MLP block of each layer."
+    },
+    {
+     "file": "nanochat/engine.py",
+     "index": 9,
+     "line": 119,
+     "mark": "required",
+     "qual": "KVCache.advance",
+     "why": "Moves the cache position after the last layer; the cache-specific step."
+    }
+   ]
+  }
+ },
+ "questions_json_sha256": "98e5b0cba25db9608d6aa6886773b133b57d32035b7993aaa80c56469e848937",
+ "repo": "nanochat",
+ "saved_at": "2026-11-16T17:25:06Z",
+ "schema": 1,
+ "url": "https://github.com/karpathy/nanochat"
+}
