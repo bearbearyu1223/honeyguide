@@ -44,6 +44,30 @@ def map_draft_dir(store: Store, fresh: bool = False) -> Path:
     return d
 
 
+AGENT_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def agent_draft_dir(store: Store, agent: str, name: str | None = None, fresh: bool = False) -> Path:
+    """A scratch directory for one agent's input files (T7.15): ``drafts/<agent>/[<name>/]``, created if missing.
+
+    Agents write a command's JSON input here with the Write tool and pass ``--input FILE``, so no command line ever
+    carries quoted JSON (a pipe or heredoc is a compound command the permission rules refuse). ``name`` keeps
+    parallel runs apart (an Investigator per question id). ``fresh`` first removes the .json and .txt files there.
+    """
+    from .contract import AGENTS
+    if agent not in AGENTS:
+        raise ContractError("bad_input", f"agent must be one of {', '.join(AGENTS)}")
+    if name is not None and not AGENT_NAME.match(name):
+        raise ContractError("bad_input", f"name must match {AGENT_NAME.pattern} (a question id is fine)")
+    d = drafts_root(store) / agent / (name or "")
+    d.mkdir(parents=True, exist_ok=True)
+    if fresh:
+        for f in list(d.glob("*.json")) + list(d.glob("*.txt")):
+            if f.is_file() and not f.is_symlink():
+                f.unlink()
+    return d
+
+
 def _load(path: Path, errors: list[str]) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))

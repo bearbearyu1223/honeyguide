@@ -15,7 +15,7 @@
   --ai:#5267B2; --ai-soft:#EEF0F8; --ai-line:#C9D0EA;
   --green:#28835C;
   --e1:#28835C; --e2:#5B8A70; --e3:#7A8B82; --e4:#8C939B;
-  --ok:#4C7A60; --flag:#B0463B; --flag-soft:#F8E7E4;
+  --ok:#4C7A60; --flag:#B0463B; --flag-soft:#F8E7E4; --flag-tip:#F2A399;
   --k:#7A4597; --s:#2F7A4A; --c:#8B919A; --n:#9A5F12;
   --lift:0 8px 24px rgba(36,30,20,.08),0 1px 3px rgba(36,30,20,.06);
   --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
@@ -34,7 +34,7 @@
   --ai:#9FAEF1; --ai-soft:#252B3D; --ai-line:#3E4870;
   --green:#66BD91;
   --e1:#66BD91; --e2:#8DB59E; --e3:#9AA8A0; --e4:#8F96A1;
-  --ok:#8FBF9F; --flag:#EC8F84; --flag-soft:#3A2522;
+  --ok:#8FBF9F; --flag:#EC8F84; --flag-soft:#3A2522; --flag-tip:#A63F35;
   --k:#C99BEB; --s:#8ED6A4; --c:#7C838D; --n:#E3A650;
   --lift:0 10px 28px rgba(0,0,0,.42),0 1px 3px rgba(0,0,0,.3);
 }
@@ -78,6 +78,22 @@ svg.i{width:16px;height:16px;flex:none}
 .layer input:checked+.sw::after{transform:translateX(10px)}
 .layer input:focus-visible+.sw{outline:2px solid var(--brand);outline-offset:2px}
 .layer .n{font-size:11px;color:var(--amber-ink);font-weight:600}
+/* T7.15: "Needs a look (N)": the map's not-supported claims, folded under one quiet item */
+.needs{margin-top:16px;font-size:13px;min-height:0;display:flex;flex-direction:column}
+.needs:empty{display:none}
+.nd-h{display:flex;align-items:center;gap:8px;width:100%;color:var(--muted);font-weight:500;padding:6px 8px 6px 12px;border-radius:6px;white-space:nowrap;transition:background var(--t),color var(--t)}
+.nd-h:hover{color:var(--ink);background:var(--sunken)}
+.nd-h .tt{flex:1;text-align:left}
+.nd-h .n{font-size:11px;font-weight:600;color:var(--muted);min-width:14px;text-align:right}
+.nd-h .car{font-size:10px;color:var(--faint);width:10px}
+.nd-h .dot{margin:0}
+.ndl{list-style:none;margin:2px 0 0;padding:0 0 0 12px;max-height:38vh;overflow:auto;border-left:1px solid var(--line);margin-left:16px}
+.ndl a{display:block;padding:4px 8px;border-radius:6px;text-decoration:none;color:var(--soft);font-size:12px;line-height:1.45}
+.ndl a:hover{background:var(--sunken);color:var(--ink)}
+.ndl .ns-t{display:block;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ndl .ns-t code{font:11px var(--mono)}
+.ndl .ns-s{display:block;font-size:11px;color:var(--faint)}
+.rail .needs{display:none}
 .legend{margin-top:auto;font-size:12px;color:var(--muted);line-height:2;white-space:nowrap}
 .legend .lh{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:650;margin:0 0 2px}
 .legend div{display:flex;align-items:center;gap:8px}
@@ -178,6 +194,13 @@ h2 + h3.topic{margin-top:4px}
 .figcap{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 24px}
 .figcap a{color:var(--brand);text-underline-offset:3px}
 .figcap.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:0 4px;box-sizing:border-box}
+/* T7.15: components no traced flow passes through, one quiet line under the module graph */
+.figiso{font-size:12.5px;color:var(--muted);line-height:1.6;margin:-4px 0 8px}
+.figiso.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:0 4px;box-sizing:border-box}
+.figiso .fi-l{color:var(--faint)}
+.figiso a{color:var(--soft);text-decoration:underline dotted var(--line2);text-underline-offset:3px}
+.figiso a:hover{color:var(--brand);text-decoration-color:currentColor}
+.figiso .sep{color:var(--faint)}
 .dgwrap{overflow-x:auto;border-radius:12px}
 .fig.scrolls::after{content:"Scroll sideways for the rest \2192";position:absolute;right:10px;bottom:10px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 8px;pointer-events:none}
 .dg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;overflow:visible}
@@ -343,6 +366,15 @@ body.popen .dgov{right:var(--pw)}
 .claim.gk{color:var(--muted)}
 .cite{white-space:nowrap}
 .claim.flagged{text-decoration:underline dotted var(--flag);text-underline-offset:4px;text-decoration-thickness:1px}
+/* T7.15: on the map a not-supported claim is quiet at rest (faint dotted underline, the dashed mark in place of its
+   evidence shape) and shows its red flag on hover or focus, with the Checker's note in the tooltip */
+.claim.flagged.quiet{text-decoration-color:var(--faint);cursor:help;border-radius:3px;transition:text-decoration-color var(--t),background var(--t)}
+.claim.flagged.quiet:hover,.claim.flagged.quiet:focus-visible{text-decoration-color:var(--flag);background:var(--flag-soft);outline:none}
+.dot.unsup{border:1.5px dashed var(--line2);border-radius:50%;width:10px;height:10px;background:transparent;transition:border-color var(--t)}
+.claim.quiet:hover+.cite .dot.unsup,.claim.quiet:focus-visible+.cite .dot.unsup,.dot.unsup:hover,.hop.quiet:hover .node.unsup,.nd-h:hover .dot.unsup{border-color:var(--flag)}
+.node.unsup{background:var(--pbg,var(--bg));box-shadow:0 0 0 4px var(--pbg,var(--bg));border:1.75px dashed var(--line2)}
+.tip .tflag{color:var(--flag-tip)}
+.sc-ns{color:var(--muted)}
 .pop{animation:pop 160ms ease-out}
 @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 

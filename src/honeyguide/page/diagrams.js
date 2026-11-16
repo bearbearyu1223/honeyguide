@@ -265,34 +265,70 @@ const HGD = (() => {
   }
 
   /* ------------------------------------------------------------------------------------------ (C) module graph */
-  /* files: [{file, role, entry, module}] (the Modules section, plus lane files without a module block); flows:
-     sequence models. Edges = calls between two different files (lanes with a path) across the flows. */
-  function graphModel(flows, files) {
+  /* T7.15: one box per Modules component. comps: [{id, name, role, files, entry, module, title}] (a component's files
+     may be directories, "tasks/"); a map whose modules are single files gives one component per file. resolver(comps)
+     maps a repo path to its component: the component listing the file, else the one whose directory holds it (the
+     deepest), else null. */
+  function resolver(comps) {
+    const exact = new Map(), dirs = [];
+    for (const c of comps) for (const f of c.files || []) {
+      if (f.endsWith("/")) dirs.push([f, c]);
+      else { if (!exact.has(f)) exact.set(f, c); dirs.push([f + "/", c]); }
+    }
+    dirs.sort((a, b) => b[0].length - a[0].length);
+    return path => (!path ? null : exact.get(path) || (dirs.find(([d]) => path.startsWith(d)) || [])[1] || null);
+  }
+  /* flows: sequence models. Edges = calls between two different components across the flows (calls inside one
+     component excluded); a lane whose file no component covers becomes its own box, named by its file. */
+  function graphModel(flows, comps) {
+    const all = comps.map(c => ({ ...c, files: [...(c.files || [])] }));
+    const known = resolver(all), extra = new Map();
+    const compOf = path => {
+      if (!path) return null;
+      const c = known(path);
+      if (c) return c.id;
+      if (!extra.has(path)) extra.set(path, { id: "file:" + path, name: path, role: "", files: [path], entry: false, module: null, title: "" });
+      return extra.get(path).id;
+    };
     const edges = new Map(), starts = [];
     for (const M of flows) {
-      const fileOf = id => (M.lanes[id] || {}).file || null;
+      const compOfLane = id => compOf((M.lanes[id] || {}).file || null);
       if (M.hops.length) {
-        const f0 = fileOf(M.hops[0].from);
-        if (f0) starts.push({ file: f0, label: M.startLabel || "", flow: M.key });
+        const c0 = compOfLane(M.hops[0].from);
+        if (c0) starts.push({ comp: c0, label: M.startLabel || "", flow: M.key });
       }
       M.hops.forEach((h, i) => {
-        const a = fileOf(h.from), b = fileOf(h.to);
+        const a = compOfLane(h.from), b = compOfLane(h.to);
         if (!a || !b || a === b) return;
         const k = a + ">" + b;
         if (!edges.has(k)) edges.set(k, { from: a, to: b, calls: [] });
         edges.get(k).calls.push({ fn: h.fn, flow: M.key, title: M.title, hop: i });
       });
     }
-    const all = [...files];
-    for (const x of [...starts.map(s => s.file), ...[...edges.values()].flatMap(e => [e.from, e.to])])
-      if (!all.some(f => f.file === x)) all.push({ file: x, role: "", entry: false, module: null });
-    return { edges: [...edges.values()], starts, files: all, flows: flows.length };
+    const comps2 = [...all, ...extra.values()];
+    const E = [...edges.values()];
+    const inG = id => E.some(e => e.from === id || e.to === id) || starts.some(s => s.comp === id);
+    return { edges: E, starts, comps: comps2, iso: comps2.filter(c => !inG(c.id)).map(c => c.id), flows: flows.length };
   }
+  /* a component's name in its box: its first file's name (a directory keeps its path), "+N" for the rest; every
+     path is listed on hover */
+  const base = f => (f.endsWith("/") ? f : f.split("/").pop());
+  const compName = c => c.name || base((c.files || [])[0] || c.id) + ((c.files || []).length > 1 ? ` +${c.files.length - 1}` : "");
+  const ROLE_W = 176;   /* a box's role wraps at this width, onto at most two lines */
+  function roleLines(role) {
+    if (!role) return [];
+    const ls = wrapText(role, ROLE_W, 12);
+    if (ls.length <= 2) return ls;
+    let last = ls.slice(1).join(" ");
+    while (last && tw(last + "…", 12) > ROLE_W) last = last.slice(0, -1);
+    return [ls[0], last.trimEnd() + "…"];
+  }
+  const MINGAP = 120;   /* the least space between two layers of boxes */
   const PORT = 40;   /* vertical distance between two lines arriving at one box: a label, its gap, and a label height to spare */
   function layoutGraph(GM, width) {
-    const E = GM.edges, info = Object.fromEntries(GM.files.map(f => [f.file, f]));
-    const inG = f => E.some(e => e.from === f || e.to === f) || GM.starts.some(s => s.file === f);
-    const order = [...GM.starts.map(s => s.file), ...E.flatMap(e => [e.from, e.to])], first = f => order.indexOf(f);
+    const E = GM.edges, info = Object.fromEntries(GM.comps.map(c => [c.id, c]));
+    const inG = f => E.some(e => e.from === f || e.to === f) || GM.starts.some(s => s.comp === f);
+    const order = [...GM.starts.map(s => s.comp), ...E.flatMap(e => [e.from, e.to])], first = f => order.indexOf(f);
     const layer = {}, onStack = new Set();
     const lay = f => {
       if (layer[f] === undefined) {
@@ -303,7 +339,7 @@ const HGD = (() => {
       }
       return layer[f];
     };
-    const files = GM.files.map(f => f.file).filter(inG);
+    const files = GM.comps.map(c => c.id).filter(inG);
     files.forEach(lay);
     const nL = Math.max(...files.map(f => layer[f])) + 1, cols = [...Array(nL)].map(() => []);
     files.forEach(f => cols[layer[f]].push(f));
@@ -312,25 +348,28 @@ const HGD = (() => {
       const bc = f => { const p = E.filter(e => e.to === f).map(e => cols[layer[e.from]].indexOf(e.from)); return p.length ? p.reduce((s, v) => s + v, 0) / p.length : 0; };
       cols[k].sort((a, b) => bc(a) - bc(b) || first(a) - first(b));
     }
-    const iso = GM.files.map(f => f.file).filter(f => !inG(f));
-    const roleOf = f => (info[f].role || "") + (inG(f) ? "" : (info[f].role ? " · " : "") + "in no traced flow");
+    /* components in no traced flow get no box: the page lists them on one quiet line under the graph */
+    const iso = GM.comps.map(c => c.id).filter(f => !inG(f));
     const N = {};
     const tagW = tw("ENTRY POINT", 9.5) * 1.3 + 14;
-    for (const f of [...files, ...iso]) {
-      const ins = E.filter(e => e.to === f).length, entry = !!info[f].entry;
-      N[f] = { id: f, role: roleOf(f), entry, iso: !inG(f), ins, module: info[f].module,
-        w: Math.max(tw(f, 13, "mono") + (entry ? tagW + 10 : 0), tw(roleOf(f), 12)) + 28, h: Math.max(54, PORT * Math.max(0, ins - 1) + 40) };
+    for (const f of files) {
+      const c = info[f], name = compName(c), role = c.role || "";
+      const ins = E.filter(e => e.to === f).length, entry = !!c.entry;
+      const lines = roleLines(role);
+      N[f] = { id: f, name, role, lines, entry, ins, module: c.module, files: c.files || [], title: c.title || "",
+        w: Math.max(tw(name, 13, "mono") + (entry ? tagW + 10 : 0), ...lines.map(l => tw(l, 12))) + 28,
+        h: Math.max(lines.length > 1 ? 68 : 54, PORT * Math.max(0, ins - 1) + 40) };
     }
     const big = cols.reduce((b, c, k) => (c.length > cols[b].length ? k : b), 0);
-    const colW = cols.map((c, k) => Math.max(...c.map(f => N[f].w), ...(k === big ? iso.map(f => N[f].w) : [])));
+    const colW = cols.map(c => Math.max(...c.map(f => N[f].w)));
     const startW = Math.max(0, ...GM.starts.map(s => tw(s.label, 11.5, "mono") + 42));
     const cntW = tw("99 calls", 11) + 4;
     const gapNeed = k => { const src = cols[k].filter(f => E.some(e => e.from === f)); return 26 + 22 * Math.max(0, src.length - 1) + 16 + cntW + 24; };
-    const natural = startW + 12 + colW.reduce((s, v) => s + v, 0) + cols.slice(0, -1).reduce((s, _, k) => s + Math.max(150, gapNeed(k)), 0) + 20;
+    const natural = startW + 12 + colW.reduce((s, v) => s + v, 0) + cols.slice(0, -1).reduce((s, _, k) => s + Math.max(MINGAP, gapNeed(k)), 0) + 20;
     const extra = Math.max(0, width - natural), grow = nL > 1 ? Math.min(extra, 120 * (nL - 1)) / (nL - 1) : 0, pad = (extra - grow * (nL - 1)) / 2;
     let x = pad + startW + 12;
     const colX = [];
-    cols.forEach((c, k) => { colX.push(x); c.forEach(f => { N[f].w = colW[k]; N[f].x = x; }); x += colW[k] + (k < nL - 1 ? Math.max(150, gapNeed(k)) + grow : 0); });
+    cols.forEach((c, k) => { colX.push(x); c.forEach(f => { N[f].w = colW[k]; N[f].x = x; }); x += colW[k] + (k < nL - 1 ? Math.max(MINGAP, gapNeed(k)) + grow : 0); });
     /* rows: the tallest column stacks; the others centre on the median of the ports their lines use */
     let y = 18;
     cols[big].forEach(f => { N[f].y = y; y += N[f].h + 22; });
@@ -347,8 +386,7 @@ const HGD = (() => {
         prevB = N[f].y + N[f].h;
       });
     });
-    let bottom = Math.max(...files.map(f => N[f].y + N[f].h));
-    iso.forEach(f => { N[f].x = colX[big]; N[f].w = colW[big]; N[f].y = bottom + 30; bottom = N[f].y + N[f].h; });
+    const bottom = Math.max(...files.map(f => N[f].y + N[f].h));
     /* edges: one port per incoming line on the target's left side; one vertical bus per source */
     const edges = [];
     for (const t of files) insOf(t).forEach((e, k, ins) => edges.push({ ...e, py: Math.round(portY(t, e.from)), k, m: ins.length }));
@@ -370,9 +408,10 @@ const HGD = (() => {
       e.ly = r1(e.py - w / 2 - 5);
       e.lx = xe - 14;
     }
-    const st0 = GM.starts.filter((s, i, a) => a.findIndex(t => t.file === s.file) === i);
-    const sx = Math.min(...st0.map(s => N[s.file].x - tw(s.label, 11.5, "mono") - 34));
-    const starts = st0.map(s => ({ ...s, x1: sx, y: Math.round(N[s.file].y + N[s.file].h / 2) }));
+    const st0 = GM.starts.filter((s, i, a) => a.findIndex(t => t.comp === s.comp) === i);
+    /* every start label sits left of the first column, so one whose box is further right never runs under a box */
+    const sx = Math.min(...st0.map(s => Math.min(N[s.comp].x, colX[0]) - tw(s.label, 11.5, "mono") - 34));
+    const starts = st0.map(s => ({ ...s, x1: sx, y: Math.round(N[s.comp].y + N[s.comp].h / 2) }));
     const W = Math.round(Math.max(natural, width)), keyY = bottom + 34;
     const keys = [{ k: "start", t: "where a traced flow starts" }];
     [...new Set(E.map(e => e.calls.length))].sort((a, b) => a - b).forEach(c => keys.push({ k: "w", c, t: `${c} call${c > 1 ? "s" : ""}` }));
@@ -380,25 +419,29 @@ const HGD = (() => {
   }
   function renderGraph(G) {
     let s = "";
+    const nm = id => G.N[id].name;
     for (const b of G.buses) s += `<path class="gw gbus" data-from="${esc(b.from)}" stroke-width="1.5" d="M${b.x0} ${b.sy}H${b.bx}${b.y0 < b.y1 ? `M${b.bx} ${b.y0 - 0.75}V${b.y1 + 0.75}` : ""}"/>`;
     for (const e of G.edges) {
       const c = e.calls.length, w = e.w, xe = e.xe;
-      const tip = `<b>${esc(e.from)} calls ${esc(e.to)}</b> · ${e.label} in the traced flows<br>` + e.calls.map(x => `<code>${esc(x.fn)}</code> · hop ${x.hop + 1}, ${esc(x.title)}`).join("<br>") + `<br>Click to see ${c > 1 ? "them" : "it"} in the flow diagram`;
-      s += `<g class="dg-e" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-n="${c}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(e.from)} calls ${esc(e.to)}: ${e.label}">`
+      const who = id => G.N[id].role ? `${esc(nm(id))} (${esc(G.N[id].role)})` : esc(nm(id));
+      const tip = `<b>${who(e.from)} calls ${who(e.to)}</b> · ${e.label} in the traced flows<br>` + e.calls.map(x => `<code>${esc(x.fn)}</code> · hop ${x.hop + 1}, ${esc(x.title)}`).join("<br>") + `<br>Click to see ${c > 1 ? "them" : "it"} in the flow diagram`;
+      s += `<g class="dg-e" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-n="${c}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(nm(e.from))} calls ${esc(nm(e.to))}: ${e.label}">`
         + `<path class="hitl" d="M${e.bx} ${e.py}H${xe}"/><rect class="hit" x="${r1(e.lx - tw(e.label, 11) - 4)}" y="${r1(e.ly - 12)}" width="${r1(tw(e.label, 11) + 8)}" height="16"/>`
         + `<path class="gw gdrop" stroke-width="${w}" d="M${e.bx - 0.75} ${e.py}H${r1(xe - 9 - w)}"/><path class="gh" d="M${xe} ${e.py}L${r1(xe - 9 - w)} ${r1(e.py - 3.5 - w)}L${r1(xe - 9 - w)} ${r1(e.py + 3.5 + w)}Z"/>`
         + `<text class="gcnt halo" x="${r1(e.lx)}" y="${e.ly}" text-anchor="end">${e.label}</text></g>`;
     }
     for (const st of G.starts) {
-      const xe = G.N[st.file].x - 2;
+      const xe = G.N[st.comp].x - 2;
       s += `<g class="gst"><circle class="start" cx="${r1(st.x1)}" cy="${st.y}" r="4.5"/><path class="gw" stroke-width="1.5" d="M${r1(st.x1)} ${st.y}H${xe - 9}"/><path class="gh" d="M${xe} ${st.y}L${xe - 9} ${st.y - 4.2}L${xe - 9} ${st.y + 4.2}Z"/>${st.label ? `<text class="gstart halo" x="${r1(st.x1 + 10)}" y="${st.y - 8}">${esc(st.label)}</text>` : ""}</g>`;
     }
-    for (const f of [...G.files, ...G.iso]) {
-      const b = G.N[f];
-      const tip = `<b>${esc(f)}</b>${b.role ? " · " + esc(b.role) : ""}${b.entry ? "<br>The entry point" : ""}<br>${b.module ? "Click for its module" : "No module section for this file"}`;
-      s += `<g class="dg-node${b.iso ? " iso" : ""}" data-file="${esc(f)}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(f)}"><rect class="gbox" x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${b.h}" rx="8"/>`
-        + `<text class="gname" x="${r1(b.x + 14)}" y="${r1(b.y + b.h / 2 + (b.role ? -3 : 5))}">${esc(f)}</text>${b.role ? `<text class="grole" x="${r1(b.x + 14)}" y="${r1(b.y + b.h / 2 + 14)}">${esc(b.role)}</text>` : ""}`
-        + (b.entry ? `<rect class="gtagbox" x="${r1(b.x + 14 + tw(f, 13, "mono") + 10)}" y="${r1(b.y + b.h / 2 - (b.role ? 15 : 7))}" width="${r1(tw("ENTRY POINT", 9.5) * 1.3 + 12)}" height="16" rx="4"/><text class="gtag" x="${r1(b.x + 14 + tw(f, 13, "mono") + 16)}" y="${r1(b.y + b.h / 2 - (b.role ? 4 : -4))}">ENTRY POINT</text>` : "") + `</g>`;
+    for (const f of G.files) {
+      const b = G.N[f], name = b.name, ny = b.lines.length > 1 ? -10 : b.lines.length ? -3 : 5;   /* name baseline, from the box's middle */
+      const head = b.title ? esc(b.title).replace(/`([^`\n]+)`/g, "<code>$1</code>") : `<code>${esc(name)}</code>${b.role ? " · " + esc(b.role) : ""}`;
+      const tip = `<b>${head}</b>${b.entry ? "<br>Holds the entry point" : ""}${b.files.length > 1 || b.title ? `<br>Files: ${b.files.map(x => `<code>${esc(x)}</code>`).join(", ")}` : ""}<br>${b.module ? "Click for its module" : "No module section for this file"}`;
+      s += `<g class="dg-node" data-comp="${esc(f)}" data-files="${esc(b.files.join(" "))}" data-tip="${esc(tip)}" tabindex="0" role="button" aria-label="${esc(name)}${b.role ? ": " + esc(b.role) : ""}${b.files.length > 1 ? ` (files: ${esc(b.files.join(", "))})` : ""}"><rect class="gbox" x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${b.h}" rx="8"/>`
+        + `<text class="gname" x="${r1(b.x + 14)}" y="${r1(b.y + b.h / 2 + ny)}">${esc(name)}</text>`
+        + b.lines.map((l, k) => `<text class="grole" x="${r1(b.x + 14)}" y="${r1(b.y + b.h / 2 + ny + 17 + 14 * k)}">${esc(l)}</text>`).join("")
+        + (b.entry ? `<rect class="gtagbox" x="${r1(b.x + 14 + tw(name, 13, "mono") + 10)}" y="${r1(b.y + b.h / 2 + ny - 12)}" width="${r1(tw("ENTRY POINT", 9.5) * 1.3 + 12)}" height="16" rx="4"/><text class="gtag" x="${r1(b.x + 14 + tw(name, 13, "mono") + 16)}" y="${r1(b.y + b.h / 2 + ny - 1)}">ENTRY POINT</text>` : "") + `</g>`;
     }
     let x = D.gut - 12;
     const y = G.keyY;
@@ -407,9 +450,9 @@ const HGD = (() => {
       if (k.k === "start") { s += `<circle class="start" cx="${x + 5}" cy="${y}" r="4.5"/><text class="lgt" x="${x + 16}" y="${y + 4}">${k.t}</text>`; x += 16 + tw(k.t, 11.5) + 26; }
       else { s += `<path class="gw" stroke-width="${1.5 * k.c}" d="M${x} ${y}H${x + 28}"/><text class="lgt" x="${x + 36}" y="${y + 4}">${k.t}</text>`; x += 36 + tw(k.t, 11.5) + 22; }
     }
-    s += `<text class="lgt" x="${r1(x)}" y="${y + 4}">between files, counted across the ${G.flows} traced flow${G.flows === 1 ? "" : "s"}</text></g>`;
-    return `<svg class="dg dg-graph" data-key="graph" data-natural="${G.natural}" viewBox="0 0 ${G.W} ${G.H}" width="${G.W}" height="${G.H}" role="group" aria-label="Module graph: ${G.files.length + G.iso.length} files and the calls between them">${s}</svg>`;
+    s += `<text class="lgt" x="${r1(x)}" y="${y + 4}">between components, counted across the ${G.flows} traced flow${G.flows === 1 ? "" : "s"}</text></g>`;
+    return `<svg class="dg dg-graph" data-key="graph" data-natural="${G.natural}" viewBox="0 0 ${G.W} ${G.H}" width="${G.W}" height="${G.H}" role="group" aria-label="Module graph: ${G.files.length} components and the calls between them">${s}</svg>`;
   }
 
-  return { tw, wrapText, edgeOf, lanesOf, layoutSeq, renderSeq, graphModel, layoutGraph, renderGraph, D, PORT };
+  return { tw, wrapText, edgeOf, lanesOf, layoutSeq, renderSeq, resolver, graphModel, compName, layoutGraph, renderGraph, D, PORT };
 })();

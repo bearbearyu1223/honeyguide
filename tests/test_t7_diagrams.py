@@ -258,27 +258,40 @@ def test_sequence_diagrams_hold_the_hard_checks(site, chrome):
     assert len(gen["frames"]) == 1 and [x["loop"] for x in gen["calls"]] == [None, None, "tok", "tok", None]
 
 
-def test_module_graph_counts_lines_and_labels(site, chrome):
-    c = chrome
-    c.goto(site["url"])
-    g = collect(c, "#ovgraph svg")
-    # counts = the flows' calls between two different files (lanes with a path)
+def component_of(document):
+    """path -> the module block (component) holding it: the block listing the file, else the one whose directory holds
+    it; a lane no module covers is its own component, ``file:<path>`` (T7.15; diagrams.js resolver)."""
+    comps = [(b["id"], b.get("files") or [b["path"]]) for sec in document["sections"] for b in sec["blocks"]
+             if b.get("type") == "module"]
+
+    def of(path):
+        for cid, files in comps:
+            if path in files:
+                return cid
+        dirs = sorted(((f if f.endswith("/") else f + "/", cid) for cid, files in comps for f in files),
+                      key=lambda x: -len(x[0]))
+        return next((cid for d, cid in dirs if path.startswith(d)), "file:" + path)
+    return of
+
+
+def expected_edges(flows, document):
+    of = component_of(document)
     want = {}
-    for f in FLOWS:
+    for f in flows:
         files = {l["id"]: l.get("path") for l in f["lanes"]}
         for h in f["hops"]:
             a, b = files[h["from"]], files[h["to"]]
-            if a and b and a != b:
-                want[(a, b)] = want.get((a, b), 0) + 1
+            if a and b and of(a) != of(b):
+                want[(of(a), of(b))] = want.get((of(a), of(b)), 0) + 1
+    return want
+
+
+def check_graph(c, g):
+    """The module graph's T7.4 guarantees, by component: weights ordered like counts, no crossing lines, every count
+    label on its own line and nearer to it than to any other by a label height, no text touching a line or text."""
     got = c.js("[...document.querySelectorAll('#ovgraph .dg-e')].map(e => [e.dataset.from, e.dataset.to, +e.dataset.n, +e.querySelector('.gdrop').getAttribute('stroke-width'), e.querySelector('.gcnt').textContent])")
-    assert {(a, b): n for a, b, n, _, _ in got} == want
     assert all(lab == f"{n} call{'s' if n > 1 else ''}" for _, _, n, _, lab in got)
     assert all((n1 < n2) == (w1 < w2) for (_, _, n1, w1, _), (_, _, n2, w2, _) in combinations(got, 2))
-    # the defect T7.4 fixes: two lines into model.py, each with a "2 calls" label
-    assert sorted(n for a, b, n, _, _ in got if b == "model.py") == [2, 2]
-    # one entry point
-    assert c.js("[...document.querySelectorAll('#ovgraph .gtag')].map(t => t.closest('.dg-node').dataset.file)") == ["train.py"]
-    # no crossing lines: segments of different sources never meet (a source's own stub, bus and drops do)
     segs = [s for s in g["segs"] if not s["key"]]
 
     def source(s):
@@ -287,8 +300,6 @@ def test_module_graph_counts_lines_and_labels(site, chrome):
     for s, t in combinations(segs, 2):
         if source(s) != source(t):
             assert not segs_cross(s, t), (s, t)
-    # every count label sits on its own drop (right of the bus, left of the arrowhead), within 6px of it, and
-    # every other line is farther than its own by at least one label height
     for e in c.js("""[...document.querySelectorAll('#ovgraph .dg-e')].map(e => { const b = e.querySelector('.gcnt').getBBox();
         return {from: e.dataset.from, to: e.dataset.to, box: [b.x, b.y, b.width, b.height]}; })"""):
         mine = [s for s in segs if (s["owner"] or {}).get("from") == e["from"] and (s["owner"] or {}).get("to") == e["to"]]
@@ -301,13 +312,92 @@ def test_module_graph_counts_lines_and_labels(site, chrome):
             if s is own:
                 continue
             assert seg_box_distance(s, e["box"]) >= d_own + e["box"][3], (e, s)
-    # and no text in the graph touches a line or another text
     for t in (t for t in g["texts"] if not t["key"]):
         for s in segs:
             assert not seg_hits_box(s, t["box"]), (t["text"], s)
     for a, b in combinations(g["texts"], 2):
         assert not boxes_overlap(a["box"], b["box"]), (a["text"], b["text"])
     assert g["styled"] == 0
+    return got
+
+
+def test_module_graph_counts_lines_and_labels(site, chrome):
+    """An older map whose modules are single files (``path``): each file is a component, as before T7.15."""
+    c = chrome
+    c.goto(site["url"])
+    g = collect(c, "#ovgraph svg")
+    got = check_graph(c, g)
+    # counts = the flows' calls between two different components
+    assert {(a, b): n for a, b, n, _, _ in got} == expected_edges(FLOWS, DOCUMENT)
+    # the defect T7.4 fixes: two lines into model.py, each with a "2 calls" label
+    assert sorted(n for a, b, n, _, _ in got if b == "m-model") == [2, 2]
+    # boxes are named by their file; one entry point
+    names = c.js("Object.fromEntries([...document.querySelectorAll('#ovgraph .dg-node')].map(n => [n.dataset.comp, n.querySelector('.gname').textContent]))")
+    assert names == {"m-train": "train.py", "m-data": "data.py", "m-model": "model.py", "m-optim": "optim.py",
+                     "m-engine": "engine.py"}
+    assert c.js("[...document.querySelectorAll('#ovgraph .gtag')].map(t => t.closest('.dg-node').dataset.comp)") == ["m-train"]
+    # a component in no traced flow gets no box: one quiet line under the graph, linking to its module
+    assert c.js("document.getElementById('ovgraph-iso').innerText") == "Not in a traced flow: Tiktoken's gpt2 encoding"
+    c.click_el('#ovgraph-iso a[data-gomod="m-tok"]')
+    assert c.js("document.querySelector('.mod[data-block=\"m-tok\"]').classList.contains('flashed')")
+    c.js("document.getElementById('main').scrollTop = 0")
+
+
+def test_module_graph_by_component_on_the_v2_map(tmp_path_factory, chrome):
+    """T7.15: one box per component (``train.py`` + ``optim.py`` is one box, its own calls inside it dropped), the
+    role as its subtitle, the files on hover; the label guarantees hold."""
+    info = serve(tmp_path_factory.mktemp("dgv2"), "v2")
+    try:
+        from t7_page_fixture import DOCUMENT_V2
+        c = chrome
+        c.goto(info["url"])
+        g = collect(c, "#ovgraph svg")
+        got = check_graph(c, g)
+        want = expected_edges(FLOWS, DOCUMENT_V2)
+        assert {(a, b): n for a, b, n, _, _ in got} == want
+        assert ("m-train", "m-train") not in want and want == {("m-train", "m-data"): 1, ("m-train", "m-model"): 2,
+                                                               ("m-engine", "m-model"): 2}
+        nodes = c.js("""[...document.querySelectorAll('#ovgraph .dg-node')].map(n => [n.dataset.comp, n.querySelector('.gname').textContent,
+            n.querySelector('.grole')?.textContent || '', n.dataset.files])""")
+        assert sorted(nodes) == sorted([["m-train", "train.py +1", "the training loop", "train.py optim.py"],
+                                        ["m-data", "data.py", "the sharded token loader", "data.py"],
+                                        ["m-model", "model.py", "GPT, attention blocks", "model.py"],
+                                        ["m-engine", "engine.py", "sampling with a KV cache", "engine.py"]])
+        c.hover_el('#ovgraph .dg-node[data-comp="m-train"] .gbox')
+        settle(c)
+        tip = c.js("document.getElementById('tip').innerText")
+        assert "Files: train.py, optim.py" in tip and "Click for its module" in tip
+        assert c.js("document.getElementById('ovgraph-iso').innerText") == "Not in a traced flow: Tiktoken's gpt2 encoding"
+        assert c.js("document.querySelector('#ovgraph svg').getAttribute('aria-label')") == \
+            "Module graph: 4 components and the calls between them"
+        c.click_el('#ovgraph .dg-node[data-comp="m-train"] .gbox')
+        assert c.js("document.querySelector('.mod[data-block=\"m-train\"]').classList.contains('flashed')")
+    finally:
+        info["server"].shutdown()
+        info["server"].server_close()
+
+
+def test_graph_model_resolves_directories_and_uncovered_files(site, chrome):
+    """The pure model: a directory component takes the files under it, the deepest directory wins, a lane no
+    component covers is its own box, and calls inside a component are not edges."""
+    c = chrome
+    c.goto(site["url"])
+    out = c.js("""(() => {
+      const comps = [{id: "tasks", files: ["tasks/", "scripts/chat_eval.py"], role: "chat tasks"},
+                     {id: "sub", files: ["tasks/deep/"], role: "a deeper directory"},
+                     {id: "gpt", files: ["nanochat/gpt.py"], role: "the model", entry: true},
+                     {id: "bench", files: ["scripts/bench.py"], role: "benchmark"}];
+      const lanes = {a: {file: "scripts/chat_eval.py"}, b: {file: "tasks/humaneval.py"}, c: {file: "nanochat/gpt.py"},
+                     d: {file: "tasks/deep/x.py"}, e: {file: "nanochat/other.py"}, f: {file: null}};
+      const M = {key: "map:x", title: "x", lanes, hops: [{from: "a", to: "b", fn: "inside"}, {from: "a", to: "c", fn: "one"},
+        {from: "b", to: "c", fn: "two"}, {from: "a", to: "d", fn: "deep"}, {from: "c", to: "e", fn: "loose"}, {from: "c", to: "f", fn: "nofile"}]};
+      const gm = HGD.graphModel([M], comps);
+      return {edges: gm.edges.map(e => [e.from, e.to, e.calls.length]), iso: gm.iso, starts: gm.starts.map(s => s.comp),
+              names: gm.comps.map(HGD.compName)};
+    })()""")
+    assert sorted(map(tuple, out["edges"])) == [("gpt", "file:nanochat/other.py", 1), ("tasks", "gpt", 2), ("tasks", "sub", 1)]
+    assert out["iso"] == ["bench"] and out["starts"] == ["tasks"]
+    assert out["names"] == ["tasks/ +1", "tasks/deep/", "gpt.py", "bench.py", "nanochat/other.py"]
 
 
 def test_previews_open_on_hover_click_and_enter(site, chrome):
@@ -408,19 +498,20 @@ def test_tracer_path_that_is_not_a_map_flow_opens_an_overlay(site, chrome):
 def test_graph_clicks_lead_to_modules_and_calls(site, chrome):
     c = chrome
     c.goto(site["url"])
-    c.click_el('#ovgraph .dg-node[data-file="data.py"] .gbox')
+    c.click_el('#ovgraph .dg-node[data-comp="m-data"] .gbox')
     top = c.js("document.querySelector('.mod[data-path=\"data.py\"]').getBoundingClientRect().top")
     assert 0 <= top <= 200 and c.js("document.querySelector('.mod[data-path=\"data.py\"]').classList.contains('flashed')")
     c.js("document.getElementById('main').scrollTop = 0")
-    c.click_el('#ovgraph .dg-e[data-from="train.py"][data-to="model.py"] .gcnt')
+    c.click_el('#ovgraph .dg-e[data-from="m-train"][data-to="m-model"] .gcnt')
     hl = c.js("[...document.querySelectorAll('.dg-a.hl')].map(g => g.closest('svg').dataset.key + ':' + g.dataset.hop)")
     assert sorted(hl) == ["map:f-step:1", "map:f-step:2"]
     assert c.js("document.querySelector('.flow[data-flow=\"f-step\"]').classList.contains('open')")
     # hovering an arrow lists its calls
-    c.hover_el('#ovgraph .dg-e[data-from="engine.py"][data-to="model.py"] .gcnt')
+    c.hover_el('#ovgraph .dg-e[data-from="m-engine"][data-to="m-model"] .gcnt')
     settle(c)
     tip = c.js("document.getElementById('tip').innerText")
-    assert "engine.py calls model.py" in tip and "model(nxt, cache=cache)" in tip
+    assert "engine.py (sampling with a KV cache) calls model.py (GPT, attention blocks)" in tip
+    assert "model(nxt, cache=cache)" in tip
 
 
 def test_panel_open_and_too_narrow_shows_steps(site, chrome):

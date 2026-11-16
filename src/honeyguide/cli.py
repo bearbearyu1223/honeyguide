@@ -9,7 +9,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from . import activity, claims, drafts, inbox, memory
+from . import activity, claims, drafts, inbox, memory, repair
 from .contract import ContractError
 from .gitio import GitError, Repo
 from .preview import preview
@@ -138,6 +138,7 @@ AGENT_COMMANDS = {
     ("claims", "save"): (lambda r, s, d: claims.save_claims(s, r, d), True),
     ("claims", "list"): (lambda r, s, d: memory.list_claims(s, d), True),
     ("claims", "retire"): (lambda r, s, d: memory.retire(s, d), True),
+    ("claims", "repair"): (lambda r, s, d: repair.repair(r, s, d), True),
     ("verdict", "set"): (lambda r, s, d: claims.set_verdicts(s, d, r), True),
     ("refresh", "apply"): (lambda r, s, d: memory.refresh_apply(r, s, d), True),
     ("memory", "state"): (lambda r, s, d: memory.memory_state(r, s), False),
@@ -157,15 +158,77 @@ AGENT_COMMANDS = {
 }
 
 
+# Plain flags for the common inputs (T7.15), so an agent never pipes quoted JSON into a command: a pipe or a heredoc
+# is a compound command, which the permission rule ``Bash(honeyguide:*)`` refuses. Anything larger goes in a file
+# (``--input FILE``) written with the Write tool into ``honeyguide drafts dir``.
+# (group, name): [(flag, input key, kind)]; kind: str, int, "list" (repeatable, comma-separated), "flag" (true when
+# given), "file" (the file's text, stripped).
+FLAGS: dict[tuple[str, str | None], list[tuple[str, str, object]]] = {
+    ("anchor", "resolve"): [("--path", "path", str), ("--anchor", "anchor", str), ("--end-anchor", "end_anchor", str),
+                            ("--extent", "extent", str), ("--commit", "commit", str)],
+    ("claims", "list"): [("--scope", "scope", str), ("--check", "check", "list"), ("--freshness", "freshness", "list"),
+                         ("--ids", "ids", "list"), ("--responses", "responses", "list"), ("--spans", "spans", "flag")],
+    ("claims", "retire"): [("--id", "claims", "list"), ("--reason", "reason", str)],
+    ("verdict", "set"): [("--id", "claim", str), ("--verdict", "verdict", str), ("--note", "note", str),
+                         ("--note-file", "note", "file")],
+    ("refresh", "apply"): [("--note", "note", str), ("--to", "to", str), ("--base", "base", str)],
+    ("question", "show"): [("--id", "id", str)],
+    ("question", "claim"): [("--id", "id", str), ("--agent", "agent", str)],
+    ("question", "fail"): [("--id", "id", str), ("--reason", "reason", str)],
+    ("question", "release"): [("--id", "id", str)],
+    ("question", "reopen"): [("--id", "id", str)],
+    ("activity", "start"): [("--agent", "agent", str), ("--status", "status", str), ("--question", "question", str)],
+    ("activity", "update"): [("--id", "id", str), ("--status", "status", str)],
+    ("activity", "finish"): [("--id", "id", str), ("--state", "state", str), ("--status", "status", str)],
+    ("preview", None): [("--claim", "claim", str), ("--anchor", "anchor", int), ("--path", "path", str),
+                        ("--start", "start", int), ("--end", "end", int), ("--commit", "commit", str),
+                        ("--context", "context", int)],
+}
+
+
+def _dest(flag: str) -> str:
+    return "f_" + flag.lstrip("-").replace("-", "_")
+
+
+def _flag_input(args) -> dict:
+    """The input the plain flags give (empty when none was given)."""
+    out: dict = {}
+    for flag, key, kind in getattr(args, "flag_specs", []):
+        value = getattr(args, _dest(flag), None)
+        if value is None or value is False or value == []:
+            continue
+        if kind == "list":
+            value = [v.strip() for item in value for v in item.split(",") if v.strip()]
+        elif kind == "file":
+            try:
+                value = Path(value).read_text(encoding="utf-8").strip()
+            except OSError as exc:
+                raise ContractError("bad_input", f"can't read {flag} {value}: {exc}") from None
+        out[key] = value
+    return out
+
+
 def _read_input(args) -> object:
+    """``--input FILE``, then any plain flags over it; with neither, stdin (nothing on a terminal: ``{}``)."""
+    flags = _flag_input(args)
+    if args.input:
+        try:
+            raw = Path(args.input).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ContractError("bad_input", f"can't read the input: {exc}") from None
+    elif flags or sys.stdin is None or sys.stdin.isatty():
+        raw = ""
+    else:
+        raw = sys.stdin.read()
     try:
-        raw = Path(args.input).read_text(encoding="utf-8") if args.input else sys.stdin.read()
-    except OSError as exc:
-        raise ContractError("bad_input", f"can't read the input: {exc}") from None
-    try:
-        return json.loads(raw) if raw.strip() else {}
+        data = json.loads(raw) if raw.strip() else {}
     except json.JSONDecodeError as exc:
         raise ContractError("bad_input", f"input is not JSON: {exc}") from None
+    if flags:
+        if not isinstance(data, dict):
+            raise ContractError("bad_input", "flags go with an input object, not a list")
+        data = {**data, **flags}
+    return data
 
 
 def _contract_error(exc: Exception) -> ContractError:
@@ -216,6 +279,12 @@ def _draft_summary(data: dict, files: list[str]) -> dict:
             "blocks": sum(len(s.get("blocks") or []) for s in doc["sections"] if isinstance(s, dict)),
             "flows": len(doc["flows"]), "overview_words": len(words(overview)),
             "modules": len(module_blocks(doc))}
+
+
+def cmd_drafts_dir(args) -> int:
+    args.takes_input = False
+    return run_json(args, lambda r, s, d: {"dir": str(drafts.agent_draft_dir(s, args.agent, args.name,
+                                                                             fresh=args.fresh))})
 
 
 def cmd_map_draft_dir(args) -> int:
@@ -297,7 +366,28 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--repo", default=".", help="a path inside the checkout (default: .)")
         if takes_input:
             p.add_argument("--input", help="read the JSON input from this file (default: stdin)")
-        p.set_defaults(func=lambda a, f=func: run_json(a, f), takes_input=takes_input, input=None)
+        specs = FLAGS.get((group, name), [])
+        for flag, key, kind in specs:
+            if kind == "list":
+                p.add_argument(flag, dest=_dest(flag), action="append", metavar=key.upper(),
+                               help=f"input {key} (repeat, or comma-separate)")
+            elif kind == "flag":
+                p.add_argument(flag, dest=_dest(flag), action="store_true", help=f"input {key}: true")
+            elif kind == "file":
+                p.add_argument(flag, dest=_dest(flag), metavar="FILE", help=f"input {key}: this file's text")
+            else:
+                p.add_argument(flag, dest=_dest(flag), type=kind, metavar=key.upper(), help=f"input {key}")
+        if (group, name) == ("claims", "list"):
+            p.add_argument("--json", action="store_true", help="accepted for symmetry: the output is always JSON")
+        p.set_defaults(func=lambda a, f=func: run_json(a, f), takes_input=takes_input, input=None, flag_specs=specs)
+    g = sub.add_parser("drafts", help="agent contract (JSON)")
+    dsub = g.add_subparsers(dest="action", required=True)
+    p = dsub.add_parser("dir", help="print (and create) the directory an agent writes its --input files in")
+    p.add_argument("--repo", default=".")
+    p.add_argument("--agent", required=True, help="the agent the files are for")
+    p.add_argument("--name", help="a subdirectory, to keep parallel runs apart (e.g. the question id)")
+    p.add_argument("--fresh", action="store_true", help="first remove the .json and .txt files left there")
+    p.set_defaults(func=cmd_drafts_dir)
     g = sub.add_parser("map", help="agent contract (JSON)")
     msub = g.add_subparsers(dest="action", required=True)
     p = msub.add_parser("validate", help="check the saved map (or --stdin / --input: a claims-save input) against the rules")

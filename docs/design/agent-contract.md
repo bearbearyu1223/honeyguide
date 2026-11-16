@@ -1,4 +1,4 @@
-# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13)
+# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13; repair and flags: T7.15)
 
 What the agents (Guide, Cartographer, Investigator, Tracer, Checker) and the map page call, and the records they
 read and write. Built on the T7a foundation (`memory-and-anchors.md`); standard library only. Exact work is a
@@ -9,6 +9,16 @@ script: agents quote text, the script resolves lines, hashes, ids, links and tim
 Every agent command reads **one JSON object** on stdin (or `--input FILE`; on `map validate`, `--input` implies
 `--stdin`) and prints **one JSON object** on
 stdout. `--repo PATH` (default `.`) picks the checkout; memory is `$HONEYGUIDE_HOME/<repo-id>/` as in T7a.
+
+**Plain flags (T7.15).** The common inputs also take flags, which build the same JSON object: `question
+show|claim|fail|release|reopen --id [--agent] [--reason]`, `activity start --agent --status [--question]`,
+`activity update --id --status`, `activity finish --id --state [--status]`, `verdict set --id --verdict [--note |
+--note-file FILE]`, `claims list --scope --check --freshness --ids --responses --spans [--json]` (list flags repeat or
+take commas), `claims retire --id ... --reason`, `refresh apply --note --to --base`, `preview --claim --anchor |
+--path --start --end, --commit --context`, `anchor resolve --path --anchor --end-anchor --extent --commit`. Flags
+go over `--input`'s object; with flags given, stdin is not read (and with neither, a terminal stdin is `{}`).
+Agents never pipe JSON in (`echo ... |`) or use heredocs: those are compound commands, which the permission rule
+`Bash(honeyguide:*)` refuses. Anything larger is a file written into `drafts dir` and passed as `--input FILE`.
 
 - Success: exit 0, `{"ok": true, ...result}`.
 - Failure: exit 1, `{"ok": false, "error": {"code": ..., "message": ..., "details": [...]}}`. Nothing was
@@ -56,6 +66,8 @@ Rules, all checked before anything is written:
 | `claims save` | `{target: "map", mode: "replace"\|"add", commit?, document?, claims: [draft], retire?: [{claim, reason}]}` | `{saved: [{key, id}], revision, retired: [id], warnings}` |
 | `claims list` | `{scope?: "map"\|"answers"\|"all", responses?: [r_...], check?, freshness?, ids?}` | `{claims: [claim + response], count}` |
 | `claims retire` | `{claim \| claims: [id], reason}` | `{retired: [id], already_retired: [id]}` |
+| `claims repair` | `{repairs: [{claim, action: "anchor"\|"rewrite"\|"retire", anchors?, text?, span?, reason?}], commit?}` | `{changed: [id], retired: [id], spans_rewritten, revision, still_not_supported, rounds: {id: n}}` |
+| `drafts dir` | none; `--agent NAME [--name N] [--fresh]` | `{dir}`: `<memory>/drafts/<agent>/[<name>/]`, created, for `--input` files |
 | `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
 | `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
 | `map check DIR` | the draft files in `DIR` (below) | `map validate --strict`'s result + `{files, claims, blocks, flows, overview_words}`; saves nothing |
@@ -89,6 +101,16 @@ re-run after a crash). All items are checked before anything is written.
 is the claim's `id, key, text, evidence, anchors, check, check_note, checked_at, freshness, freshness_reason,
 candidates, searched, rechecked_at, retired_at` (those present) plus `response` (null for a map claim).
 `check` and `freshness` take one value or a list; `responses` implies answers.
+
+`claims repair` (T7.15, the repair pass after the Checker): map claims that are `current` and `not_supported`
+only. `anchor` replaces the claim's anchor list (resolved at `commit`, default the map's commit, under the
+draft rules); `rewrite` replaces its `text`, optionally its anchors, and, through `span`, the text of every span
+showing it (required when any span does; the document's revision is recomputed); `retire` retires it with
+`freshness_reason` "repair: <reason>". Ids never change. Every anchored or rewritten claim gets `check:
+"unchecked"`, an empty `check_note` and no `checked_at`; each repaired claim gains `repairs: [{round, action, at,
+check_note, text, anchors}]` (what it was before). A claim with 2 repairs is refused (`MAX_ROUNDS`). All items are
+checked before anything is written. `claims list` rows carry `repairs`, and `spans: true` adds `shown_as` (the
+span texts) to map claims.
 
 `claims retire` (and `claims save`'s `retire`, mode `add` only, so a rewritten claim and the retirement of the
 one it replaces land in one write): sets `freshness: "retired"`, `freshness_reason` = the reason,

@@ -166,15 +166,16 @@ def test_related_link_scrolls_to_its_module(site, chrome):
     assert c.js("location.hash") == ""
 
 
-def test_both_files_of_a_component_lead_to_it_from_the_graph(site, chrome):
+def test_a_component_is_one_box_that_leads_to_its_module(site, chrome):
+    """T7.15: train.py and optim.py are one component, so one box (its files listed on it), which leads to m-train."""
     c = chrome
     c.goto(site["url"])
-    files = c.js("[...document.querySelectorAll('#ovgraph .dg-node')].map(g => g.dataset.file)")
-    assert {"train.py", "optim.py"} <= set(files)
-    for f in ("optim.py", "train.py"):
-        c.js("document.querySelectorAll('.flashed').forEach(e => e.classList.remove('flashed'))")
-        c.click_el(f'#ovgraph .dg-node[data-file="{f}"]')
-        c.wait("document.querySelector('.mod[data-block=\"m-train\"]').classList.contains('flashed')", 5)
+    nodes = c.js("[...document.querySelectorAll('#ovgraph .dg-node')].map(g => [g.dataset.comp, g.dataset.files])")
+    assert ["m-train", "train.py optim.py"] in nodes
+    assert not any("optim.py" in files and comp != "m-train" for comp, files in nodes)
+    c.js("document.querySelectorAll('.flashed').forEach(e => e.classList.remove('flashed'))")
+    c.click_el('#ovgraph .dg-node[data-comp="m-train"]')
+    c.wait("document.querySelector('.mod[data-block=\"m-train\"]').classList.contains('flashed')", 5)
 
 
 def test_design_paragraph_is_selectable_and_askable(site, chrome):

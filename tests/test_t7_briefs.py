@@ -27,14 +27,14 @@ READ_ONLY_TOOLS = {"Read", "Grep", "Glob", "Bash"}
 # The commands each file must name: the contract's loop, pinned so a rewrite can't silently drop a step.
 MUST_NAME = {
     "cartographer": {"anchor resolve", "map validate", "claims save", "refresh-plan", "claims list",
-                     "activity update", "map draft-dir", "map check", "map ingest"},
-    "investigator": {"anchor resolve", "answer record", "activity update"},
-    "tracer": {"anchor resolve", "answer record", "activity update"},
-    "checker": {"claims list", "preview", "verdict set"},
+                     "activity update", "map draft-dir", "map check", "map ingest", "drafts dir", "claims repair"},
+    "investigator": {"anchor resolve", "answer record", "activity update", "drafts dir"},
+    "tracer": {"anchor resolve", "answer record", "activity update", "drafts dir"},
+    "checker": {"claims list", "preview", "verdict set", "drafts dir"},
     # refresh apply logs the refresh itself (T7.5), so the skill no longer names refresh-log add.
     "honeyguide": {"status", "inbox", "question release", "question claim", "question show", "question fail",
                    "activity start", "activity finish", "serve", "watch", "refresh-plan", "refresh apply",
-                   "memory state", "claims retire"},
+                   "memory state", "claims retire", "claims list"},
 }
 
 
@@ -120,13 +120,14 @@ def test_agent_frontmatter(path):
     assert meta["name"] in AGENTS, "agent name must be one the contract accepts"
     assert "Use " in meta["description"], "the description must tell the Guide when to use it"
     tools = {t.strip() for t in meta["tools"].split(",")}
-    # Only the CLI writes, so no subagent can edit the target repo by accident. One exception (T7.13): the
-    # Cartographer writes its draft map with Write, into the drafts directory only (its brief says so, and
-    # map check / ingest refuse any other directory).
-    allowed = READ_ONLY_TOOLS | ({"Write"} if meta["name"] == "cartographer" else set())
+    # Only the CLI writes the store, so no subagent can edit the target repo by accident. Write is for input files
+    # only: the Cartographer's draft map (T7.13) and, since T7.15, every agent's --input files, in its drafts
+    # directory (its brief says so; no command line carries quoted JSON).
+    allowed = READ_ONLY_TOOLS | {"Write"}
     assert tools <= allowed, f"{path.name}: tools beyond the minimum: {tools - allowed}"
     if "Write" in tools:
-        assert "only** place you may write" in body and "map draft-dir" in body
+        flat = " ".join(body.split())
+        assert "only** place" in flat and "you may write" in flat and "drafts dir" in flat
     assert len(body.strip()) > 1000
 
 
@@ -221,3 +222,37 @@ def test_marketplace_points_at_the_plugin():
     plugin_dir = (ROOT / entry["source"]).resolve()
     assert json.loads((plugin_dir / ".claude-plugin" / "plugin.json").read_text())["name"] == "honeyguide"
     assert (plugin_dir / "agents").is_dir() and (plugin_dir / "skills").is_dir()
+
+
+# -- no quoted JSON on a command line (T7.15) --------------------------------------------------------------------------
+# The permission rule Bash(honeyguide:*) allows a command that starts with honeyguide; a pipe or heredoc makes it a
+# compound command, which it refuses. So every brief passes input as plain flags or --input FILE.
+
+PIPED = ("| honeyguide", "|honeyguide", "<<", "echo '{", 'echo "{')
+
+
+@pytest.mark.parametrize("path", AGENT_FILES + SKILL_FILES,
+                         ids=lambda p: p.stem if p.name != "SKILL.md" else "skill")
+def test_no_brief_pipes_json_into_a_command(path):
+    text = path.read_text(encoding="utf-8")
+    found = [(n, line.strip()) for n, line in enumerate(text.splitlines(), 1) for bad in PIPED if bad in line]
+    assert not found, f"{path.name}: input piped into a command (use flags or --input FILE): {found}"
+
+
+@pytest.mark.parametrize("path", AGENT_FILES + SKILL_FILES,
+                         ids=lambda p: p.stem if p.name != "SKILL.md" else "skill")
+def test_no_brief_names_a_json_input_without_flags_or_a_file(path):
+    """Every write command a brief names in code carries its input: plain flags or --input (no stdin)."""
+    _, body = frontmatter(path)
+    writes = {"verdict set", "answer record", "claims repair", "activity start", "activity update", "activity finish",
+              "question claim", "question fail", "question release", "claims retire"}
+    for words, flags in invocations(body):
+        name = " ".join(words)
+        if name in writes:
+            assert flags and set(flags) - {"--repo"}, f"{path.name}: `honeyguide {name}` with no input flags"
+
+
+def test_the_pipe_check_catches_a_heredoc():
+    bad = "```bash\nhoneyguide verdict set --repo R <<'JSON'\n{}\nJSON\n```\n"
+    assert any(p in bad for p in PIPED)
+    assert any(p in "echo '{\"id\": 1}' | honeyguide activity update" for p in PIPED)

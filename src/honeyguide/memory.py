@@ -13,6 +13,7 @@ from typing import Any
 from .claims import commit_of
 from .contract import ContractError, load_side, need, write_side_held
 from .gitio import Repo
+from .mapdoc import iter_spans
 from .refresh import RefreshPlan, apply_result, plan_refresh
 from .store import CHECKS, FRESHNESS, Store, all_claims, now_iso
 
@@ -150,14 +151,15 @@ def _filter(data: dict, key: str, allowed: tuple[str, ...]) -> set[str] | None:
 
 
 LISTED = ("id", "key", "text", "evidence", "anchors", "check", "check_note", "checked_at", "freshness",
-          "freshness_reason", "candidates", "searched", "rechecked_at", "retired_at")
+          "freshness_reason", "candidates", "searched", "rechecked_at", "retired_at", "repairs")
 
 
 def list_claims(store: Store, data: Any) -> dict:
-    """``claims list``: ``{scope?: map|answers|all, responses?: [r_...], check?, freshness?, ids?}``.
+    """``claims list``: ``{scope?: map|answers|all, responses?: [r_...], check?, freshness?, ids?, spans?}``.
 
-    Claims only (text, evidence, anchors, check and freshness, candidates when stale): never notes or the
-    questions' text, so the Checker reads no more than it judges.
+    Claims only (text, evidence, anchors, check and freshness, candidates when stale, repairs): never notes or the
+    questions' text, so the Checker reads no more than it judges. ``spans: true`` adds ``shown_as`` to each map
+    claim: the phrases the map document shows for it (the repair pass rewrites them with the claim).
     """
     data = data if isinstance(data, dict) else {}
     scope = data.get("scope", "all")
@@ -176,6 +178,11 @@ def list_claims(store: Store, data: Any) -> dict:
     if ids is not None and not (isinstance(ids, list) and all(isinstance(i, str) for i in ids)):
         raise ContractError("bad_input", "ids must be a list of claim ids")
     map_layer, answers = store.load("map"), store.load("answers")
+    shown: dict[str, list[str]] = {}
+    if data.get("spans"):
+        for span in iter_spans(map_layer.get("document")):
+            if span.get("claim"):
+                shown.setdefault(span["claim"], []).append(span["text"])
     if responses is not None:
         known = {r["id"] for r in answers["responses"]}
         missing = [r for r in responses if r not in known]
@@ -194,6 +201,8 @@ def list_claims(store: Store, data: Any) -> dict:
         if ids is not None and claim["id"] not in ids:
             continue
         row = {k: copy.deepcopy(claim[k]) for k in LISTED if k in claim}
+        if data.get("spans") and response_id is None:
+            row["shown_as"] = shown.get(claim["id"], [])
         out.append({**row, "response": response_id})
     return {"claims": out, "count": len(out)}
 

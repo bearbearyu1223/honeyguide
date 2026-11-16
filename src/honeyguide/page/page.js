@@ -158,6 +158,13 @@ function leaves(text, o) {
   if (last < text.length) html += `<span class="lf" data-o="${pos}">${esc(text.slice(last))}</span>`;
   return html;
 }
+/* T7.15: a map claim the Checker marked not supported is quiet at rest (a faint dotted underline and the dashed
+   "not supported" mark in place of its evidence shape) and shows its red flag and the Checker's note on hover or
+   keyboard focus; the note is also its accessible description. Answers keep the inline "not supported" pill. */
+const unsupported = c => !!c && c.check === "not_supported" && !["stale", "stale_flagged", "retired", "missing"].includes(claimState(c));
+const NS_DEFAULT = "The Checker re-read the cited lines and they don't show all of this.";
+const nsTip = c => `<b class="tflag">Not supported</b> · ${inlineCode(c.check_note || NS_DEFAULT)}`;
+let NSN = 0;   // ids for the hidden descriptions, unique per render
 /* spans (with claims) to HTML, offsets from o; ctx: "map" or "answer" */
 function spansHTML(spans, o, ctx, byId) {
   let html = "", pos = o;
@@ -166,9 +173,13 @@ function spansHTML(spans, o, ctx, byId) {
     if (s.claim) {
       const c = byId.get(s.claim);
       const st = claimState(c);
+      const quiet = ctx === "map" && unsupported(c);
       const cls = ["claim", c?.evidence === "general_knowledge" ? "gk" : "", st.startsWith("stale") ? "stale" : "", st === "retired" ? "retired" : "",
-        c?.check === "not_supported" && !st.startsWith("stale") ? "flagged" : ""].filter(Boolean).join(" ");
-      html += `<span class="${cls}" data-claim="${esc(s.claim)}" data-st="${st}">${leaves(t, pos)}</span>${citeHTML(c, ctx)}`;
+        c?.check === "not_supported" && !st.startsWith("stale") ? "flagged" : "", quiet ? "quiet" : ""].filter(Boolean).join(" ");
+      const ns = quiet ? `nsd-${++NSN}` : "";
+      const a11y = quiet ? ` tabindex="0" aria-describedby="${ns}" data-tip="${esc(nsTip(c))}"` : "";
+      html += `<span class="${cls}" data-claim="${esc(s.claim)}" data-st="${st}"${a11y}>${leaves(t, pos)}</span>${citeHTML(c, ctx)}`
+        + (quiet ? `<span class="sr" id="${ns}">Not supported: ${esc(c.check_note || NS_DEFAULT)}</span>` : "");
     } else html += leaves(t, pos);
     pos += cpLen(t);
   }
@@ -227,6 +238,7 @@ function citeHTML(c, ctx) {
     return `<span class="cite"><span class="stag" data-tip="<b>Stale, re-checking.</b> ${why} (at <code>${esc(short(c.refreshed_to))}</code>). Not served as fact, and not given to agents, until the Checker re-reads the new lines."><span class="spin"></span>stale, re-checking</span>${chipsHTML(c)}</span>`;
   }
   const checked = c.check && c.check !== "unchecked";
+  if (map && unsupported(c)) return `<span class="cite"><span class="dot unsup" data-tip="${esc(nsTip(c))}" aria-hidden="true"></span>${chipsHTML(c)}</span>`;
   const dot = checked ? `<span class="dot ev-${esc(c.evidence)}" data-tip="${esc(evTip(c, c.check === "supported" ? "checked" : ""))}"></span>` : "";
   let mark = "";
   if (st === "rechecked") mark = `<span class="rck" data-tip="<b>Re-checked</b> · the cited lines changed in the last refresh; the Checker re-read them at <code>${esc(short((c.anchors || [])[0]?.commit))}</code>: still supported">↻</span>`;
@@ -308,7 +320,7 @@ function renderMap() {
       } else html += `<p class="blk" data-block="${esc(block.id)}">${own ?? ""}</p>`;
       if (sec.kind === "overview" && !graphShown && k >= graphAfter && FIGS.has("graph")) {
         graphShown = true;
-        html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure><p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
+        html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure>${graphIsoHTML()}<p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
       }
     });
     if (doc.coverage && !covShown && sec.kind === covAt) { covShown = true; html += coverageHTML(doc.coverage); }
@@ -318,6 +330,7 @@ function renderMap() {
   for (const [id, view] of keepOpen) if ($(`.flow[data-flow="${CSS.escape(id)}"]`, COL)) openFlow(id, view, false);
   document.body.classList.remove("nomap-on");
   renderToc();
+  renderNeeds();
   index();
   renderHeader();
   applyOverlays();
@@ -363,6 +376,7 @@ function renderNoMap() {
     ${carto.map(workHTML).join("")}
     <p class="quiet">Memory for this repo lives outside the checkout, in <code>~/.honeyguide/</code> (or <code>$HONEYGUIDE_HOME</code>).</p></div>`;
   $("#toc").innerHTML = "";
+  $("#needs").innerHTML = "";
   $("#repo").textContent = REPO_NAME;
   document.body.classList.add("nomap-on");
 }
@@ -371,6 +385,44 @@ function renderToc() {
   if (!doc) return;
   $("#toc").innerHTML = (doc.sections || []).map(s => `<li><a href="#s-${esc(s.id)}" data-sec="${esc(s.id)}" title="${esc(s.title)}"><span class="ini" aria-hidden="true">${esc((s.title || "?").trim()[0].toUpperCase())}</span><span class="tt">${esc(s.title)}</span><span class="n"></span></a></li>`).join("");
   spy();
+}
+/* T7.15: "Needs a look (N)" in the sidebar: every map claim the Checker marked not supported, in the order the map
+   shows them, with the phrase the map shows and its section; click one to go to it and read the Checker's note. */
+function needsList() {
+  const doc = D.map?.document;
+  if (!doc) return [];
+  const flagged = new Map((D.map.claims || []).filter(unsupported).map(c => [c.id, c]));
+  const out = new Map();
+  for (const sec of doc.sections || []) for (const b of sec.blocks || []) for (const seg of segsOf(b)) for (const sp of seg)
+    if (sp.claim && flagged.has(sp.claim) && !out.has(sp.claim)) out.set(sp.claim, { c: flagged.get(sp.claim), text: sp.text, sec: sec.title });
+  const flowsTitle = secTitle(flowsSection()) || "Flows";
+  for (const f of doc.flows || []) for (const h of f.hops || [])
+    if (h.claim && flagged.has(h.claim) && !out.has(h.claim)) out.set(h.claim, { c: flagged.get(h.claim), text: h.call, sec: flowsTitle, flow: f.id, code: true });
+  for (const [id, c] of flagged) if (!out.has(id)) out.set(id, { c, text: c.text, sec: "" });
+  return [...out.values()];
+}
+function renderNeeds() {
+  const el = $("#needs");
+  const items = needsList();
+  if (!items.length) { el.innerHTML = ""; return; }
+  const open = !!UI.needsOpen;
+  el.innerHTML = `<button class="nd-h" data-needs-tog aria-expanded="${open}" aria-controls="ndl" data-tip="Claims the Checker marked not supported: the cited lines don't show all of what the claim says. Each keeps a quiet mark on the map; hover it for the Checker's note."><span class="dot unsup" aria-hidden="true"></span><span class="tt">Needs a look</span><span class="n">${items.length}</span><span class="car" aria-hidden="true">${open ? "▾" : "▸"}</span></button>`
+    + `<ol class="ndl" id="ndl"${open ? "" : " hidden"}>` + items.map(x => `<li><a href="#" data-ns="${esc(x.c.id)}"${x.flow ? ` data-nsflow="${esc(x.flow)}"` : ""} data-tip="${esc(nsTip(x.c))}"><span class="ns-t">${x.code ? `<code>${esc(clip(x.text, 48))}</code>` : inlineCode(clip(x.text.replace(/\s+/g, " ").trim(), 64))}</span>${x.sec ? `<span class="ns-s">${esc(x.sec)}</span>` : ""}</a></li>`).join("") + `</ol>`;
+}
+function goNeeds(id, flow) {
+  let el = $(`.claim.quiet[data-claim="${CSS.escape(id)}"]`, COL);
+  if (el) {
+    const mod = el.closest(".mod");
+    if (mod && el.closest(".fx") && !mod.classList.contains("open")) { setModOpen(mod, true); layout(); }
+  } else if (flow) {
+    const f = openFlow(flow, "list");
+    el = f && $(`.hop[data-claim="${CSS.escape(id)}"]`, f);
+  }
+  if (!el) return;
+  scrollMapTo(el);
+  flash(el);
+  if (el.matches(".claim")) el.focus({ preventScroll: true });
+  setTimeout(() => showTip(el, el.dataset.tip || $(".node", el)?.dataset.tip), 60);
 }
 function blockAt(off) { return MAPTEXT?.blocks.find(b => off >= b.start && off < b.end) || MAPTEXT?.blocks.find(b => off <= b.end) || null; }
 
@@ -384,6 +436,7 @@ function shownEv(c, panel) {
   if (!c) return null;
   const st = claimState(c);
   if (st === "retired" || st.startsWith("stale")) return null;
+  if (c.check === "not_supported") return null;   /* T7.15: the dashed mark replaces the evidence shape */
   if (panel && (!c.check || c.check === "unchecked")) return null;
   return c.evidence;
 }
@@ -409,11 +462,13 @@ function pathHTML(p, byId, panel) {
     const to = lanes.get(h.to);
     const loop = h.loop && loops.get(h.loop);
     const tr = h.trace === "unseen" ? `<span class="tr">not in the runtime trace</span>` : h.trace === "blind_spot" ? `<span class="tr">trace blind spot</span>` : "";
+    const quiet = !panel && unsupported(c);
     const ok = panel && c?.check === "supported" && st !== "stale" ? `<span class="ok" data-tip="<b>Checked</b> · the Checker re-read the cited lines: supported">✓</span>`
+      : quiet ? `<span class="sr">Not supported: ${esc(c.check_note || NS_DEFAULT)}</span>`
       : c?.check === "not_supported" ? `<span class="flag" data-tip="<b>Not supported.</b> ${esc(c.check_note || "")}">not supported</span>` : "";
     const e = hopEdge(h);
     const edge = e ? `<li class="edge"><span><b>${esc(e[0])}</b>${esc(e[1])}</span></li>` : "";
-    return `<li class="hop s-${style}" data-hop="${i}"><span class="node ${shown ? "ev-" + esc(shown) : "pending"}" data-tip="${c ? esc(evTip(c)) : ""}"></span><div class="hop-b">`
+    return `<li class="hop s-${style}${quiet ? " quiet" : ""}" data-hop="${i}" data-claim="${esc(h.claim || "")}"><span class="node ${shown ? "ev-" + esc(shown) : unsupported(c) ? "unsup" : "pending"}" data-tip="${c ? esc(unsupported(c) ? nsTip(c) : evTip(c)) : ""}"></span><div class="hop-b">`
       + `<div class="hop-t"><span class="fn">${esc(h.call)}</span>${tag ? `<span class="loop">${tag}</span>` : ""}${loop ? `<span class="loop" data-tip="Repeats: ${esc(loop.label)}">${esc(loop.label)}</span>` : ""}</div>`
       + (h.label ? `<div class="hop-d">${inlineCode(h.label)}</div>` : "")
       + (note && h.trace === "blind_spot" ? `<div class="hop-blind"><b>${esc(note[0])}</b> ${esc(note[1])}</div>` : note && h.note ? `<div class="hop-blind">${note[0] ? `<b>${esc(note[0])}</b> ` : ""}${esc(note[1])}</div>` : "")
@@ -429,46 +484,56 @@ function pathHTML(p, byId, panel) {
    ("resp:<response id>") and the module graph ("graph"). Re-rendered only when the width they get changes. */
 const FIGS = new Map();
 const EVNAMES = Object.fromEntries(Object.entries(EV).map(([k, [n]]) => [k, n.toLowerCase()]));
-/* the Modules section: file -> {role, entry, block} */
-function moduleIndex(doc) {
-  const m = new Map();
+/* T7.15: the Modules components, for the module graph (one box each) and the lanes' subtitles: a path maps to the
+   component listing it, or to the one whose directory holds it (diagrams.js resolver) */
+function components(doc) {
+  const out = [];
   for (const sec of doc?.sections || []) for (const b of sec.blocks || []) {
     if (b.type !== "module") continue;
-    /* a component's files each map to it (T7.13b); a title "files: role" lends its role when there is no role */
     const role = b.role || (b.title && b.title.includes(": ") ? b.title.slice(b.title.indexOf(": ") + 2) : "");
-    for (const f of modFiles(b)) if (!m.has(f)) m.set(f, { role, entry: !!b.entry, block: b.id });
+    const files = modFiles(b);
+    out.push({ id: b.id, name: HGD.compName({ id: b.id, files }), role, files, entry: !!b.entry, module: b.id, title: b.title || "", label: modName(b) });
   }
-  return m;
+  return out;
 }
 function diagramModel(p, byId, panel, key) {
-  const mods = moduleIndex(D.map?.document);
+  const compOf = HGD.resolver(components(D.map?.document));
   const lanes = {};
-  for (const l of p.lanes || []) lanes[l.id] = { name: l.label, sub: (l.path && mods.get(l.path)?.role) || "", file: l.path || null };
+  for (const l of p.lanes || []) lanes[l.id] = { name: l.label, sub: (l.path && compOf(l.path)?.role) || "", file: l.path || null };
   const loops = {};
   for (const l of p.loops || []) loops[l.id] = l.label;
   const hops = (p.hops || []).map(h => {
     const c = byId.get(h.claim), style = hopStyle(h, c);
     return { fn: h.call, a: hopAnchor(c), ev: shownEv(c, panel), style, note: hopNote(h, style), d: h.label || "", trace: h.trace,
       from: h.from, to: h.to, edge: hopEdge(h), loop: h.loop || null, claim: h.claim,
-      chip: c && (c.anchors || []).length ? 0 : null, search: c?.evidence === "searched_not_found" };
+      chip: c && (c.anchors || []).length ? 0 : null, search: c?.evidence === "searched_not_found",
+      ns: unsupported(c) ? c.check_note || NS_DEFAULT : null };
   });
   /* the graph's start label: the starting lane's label without its file (e.g. "train.py · main" -> "main") */
   const l0 = (p.lanes || []).find(l => l.id === p.hops?.[0]?.from);
-  const startLabel = l0 ? (l0.path && l0.label.startsWith(l0.path) ? l0.label.slice(l0.path.length).replace(/^[\s·:]+/, "") : l0.label) : "";
+  const fileName = l0?.path ? [l0.path, l0.path.split("/").pop()].find(x => l0.label.startsWith(x)) : null;
+  const startLabel = l0 ? (fileName ? l0.label.slice(fileName.length).replace(/^[\s·:]+/, "") || l0.label : l0.label) : "";
   return { key, id: p.id, title: p.title, lanes, loops, hops, evNames: EVNAMES, startLabel };
 }
 function buildFigures(doc, byId) {
   for (const k of [...FIGS.keys()]) if (!k.startsWith("resp:")) FIGS.delete(k);
   const flows = (doc.flows || []).map(f => diagramModel(f, byId, false, `map:${f.id}`));
   flows.forEach(m => FIGS.set(m.key, m));
-  const mods = moduleIndex(doc);
-  const files = [...mods].map(([file, x]) => ({ file, role: x.role, entry: x.entry, module: x.block }));
-  const gm = HGD.graphModel(flows, files);
+  const gm = HGD.graphModel(flows, components(doc));
   if (gm.edges.length || gm.starts.length) FIGS.set("graph", gm);
 }
 function graphCaption() {
   const gm = FIGS.get("graph"), n = gm.edges.reduce((s, e) => s + e.calls.length, 0);
-  return `Each box is a file. The ${plural(n, "call")} that cross from one file to another in the ${plural(gm.flows, "traced flow")} (<a href="#s-${esc(flowsSection())}" data-goflows>Flows</a>, below) are drawn as arrows, heavier when there are more. Click a file for its module, an arrow for its calls.`;
+  return `Each box is a component from Modules, named by its first file. The ${plural(n, "call")} that cross from one component to another in the ${plural(gm.flows, "traced flow")} (<a href="#s-${esc(flowsSection())}" data-goflows>Flows</a>, below) are drawn as arrows, heavier when there are more. Hover a box for its files; click it for its module, an arrow for its calls.`;
+}
+/* the components no traced flow passes through: one quiet line under the graph, each a link to its module */
+function graphIsoHTML() {
+  const gm = FIGS.get("graph");
+  const iso = gm.iso.map(id => gm.comps.find(c => c.id === id)).filter(Boolean);
+  if (!iso.length) return "";
+  return `<p class="figiso wide" id="ovgraph-iso"><span class="fi-l">Not in a traced flow:</span> ${iso.map(c => c.module
+    ? `<a href="#" data-gomod="${esc(c.module)}" data-tip="${esc(`${c.title ? inlineCode(c.title) : esc(c.name)}<br>Files: ${c.files.map(f => `<code>${esc(f)}</code>`).join(", ")}`)}">${esc(c.label || c.name)}</a>`
+    : `<code>${esc(c.name)}</code>`).join(`<span class="sep"> · </span>`)}</p>`;
 }
 function flowsSection() { return (D.map?.document?.sections || []).find(s => s.kind === "flows")?.id || "flows"; }
 /* the width a figure gets: the map area (less the panel when it is open), 560 to 1000 px */
@@ -560,13 +625,10 @@ function closeOverlay() {
   $(".dgwrap", $("#dgovfig")).innerHTML = "";
   $(`[data-dgview="${CSS.escape(ov.dataset.from || "")}"]`, PBODY)?.focus({ preventScroll: true });
 }
-/* the module graph: an arrow leads to the calls it counts, a box to its module */
+/* the module graph: an arrow leads to the calls it counts, a box to its module (both by component id) */
 function showCalls(from, to) {
-  const hits = [];
-  for (const [key, m] of FIGS) {
-    if (!key.startsWith("map:")) continue;
-    m.hops.forEach((h, i) => { if (h.from !== h.to && m.lanes[h.from]?.file === from && m.lanes[h.to]?.file === to) hits.push({ id: key.slice(4), i }); });
-  }
+  const hits = [], gm = FIGS.get("graph"), e = gm?.edges.find(x => x.from === from && x.to === to);
+  for (const c of e?.calls || []) if (c.flow.startsWith("map:")) hits.push({ id: c.flow.slice(4), i: c.hop });
   if (!hits.length) return;
   for (const x of hits) { const f = openFlow(x.id, "dg", false); if (f) f.dataset.force = "1"; }
   renderFigs();
@@ -578,20 +640,21 @@ function showCalls(from, to) {
     if (g) { g.classList.add("hl"); setTimeout(() => g.classList.remove("hl"), 2400); }
   }
 }
-function goModule(file) {
-  const x = moduleIndex(D.map?.document).get(file);
-  if (x) goModuleId(x.block);
+function goModule(comp) {
+  const c = FIGS.get("graph")?.comps.find(x => x.id === comp);
+  if (c?.module) goModuleId(c.module);
 }
 /* the line a diagram's preview gains: "Hop 6 of 7 · loss.backward() · seen at runtime", its description, its note */
 function hopCtxHTML(g) {
   const m = FIGS.get(g.dataset.key), i = +g.dataset.hop, h = m?.hops[i], k = g.dataset.kind;
   if (!h) return "";
   const what = k === "call" ? `<code>${esc(h.fn)}</code>` : `${k === "ret" ? "returns" : "hands on"} <code>${esc(h.edge.filter(Boolean).join(" "))}</code>`;
-  const ev = h.ev ? EVNAMES[h.ev] : "not checked yet";
+  const ev = h.ev ? EVNAMES[h.ev] : h.ns ? "not supported" : "not checked yet";
   const tr = h.trace === "seen" ? "seen at runtime" : h.trace === "blind_spot" ? "trace blind spot" : "not in the runtime trace";
   const evw = h.ev === "seen_at_runtime" && h.trace === "seen" ? ev : `${ev} · ${tr}`;
   return `<div class="snip-ctx"><div class="sc-h">${h.ev ? `<span class="dot ev-${esc(h.ev)}"></span>` : ""}<b>Hop ${i + 1} of ${m.hops.length}</b><span>·</span>${what}<span>·</span><span>${esc(evw)}</span></div>`
-    + `${h.d || h.note ? `<div class="sc-d">${h.d ? inlineCode(h.d) : ""}${h.note && h.note[0] !== "Inferred." ? `${h.d ? "<br>" : ""}${h.note[0] ? `<b>${esc(h.note[0])}</b> ` : ""}${esc(h.note[1])}` : ""}</div>` : ""}</div>`;
+    + `${h.d || h.note ? `<div class="sc-d">${h.d ? inlineCode(h.d) : ""}${h.note && h.note[0] !== "Inferred." ? `${h.d ? "<br>" : ""}${h.note[0] ? `<b>${esc(h.note[0])}</b> ` : ""}${esc(h.note[1])}` : ""}</div>` : ""}`
+    + `${h.ns ? `<div class="sc-d sc-ns"><b>Not supported.</b> ${esc(h.ns)}</div>` : ""}</div>`;
 }
 
 /* ---------------------------------------------------------------- threads: index the store */
@@ -1236,6 +1299,13 @@ function showTip(el, html, below) {
   if (!html) { TIP.classList.remove("on"); return; }
   TIP.innerHTML = html;
   const r = el.getBoundingClientRect();
+  /* in the "Needs a look" list a tooltip opens beside the item, so it never covers the list it describes */
+  if (el.closest("#ndl")) {
+    TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, r.right + 12) + "px";
+    TIP.style.top = Math.max(8, Math.min(innerHeight - TIP.offsetHeight - 8, r.top)) + "px";
+    TIP.classList.add("on");
+    return;
+  }
   TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, Math.max(10, r.left + r.width / 2 - TIP.offsetWidth / 2)) + "px";
   const above = r.top - TIP.offsetHeight - 8;
   TIP.style.top = (below || above < 8 ? r.bottom + 8 : above) + "px";
@@ -1292,7 +1362,7 @@ document.addEventListener("click", e => {
   const ge = el.closest(".dg-e");
   if (ge) { TIP.classList.remove("on"); showCalls(ge.dataset.from, ge.dataset.to); return; }
   const gnode = el.closest(".dg-node");
-  if (gnode) { TIP.classList.remove("on"); goModule(gnode.dataset.file); return; }
+  if (gnode) { TIP.classList.remove("on"); goModule(gnode.dataset.comp); return; }
   if (el.closest("[data-goflows]")) { e.preventDefault(); scrollMapTo($(`#s-${CSS.escape(flowsSection())}`), 24); return; }
   if (el.closest("#top")) { UI.open = true; if (!UI.cur && UI.tab === "thread") UI.tab = "nav"; render(true); return; }
   if (el.closest("#pclose")) { closePanel(); return; }
@@ -1330,6 +1400,9 @@ document.addEventListener("click", e => {
   if (el.closest("[data-cancel]")) { UI.compose = null; applyOverlays(); render(true); return; }
   const qp = el.closest("#qp button");
   if (qp) { submit(qp.textContent); return; }
+  if (el.closest("[data-needs-tog]")) { UI.needsOpen = !UI.needsOpen; renderNeeds(); $("#needs .nd-h")?.focus({ preventScroll: true }); return; }
+  const nsA = el.closest("[data-ns]");
+  if (nsA) { e.preventDefault(); goNeeds(nsA.dataset.ns, nsA.dataset.nsflow); return; }
   const gm = el.closest("[data-gomod]");
   if (gm) { e.preventDefault(); goModuleId(gm.dataset.gomod); return; }
   const mo = el.closest("[data-more]");
@@ -1382,7 +1455,14 @@ function spy() {
   for (const s of secs) if (s.getBoundingClientRect().top < 200) cur = s;
   $$("#toc a").forEach(a => a.classList.toggle("on", !!cur && a.dataset.sec === cur.dataset.sec));
 }
-MAIN.addEventListener("scroll", () => { hideTB(); TIP.classList.remove("on"); if (!pinned) PREV.style.display = "none"; spy(); }, { passive: true });
+/* a tooltip follows its element while that element holds the focus (Tab onto a not-supported claim scrolls it into
+   view, and its note must stay readable); any other tooltip closes on scroll */
+function tipOnScroll() {
+  const f = document.activeElement;
+  if (TIP.classList.contains("on") && f && f !== document.body && f.dataset?.tip && f.matches(".claim.quiet")) showTip(f, f.dataset.tip);
+  else TIP.classList.remove("on");
+}
+MAIN.addEventListener("scroll", () => { hideTB(); tipOnScroll(); if (!pinned) PREV.style.display = "none"; spy(); }, { passive: true });
 PBODY.addEventListener("scroll", () => { TIP.classList.remove("on"); }, { passive: true });
 
 /* ---------------------------------------------------------------- theme, motion, the rail */
@@ -1493,7 +1573,7 @@ async function init() {
   if (store.get("notesLayer") === "0") { $("#laynotes").checked = false; document.body.classList.remove("layer-notes"); }
   setRail(document.documentElement.classList.contains("rail"));
   $("#legend").innerHTML = `<div class="lh">Evidence, by shape</div>` + Object.entries(EV).map(([k, [name]]) => `<div><span class="sym"><span class="dot ev-${k}"></span></span>${esc(name.toLowerCase())}</div>`).join("")
-    + `<div class="gap"></div><div><span class="sym"><span class="ok">✓</span></span>checked by the Checker</div><div><span class="flag">not supported</span></div>`;
+    + `<div class="gap"></div><div><span class="sym"><span class="ok">✓</span></span>checked by the Checker</div><div data-tip="On the map, a claim the Checker marked not supported keeps this mark and a faint dotted underline; hover or focus it for the Checker's note. Answers show a red &quot;not supported&quot; tag."><span class="sym"><span class="dot unsup"></span></span>not supported</div>`;
   applyWidth();
   try {
     await api("/api/visit", {});

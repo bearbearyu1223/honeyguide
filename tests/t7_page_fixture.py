@@ -544,6 +544,15 @@ V2_CLAIMS = [
 # the v2 map's claims: base's, less "every epoch reshuffles", which v2 corrects (nothing calls `_next_shard`)
 MAP_CLAIMS_V2 = [c for c in MAP_CLAIMS if c["key"] != "shuffle"] + V2_CLAIMS
 
+# T7.15: the Checker marks three v2 map claims not supported (one in the Overview's facts, one in a folded module
+# fact, one shown only by a flow hop), so the page's quiet flag and "Needs a look" have something to show
+MAP_FLAGS_V2 = {
+    "deps": "Line 4 lists the three dependencies; nothing cited shows that `uv sync` is what installs them.",
+    "m-io": "The cited lines show the output head and the vocabulary size, not the (B, T) input; that is "
+            "forward(self, idx, ...) in model.py.",
+    "h5": "The cited line is the opt.step() call; it doesn't show that the call sits outside the micro-batch loop.",
+}
+
 # what the v2 map read in full, skimmed and left out (meta.json's coverage, T7.13b)
 COVERAGE_V2 = {
     "deep": [{"area": "`train.py`, `optim.py`, `model.py`, `data.py`, `engine.py`, `tokenizer.py`",
@@ -922,7 +931,7 @@ def build(out: Path, variant: str) -> dict:
         saved = claims_mod.save_claims(st, repo, {"target": "map", "mode": "replace",
                                                   "claims": MAP_CLAIMS_V2 if v2 else MAP_CLAIMS,
                                                   "document": DOCUMENT_V2 if v2 else DOCUMENT})
-        check_all(st)
+        check_all(st, flags=MAP_FLAGS_V2 if v2 else None)
         doc = st.load("map")["document"]
         rev = doc["revision"]
         # 1. the KV cache: an answer with a general-knowledge claim and a not-supported claim, three follow-ups
