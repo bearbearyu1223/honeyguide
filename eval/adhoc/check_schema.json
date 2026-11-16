@@ -1,0 +1,33 @@
+{
+ "type": "object",
+ "properties": {
+  "units": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {"type": "string"},
+     "verdict": {"type": "string", "enum": ["supported", "not_supported", "wrong", "not_a_claim"]},
+     "note": {"type": "string"},
+     "evidence": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "path": {"type": "string"},
+        "start": {"type": "integer", "minimum": 1},
+        "end": {"type": "integer", "minimum": 1}
+       },
+       "required": ["path", "start", "end"],
+       "additionalProperties": false
+      }
+     }
+    },
+    "required": ["id", "verdict", "note", "evidence"],
+    "additionalProperties": false
+   }
+  }
+ },
+ "required": ["units"],
+ "additionalProperties": false
+}
