@@ -125,7 +125,10 @@ def test_numbers(archive):
     out = cap.render(archive)
     assert "  toy         run 1      not recorded       5        $1.50  not recorded" in out
     assert "  toy         run 2              30.0      3*        $2.00             0" in out
-    assert "  toy         total                                  $5.50" in out
+    # the total is all four passes: run 1 $1.50, run 2, repair and re-check $2.00 each
+    assert "  toy         re-check           12.0       3        $2.00             0" in out
+    assert "  toy         total                                  $7.50" in out
+    assert "    toy         re-check        1.0" in out
     # c_2, c_3 repaired in round 1; c_3 again in round 2; c_4 never repaired
     assert "  toy         run 2 before repair            1         3" in out
     assert "  toy         after repair round 1           2         2" in out
@@ -182,3 +185,34 @@ def test_recheck_helpers():
     reps = [rep(2, "anchor", "t", [], "2026-01-02T00:10:00Z"), rep(1, "anchor", "t", [], "2026-01-02T00:10:00Z"),
             rep(2, "rewrite", "t", [], "2026-01-02T00:20:00Z")]
     assert [r["round"] for r in cap.pass_rounds(reps)] == [1, 1, 2]
+
+
+def test_pass_rounds_use_the_recorded_pass_and_round():
+    """Entries that record their pass and round keep them: one round split over two seconds stays one round.
+    Legacy entries in the same list are still numbered by their own timestamps."""
+    tagged = [dict(rep(1, "anchor", "t", [], "2026-01-02T00:10:00Z"), **{"pass": "p_a"}),
+              dict(rep(1, "rewrite", "t", [], "2026-01-02T00:10:01Z"), **{"pass": "p_a"}),
+              dict(rep(2, "rewrite", "t", [], "2026-01-02T00:20:00Z"), **{"pass": "p_a"})]
+    assert [r["round"] for r in cap.pass_rounds(tagged)] == [1, 1, 2]
+    legacy = [rep(3, "anchor", "t", [], "2026-01-01T00:00:00Z"), rep(4, "anchor", "t", [], "2026-01-01T00:00:05Z")]
+    assert [r["round"] for r in cap.pass_rounds(legacy + tagged)] == [1, 2, 1, 1, 2]
+
+
+def test_checker_stages_look_at_one_pass():
+    """A claim repaired in an earlier pass and again in a later one: the stages count the later pass only."""
+    old = [rep(1, "anchor", "t", [], "2026-01-01T00:00:00Z"), rep(2, "anchor", "t", [], "2026-01-01T00:10:00Z")]
+    new = [dict(rep(1, "rewrite", "t", [], "2026-01-02T00:00:00Z"), **{"pass": "p_b"})]
+    c = claim("c", repairs=old + new)
+    assert cap.last_pass([c]) == "p_b"
+    (only,) = cap.one_pass([c], "p_b")
+    assert only["repairs"] == new
+    assert [cap.claim_state(only, k) for k in (0, 1, 2)] == ["not_supported", "supported", "supported"]
+    assert [cap.claim_state(c, k) for k in (0, 1, 2)] == ["not_supported", "not_supported", "supported"]  # mixed
+    assert cap.last_pass([claim("d", repairs=old)]) is None and cap.last_pass([claim("e")]) is None
+    assert cap.one_pass([claim("d", repairs=old + new)], None)[0]["repairs"] == old
+
+
+def test_readability_block_reports_the_final_maps(archive):
+    out = cap.render(archive)
+    for name in ("run 1", "run 2 after repair", "run 2 after re-check"):
+        assert f"  toy         {name:<20}" in out, name

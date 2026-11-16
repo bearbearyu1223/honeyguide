@@ -16,7 +16,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from term import Term, events, frame_shadowed
+from term import Term, frame_shadowed
 
 W, H, FPS = 1920, 1200, 30
 K = W / 1440                      # CSS px -> output px

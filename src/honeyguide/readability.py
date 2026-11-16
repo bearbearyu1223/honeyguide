@@ -219,7 +219,9 @@ def check_readability(document: dict, strict: bool = True) -> tuple[list[str], l
     """
     if not isinstance(document, dict):
         return [], []
-    overview = "\n".join(t for k, _, _, t in prose_pieces(document) if k == "overview")
+    pieces = [t for k, _, _, t in prose_pieces(document) if k == "overview"]
+    prose = " ".join(pieces)   # the length target counts the prose alone, as map check's overview_words does
+    overview = "\n".join(pieces)   # the abbreviation context: the prose plus the facts rows below
     for section in document.get("sections") or []:
         if isinstance(section, dict) and section.get("kind") == "overview":   # facts rows can explain too
             for block in section.get("blocks") or []:
@@ -254,8 +256,8 @@ def check_readability(document: dict, strict: bool = True) -> tuple[list[str], l
         if total and bad >= ERROR_MIN_BLOCKS and bad / total >= ERROR_SHARE:
             errors.append(f"readability: {kind}: {bad} of {total} prose blocks have readability warnings "
                           f"(the limit is under {ERROR_SHARE:.0%}); the section reads as notes, not prose")
-    if strict and overview:
-        n = len(words(overview))
+    if strict and prose:
+        n = len(words(prose))
         lo, hi = OVERVIEW_WORDS
         if not lo <= n <= hi:
             warnings.append(f"readability: overview: length: {n} words; aim for {lo}-{hi}")

@@ -67,20 +67,20 @@ def check_secret(path: str, lines: list[str] | None = None, first: int = 1) -> s
 
 
 def draft_dir_problem(path: str | Path, drafts_root: str | Path) -> str | None:
-    """Why ``path`` may not be read as a map draft (T7.13), or None. Drafts live only under the memory store's
-    ``drafts/`` directory, the one place the Cartographer may write; anything else (the target repo, a symlink
-    out of the store, another repo's drafts) is refused, so ingesting can't pick up files it didn't write."""
-    root = Path(drafts_root).resolve()
+    """Why ``path`` may not be read as a map draft (T7.13), or None. Map drafts live only in the memory store's
+    ``drafts/map/`` directory, the one place the Cartographer writes them; anything else (the target repo, a
+    symlink out of the store, another repo's drafts, the drafts root, another agent's ``drafts/<agent>/``) is
+    refused, so ingesting can't pick up files it didn't write."""
+    root = (Path(drafts_root) / "map").resolve()
     try:
         real = Path(path).expanduser().resolve(strict=True)
     except (OSError, RuntimeError):
         return f"{path}: no such directory"
     if not real.is_dir():
         return f"{path}: not a directory"
-    if real != root and root not in real.parents:
-        return f"{path}: drafts are read only from {root} (`honeyguide map draft-dir` prints it)"
+    if real != root:
+        return f"{path}: map drafts are read only from {root} (`honeyguide map draft-dir` prints it)"
     for f in sorted(real.iterdir()):
-        target = f.resolve()
-        if f.is_symlink() or (target != root and root not in target.parents):
+        if f.is_symlink() or f.resolve().parent != root:
             return f"{f}: a link out of the drafts directory; write the file itself there"
     return None

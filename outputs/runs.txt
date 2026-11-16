@@ -7,24 +7,28 @@ runs
 --------------------------------------------------------------------------
 Wall clock from the launcher's start/end files; turns and cost from claude
 -p's JSON result (total_cost_usd: cost at API list price; these were
-subscription runs).
+subscription runs). The total is all four passes.
   repo        pass           wall min   turns  cost (list)          exit
   nanochat    run 1      not recorded      13       $14.14  not recorded
   nanochat    run 2              31.1      8*       $13.42             0
   nanochat    repair             15.3      21        $6.92             0
-  nanochat    total                                 $34.48
+  nanochat    re-check           19.7      25        $9.19             0
+  nanochat    total                                 $43.67
   waku-agent  run 1      not recorded      12       $13.63  not recorded
   waku-agent  run 2              35.2      2*       $12.43             0
   waku-agent  repair              6.3      19        $2.76             0
-  waku-agent  total                                 $28.83
+  waku-agent  re-check           10.2      21        $4.20             0
+  waku-agent  total                                 $33.03
 
   claude -p's own session duration (duration_ms), minutes:
     nanochat    run 1          39.3
     nanochat    run 2          2.3*
     nanochat    repair         15.3
+    nanochat    re-check       19.7
     waku-agent  run 1          40.6
     waku-agent  run 2          0.2*
     waku-agent  repair          6.3
+    waku-agent  re-check       10.2
   * result_index > 0: the session ended after background tasks, and the
   saved JSON is its last result event only, so turns and duration_ms cover
   that last segment; cost (total_cost_usd) is the whole session's.
@@ -102,8 +106,9 @@ state). Checker verdicts are each claim's saved check.
 checker
 --------------------------------------------------------------------------
 Map claims by Checker verdict. Run 2's state before repair and after each
-round is derived from each claim's repairs history (a repair at round r
-means it was not supported after round r-1) and its current check.
+round is derived from each claim's repairs history in the repair pass (a
+repair at round r means it was not supported after round r-1) and its
+current check.
   repo        stage                  supported not supp. unchecked retired
   nanochat    run 1 (no repair)            129        20         0       0
   nanochat    run 2 before repair          158       102         0       0
@@ -166,16 +171,19 @@ means not supported after round r-1.
 readability
 --------------------------------------------------------------------------
 honeyguide.readability.check_readability(strict=True), the check behind
-`map validate --strict`, on the Overview section alone.
+`map validate --strict`, on the Overview section alone, for run 1, run 2
+after repair, and run 2 after the re-check (the final maps).
   repo        map                   errors  warnings  warnings by kind
   nanochat    run 1                      4        11  abbreviation 2,
                                                     choppy 3, length 1,
                                                     short 2, verbless 3
   nanochat    run 2 after repair         0         0  none
+  nanochat    run 2 after re-check       0         0  none
   waku-agent  run 1                      2         5  choppy 1, length 1,
                                                     semicolons 1, short 1,
                                                     verbless 1
   waku-agent  run 2 after repair         0         0  none
+  waku-agent  run 2 after re-check       0         0  none
 
 demo
 --------------------------------------------------------------------------

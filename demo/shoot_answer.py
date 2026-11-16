@@ -50,7 +50,7 @@ def main() -> None:
         # pan the swimlane: shift-wheel inside the diagram
         c.move(240, 236, 600)
         steps = 70
-        for i in range(steps):
+        for _i in range(steps):
             c.call("Input.dispatchMouseEvent", type="mouseWheel", x=240, y=236, deltaX=19, deltaY=0)
             c.call("Input.dispatchMouseEvent", type="mouseWheel", x=240, y=236, deltaX=0, deltaY=3)
             c.pump(0.035)

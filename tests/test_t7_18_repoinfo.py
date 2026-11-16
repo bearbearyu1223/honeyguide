@@ -134,6 +134,11 @@ def test_helpers():
     assert [x["name"] for x in shares] == ["A", "B", "C", "D", "E", "Other"] and shares[-1]["lines"] == 5
     people, n = parse_shortlog("   10\tAda <a@x.org>\n    3\tAda L <a@x.org>\n    4\tBob <b@y.org>\n")
     assert people == [{"name": "Ada", "commits": 13}, {"name": "Bob", "commits": 4}] and n == 2
+    # a git name set to an email address is never returned: another name of the same person, or only the count
+    people, n = parse_shortlog("    40\tjane@x.org <jane@x.org>\n     3\tBob <b@y.org>\n"
+                               "    50\tada@x.org <a@x.org>\n     2\tAda <a@x.org>\n")
+    assert people == [{"name": "Ada", "commits": 52}, {"name": "Bob", "commits": 3}] and n == 3
+    assert check_repo_info({"name": "x/y", "languages": [], "contributors": people}) == []
     assert readme_summary(["Title", "=====", "", "Short.", "A longer description line."]) == {
         "title": "Title", "title_line": 1, "description": "A longer description line.", "description_line": 5}
     assert check_repo_info({"name": "x", "contributors": [{"name": "a@b.c"}]}) == \

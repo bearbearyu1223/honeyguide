@@ -1,0 +1,22 @@
+Eval key lines last changed in June 2026
+==========================================================================
+  June 2026     2026-06-01 00:00:00 to 2026-06-30 23:59:59 UTC
+  key lines     the lines each question's cutoff tag counts (generate.py
+                key_ranges; non-blank), summed over the questions
+  dated by      git blame -w -M -C --first-parent at the pinned commit
+                (committer time), as the tags are
+
+  repo         questions  key lines  before June  in June  after June
+  nanochat            27       1366         1157        0         209
+  waku-agent          30       2421            0        0        2421
+
+  questions with any key line last changed in June 2026:
+    nanochat    0 of 27
+    waku-agent  0 of 30
+  key lines in June 2026 if dated by authored commit (no --first-parent):
+    nanochat    0
+    waku-agent  0
+
+  check against the frozen JSON (sums of lines_counted, lines_after):
+    nanochat    counted 1366, after 2026-06-30 209: match
+    waku-agent  counted 2421, after 2026-06-30 2421: match

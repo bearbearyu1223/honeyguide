@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from compose import FPS, H, W, Takes, Writer, card, take
+from compose import FPS, H, Takes, Writer, card, take
 from shoot_live import B_CURSOR
 from term import events
 

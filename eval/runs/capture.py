@@ -35,6 +35,7 @@ STATES = ("supported", "not_supported", "unchecked", "retired")
 NARROWED_RULE = "the first claim in id order (both repos) with a 'rewrite' repair"
 WRONGLY_PASSED = "c_20b0bb0d778f"
 RECHECK_REWRITTEN = "c_b9a4c59e2e08"
+PASSES = ("run 1", "run 2", "repair", "re-check")
 
 
 def status(msg):
@@ -147,12 +148,39 @@ def rechecked_ids(before_claims, after_claims):
     return out
 
 
+def has_pass(entry):
+    """True for a repair entry that records its own ``pass`` and per-pass ``round`` (saved since a707864)."""
+    return bool(entry.get("pass")) and isinstance(entry.get("round"), int)
+
+
 def pass_rounds(repairs):
-    """Renumber one pass's repair entries by the pass's own rounds: the n-th distinct ``at`` timestamp is
-    round n. A saved entry's ``round`` counts that claim's repair history, so a claim already repaired in an
-    earlier pass records its first repair of this pass as round 2."""
-    stamps = sorted({r["at"] for r in repairs if r.get("at")})
-    return [dict(r, round=stamps.index(r["at"]) + 1) if r.get("at") else dict(r) for r in repairs]
+    """One pass's repair entries numbered by the pass's own rounds. An entry that records its ``pass`` and
+    ``round`` keeps them. A legacy entry (saved before passes existed) records only the claim's history count as
+    its ``round``, so a claim already repaired in an earlier pass shows its first repair of this pass as round 2;
+    those are renumbered by timestamp instead: the n-th distinct ``at`` among the legacy entries is round n."""
+    stamps = sorted({r["at"] for r in repairs if r.get("at") and not has_pass(r)})
+    return [dict(r) if has_pass(r) or not r.get("at") else dict(r, round=stamps.index(r["at"]) + 1)
+            for r in repairs]
+
+
+def pass_key(entry):
+    """The repair pass an entry belongs to: its ``pass`` id, or None for every legacy entry (one legacy pass)."""
+    return entry.get("pass") if has_pass(entry) else None
+
+
+def last_pass(claims):
+    """The pass key of the latest repair entry (by ``at``) across ``claims``; None when there are only legacy
+    entries or none."""
+    entries = [r for c in claims for r in c.get("repairs") or []]
+    if not entries:
+        return None
+    return pass_key(max(entries, key=lambda r: r.get("at") or ""))
+
+
+def one_pass(claims, key):
+    """``claims`` with each repairs history cut to the entries of one pass (``key`` from pass_key), so rounds of
+    different passes never mix."""
+    return [dict(c, repairs=[r for r in c.get("repairs") or [] if pass_key(r) == key]) for c in claims]
 
 
 def recheck_summary(before_claims, after_claims):
@@ -290,12 +318,13 @@ def fmt_min(m):
 
 def block_runs(a):
     lines = header("runs", "Wall clock from the launcher's start/end files; turns and cost from claude -p's "
-                           "JSON result (total_cost_usd: cost at API list price; these were subscription runs).")
+                           "JSON result (total_cost_usd: cost at API list price; these were subscription runs). "
+                           "The total is all four passes.")
     lines.append(f"  {'repo':<12}{'pass':<9}{'wall min':>14}{'turns':>8}{'cost (list)':>13}{'exit':>14}")
     partial = False
     for repo in a["repos"]:
         total = 0.0
-        for name in ("run 1", "run 2", "repair"):
+        for name in PASSES:
             p = a["passes"][(repo, name)]
             r = p["result"] or {}
             turns = r.get("num_turns")
@@ -312,7 +341,7 @@ def block_runs(a):
     lines.append("")
     lines.append("  claude -p's own session duration (duration_ms), minutes:")
     for repo in a["repos"]:
-        for name in ("run 1", "run 2", "repair"):
+        for name in PASSES:
             r = a["passes"][(repo, name)]["result"] or {}
             d = r.get("duration_ms")
             v = NOT_RECORDED if d is None else f"{d / 60000:.1f}" + ("*" if r.get("result_index") else "")
@@ -356,8 +385,8 @@ def block_maps(a):
 
 def block_checker(a):
     lines = header("checker", "Map claims by Checker verdict. Run 2's state before repair and after each round is "
-                              "derived from each claim's repairs history (a repair at round r means it was not "
-                              "supported after round r-1) and its current check.")
+                              "derived from each claim's repairs history in the repair pass (a repair at round r "
+                              "means it was not supported after round r-1) and its current check.")
     lines.append(f"  {'repo':<12}{'stage':<22}{'supported':>10}{'not supp.':>10}{'unchecked':>10}{'retired':>8}")
     for repo in a["repos"]:
         rows = []
@@ -367,9 +396,10 @@ def block_checker(a):
                                                for s in STATES}))
         fin = layer(a["final"], repo)
         if fin:
+            claims = one_pass(fin["claims"], last_pass(fin["claims"]))
             for stage, label in ((0, "run 2 before repair"), (1, "after repair round 1"),
                                  (2, "after repair round 2")):
-                rows.append((label, stage_counts(fin["claims"], stage)))
+                rows.append((label, stage_counts(claims, stage)))
         for label, c in rows:
             lines.append(f"  {repo:<12}{label:<22}{c['supported']:>10}{c['not_supported']:>10}{c['unchecked']:>10}"
                          f"{c['retired']:>8}")
@@ -379,7 +409,7 @@ def block_checker(a):
                  f"{'retired':>9}")
     for repo in a["repos"]:
         fin = layer(a["final"], repo)
-        summary = repair_summary(fin["claims"]) if fin else {}
+        summary = repair_summary(one_pass(fin["claims"], last_pass(fin["claims"]))) if fin else {}
         for rnd in sorted(summary):
             s = summary[rnd]
             lines.append(f"  {repo:<12}{rnd:>5}{s['anchor']:>18}{s['wider']:>17}{s['rewrite']:>11}{s['retire']:>9}")
@@ -447,10 +477,12 @@ def block_recheck(a):
 
 def block_readability(a):
     lines = header("readability", "honeyguide.readability.check_readability(strict=True), the check behind "
-                                  "`map validate --strict`, on the Overview section alone.")
+                                  "`map validate --strict`, on the Overview section alone, for run 1, run 2 "
+                                  "after repair, and run 2 after the re-check (the final maps).")
     lines.append(f"  {'repo':<12}{'map':<20}{'errors':>8}{'warnings':>10}  warnings by kind")
     for repo in a["repos"]:
-        for name, store in (("run 1", a["run1"]), ("run 2 after repair", a["final"])):
+        for name, store in (("run 1", a["run1"]), ("run 2 after repair", a["final"]),
+                            ("run 2 after re-check", a["recheck"])):
             m = layer(store, repo)
             if m is None:
                 lines.append(f"  {repo:<12}{name:<20}{NOT_RECORDED:>18}")

@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from compose import FPS, H, W, Takes, Writer, card, take
+from compose import FPS, H, Takes, Writer, card, take
 from term import events
 
 PIP = dict(x=24, y=H - 500 - 24, w=900, h=500, size=17, title="Claude Code · the Guide · nanochat (batch session)")

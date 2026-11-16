@@ -86,6 +86,26 @@ def test_readability_fails_the_nanochat_telegraph_overview_and_modules():
     assert "SFT" in kinds and "DDP" in kinds and "bf16" in kinds
 
 
+def test_overview_length_counts_the_prose_only():
+    """The 250-450 word target counts the Overview's prose, as map check's overview_words does; facts rows still
+    explain abbreviations but don't add to the length."""
+    from honeyguide.cli import _draft_summary
+    from honeyguide.readability import OVERVIEW_WORDS
+    para = " ".join(["The trainer reads each shard and writes one checkpoint for every step."] * 30)
+    blocks = [{"id": "b1", "type": "text", "topic": "purpose", "spans": [{"text": para}]},
+              {"id": "b2", "type": "facts", "topic": "commands",
+               "rows": [{"key": "run", "spans": [{"text": " ".join(["word"] * 200)}]}]}]
+    doc = {"title": "t", "sections": [{"id": "o", "kind": "overview", "title": "Overview", "blocks": blocks}]}
+    n = _draft_summary({"document": {**doc, "flows": []}, "claims": []}, [])["overview_words"]
+    assert OVERVIEW_WORDS[0] <= n <= OVERVIEW_WORDS[1] and n + 200 > OVERVIEW_WORDS[1]
+    _, warnings = check_readability(doc, strict=True)
+    assert not [w for w in warnings if "overview: length" in w], warnings
+    blocks[0]["spans"][0]["text"] = " ".join(["The trainer reads each shard and writes one checkpoint."] * 60)
+    _, warnings = check_readability(doc, strict=True)
+    assert [w for w in warnings if "overview: length" in w] == ["readability: overview: length: 540 words; aim for "
+                                                                "250-450"]
+
+
 def test_readability_rules_one_by_one():
     assert [k for k, _ in prose_issues("No DDP.")] == ["short", "verbless"]
     assert not has_verb("Val bpb, CORE") and has_verb("It reshuffles the shards") and has_verb("the cache is kept")
@@ -302,7 +322,7 @@ def test_ingest_refuses_bad_drafts_and_writes_nothing(tmp_path, monkeypatch):
     assert code == 1 and "overview.json: not JSON" in "\n".join(out["error"]["details"])
 
 
-@pytest.mark.parametrize("where", ["repo", "home", "link", "sibling"])
+@pytest.mark.parametrize("where", ["repo", "home", "link", "sibling", "drafts-root", "agent-drafts"])
 def test_guard_refuses_drafts_from_anywhere_else(tmp_path, monkeypatch, where):
     w = World(tmp_path, monkeypatch)
     from pathlib import Path
@@ -319,6 +339,11 @@ def test_guard_refuses_drafts_from_anywhere_else(tmp_path, monkeypatch, where):
         (d / "claims-a.json").unlink()
         (d / "claims-a.json").symlink_to(outside / "claims-a.json")
         target = d
+    elif where == "drafts-root":   # drafts/ itself, not drafts/map/
+        target = d.parent
+    elif where == "agent-drafts":  # another agent's scratch directory under drafts/
+        target = Path(w.call("drafts", "dir", "--agent", "checker")[1]["dir"])
+        write_drafts(target, v2_draft())
     else:                      # the store itself, outside drafts/
         target = w.store.dir
     for action in ("check", "ingest"):

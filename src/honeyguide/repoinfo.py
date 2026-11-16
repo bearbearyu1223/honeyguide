@@ -103,7 +103,8 @@ def language_shares(counts: dict[str, int], top: int = TOP_LANGUAGES) -> list[di
 def parse_shortlog(text: str, top: int = TOP_CONTRIBUTORS) -> tuple[list[dict], int]:
     """``git shortlog -sne`` lines -> the top contributors by commits, NAMES ONLY (one person with several emails
     counts once, and one email under several names counts once, under its most used name), and how many distinct
-    people that leaves. The emails are used only to join; they are never returned."""
+    people that leaves. The emails are used only to join; they are never returned. Nor is a git name that is itself
+    an email address: that person shows under another name of theirs, or else only in the count."""
     rows = []
     for line in text.splitlines():
         m = re.match(r"^\s*(\d+)\s+(.*?)\s*(<[^>]*>)?\s*$", line)
@@ -131,11 +132,16 @@ def parse_shortlog(text: str, top: int = TOP_CONTRIBUTORS) -> tuple[list[dict], 
     for name in per_name:
         groups.setdefault(find(name), []).append(name)
     by_name: Counter = Counter()
+    hidden = 0
     for names in groups.values():
-        best = max(names, key=lambda x: (per_name[x], len(x)))
+        shown = [x for x in names if "@" not in x]   # a git name set to an email address is never shown
+        if not shown:
+            hidden += 1   # still one person in the count, just not named
+            continue
+        best = max(shown, key=lambda x: (per_name[x], len(x)))
         by_name[best] = sum(per_name[x] for x in names)
     ranked = sorted(by_name.items(), key=lambda kv: (-kv[1], kv[0].lower()))
-    return [{"name": n, "commits": c} for n, c in ranked[:top]], len(by_name)
+    return [{"name": n, "commits": c} for n, c in ranked[:top]], len(by_name) + hidden
 
 
 def readme_summary(lines: list[str]) -> dict:
