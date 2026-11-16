@@ -1,0 +1,104 @@
+Honeyguide eval: nanochat (run pilot-nanochat-2)
+==========================================================================
+  commit      92d63d4e8bb4 (https://github.com/karpathy/nanochat)
+  frozen set  MANIFEST.txt sha256 9e707c3e2a59; cutoff 2026-06-30
+  size        pilot: 20 questions (locate 6, callers 5, flow 4,
+              why/how 5); before cutoff 10, after 5, untagged 5
+  model       requested claude-opus-5-5, effort medium
+              used: claude-opus-5-5 x161
+  runs        161 planned (1 map builds); finished 161 (ok 161, capped 0,
+              invalid answer 0, error 0); not run 0; re-run after a
+              failure 0; re-run after an interruption or usage limit 0
+
+setup: maps, outline, leakage
+--------------------------------------------------------------------------
+  map seed 1  224 claims; anchors 505/505 resolved
+              draft valid yes (0 errors)
+              12,547 tokens (est., chars/4) as given to map runs
+              build + 1 fix round 25.0 min, $7.22 list; tokens in 50
+              cache read 2,282,089, cache write 363,458, out 192,690
+              build alone 15.9 min, $4.44 list
+              evidence: read_in_source 166, docs 32, inferred 11,
+              searched_not_found 9, asserted_by_test 6
+  outline     12,546 tokens (est.) vs target 12,547 (mean of the maps)
+              outline 12546 tokens (est.) vs target 12547; files per level
+              L0=0, L1=0, L2=0, L3=10, L4=20, L5=0; left out 0
+  leakage (key names verbatim in the question): locate 0 of 6, callers 0
+              of 5, flow 0 of 4; why/how not checked (rubric answers)
+
+scores by condition (per run; score in [0, 1]; failed runs = 0)
+--------------------------------------------------------------------------
+  condition    runs  scored    mean  exact  capped  error  invalid
+  no-access      20      15   0.662      7       0      0        0
+  explore        40      30   0.967     26       0      0        0
+  outline        40      30   0.989     28       0      0        0
+  map            60      45   0.962     38       0      0        0
+  scores: locate 1/0 (first item, function level); callers F1; flow
+  required hops in order (LCS / required); why/how Han's blind grade.
+  exact = runs scoring 1.
+
+by type (descriptive; mean per run)
+--------------------------------------------------------------------------
+  type      questions   no-access     explore     outline         map
+  locate            6       0.500       1.000       1.000       1.000
+  callers           5       0.733       0.933       1.000       0.933
+  flow              4       0.817       0.958       0.958       0.942
+  whyhow            5           -           -           -           -
+  flow items not in the key (all conditions): in the trace but pre-
+    filtered 46, other path 0, invented 1
+  callers: answered sites Han decided are not callers 6; items outside the
+    key scope ignored 0
+
+paired differences by question
+--------------------------------------------------------------------------
+  per question: mean over its passes; then the mean difference over
+  questions with both conditions, 95% CI from 10000 bootstrap resamples of
+  questions (seed 0)
+  map - explore           -0.004  [-0.013, +0.000]  n=15
+  map - outline           -0.027  [-0.076, +0.000]  n=15
+  explore - no-access     +0.304  [+0.102, +0.531]  n=15
+
+learning vs remembering: mean score by cutoff subset
+--------------------------------------------------------------------------
+  subset    questions   no-access     explore     outline         map
+  before           10       0.893       0.950       0.983       0.943
+  after             5       0.200       1.000       1.000       1.000
+  map - explore, before           -0.007  [-0.020, +0.000]  n=10
+  map - explore, after            +0.000  [+0.000, +0.000]  n=5
+  explore - no-access, before     +0.057  [+0.000, +0.113]  n=10
+  explore - no-access, after      +0.800  [+0.400, +1.000]  n=5
+  why/how questions carry no cutoff tag and are in neither subset.
+
+tokens (thousands), time and cost per answering run (means)
+--------------------------------------------------------------------------
+  condition   input cache rd cache wr  output tools  min  $ list $ nocache
+  no-access     0.0      1.6      0.9     1.4   1.0  0.2   0.037     0.039
+  explore       0.0     23.6      5.1     1.4   4.5  0.2   0.074     0.144
+  outline       0.0     52.3     14.4     1.4   3.0  0.2   0.154     0.295
+  map           0.0     77.5     12.3     1.7   3.7  0.3   0.147     0.393
+  price check: list cost rebuilt from tokens with the config prices is
+    within 0.0% of the CLI's total_cost_usd on every run (161 runs)
+  cost per exact answer (list, with cache):
+    no-access       $0.10  (7 exact of 20 runs)
+    explore         $0.11  (26 exact of 40 runs)
+    outline         $0.22  (28 exact of 40 runs)
+    map             $0.23  (38 exact of 60 runs)
+  map build: $7.22 list per map (mean of 1)
+    break-even vs explore: never (map answers are not cheaper per exact
+      answer)
+    break-even vs outline: never (map answers are not cheaper per exact
+      answer)
+
+failed runs by cell (each counts as wrong)
+--------------------------------------------------------------------------
+  none
+
+why/how (graded blind by Han)
+--------------------------------------------------------------------------
+  graded 0 of 40 finished answers; questions awaiting grades (left out of
+    every score above): 5
+
+transcripts
+--------------------------------------------------------------------------
+  leak scan (isolate.py's strings, case-sensitive) over every saved
+    transcript: clean

@@ -311,7 +311,8 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
         u = mm.get("usage") or RR.usage_summary(None)
         t = u["tokens"]
         L += [f"  map seed {s}  {v.get('claims', 0)} claims; anchors {v['anchors_resolved']}/{v['anchors_total']}"
-              f" resolved; draft valid {'yes' if v['draft_valid'] else 'no'}"
+              f" resolved",
+              f"              draft valid {'yes' if v['draft_valid'] else 'no'}"
               f" ({len(v.get('draft_errors', []))} errors)",
               f"              {v.get('tokens_est', 0):,} tokens (est., chars/4) as given to map runs"]
         L += wrap(f"{build_label(mm)} {mm.get('wall_s', 0) / 60:.1f} min, {money(u['cost_usd'])} list; tokens in "
