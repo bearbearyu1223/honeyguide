@@ -76,7 +76,8 @@ const LOGO = `<span class="logo">${hgAv("guide", "idle", 40)}</span>`;   // Hone
 
 /* ---------------------------------------------------------------- data */
 const D = { state: null, map: null, threads: { questions: [], responses: [] }, notes: { notes: [] }, activity: { working: [], recent: [] } };
-const UI = { hopped: new Set(), open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), openMods: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "" };
+const UI = { hopped: new Set(), open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), openMods: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "",
+  gexp: new Set(), gall: false, gfocus: null };
 let IDX = null;   // derived indexes, rebuilt by index()
 
 function claimsById() {
@@ -256,34 +257,45 @@ function citeHTML(c, ctx) {
 
 /* ---------------------------------------------------------------- the map */
 let MAPTEXT = null;  // {text, blocks}
+/* UX v4: the map is a reading column of cards under sticky section headers. Cards are wrappers only: every leaf keeps
+   its plain-text offset, so selection, marks and notes are unchanged. Overview topics, the component map, each module,
+   each flow get an id the contents outline links to (t-<topic>, t-graph, m-<block>, f-<flow>). */
+const cardId = { topic: t => `t-${t}`, mod: b => `m-${b}`, flow: f => `f-${f}` };
 function renderMap() {
   const doc = D.map?.document;
   if (!doc) { renderNoMap(); return; }
   const byId = claimsById();
   MAPTEXT = mapText(doc);
+  FIND.lower = null;
   UI.mapRev = doc.revision;
   const flows = new Map((doc.flows || []).map(f => [f.id, f]));
   /* flows stay open, in the view the reader chose, when the map is re-rendered */
   const keepOpen = new Map($$(".flow.open", COL).map(f => [f.dataset.flow, f.classList.contains("view-list") ? "list" : "dg"]));
   buildFigures(doc, byId);
-  let html = `<header><h1>${esc(doc.title || "Map")}</h1><p class="sub" id="sub"></p><div class="mem" id="mem"></div><div id="refresh"></div><div id="mapnew"></div><p class="hint">Select any text to ask about it or annotate it.</p></header>`;
+  let html = repoCardHTML(doc);
   let bi = 0, graphShown = false;
   const mods = new Map((doc.sections || []).flatMap(x => x.blocks || []).filter(x => x.type === "module").map(x => [x.id, x]));
   /* the coverage note closes the Modules section (the Overview when there is none) */
   const covAt = (doc.sections || []).some(x => x.kind === "modules") ? "modules" : "overview";
   let covShown = false;
   for (const sec of doc.sections || []) {
-    html += `<section id="s-${esc(sec.id)}" data-sec="${esc(sec.id)}"><h2>${esc(sec.title)}</h2>`;
     const blocks = sec.blocks || [];
     const topical = sec.kind === "overview" && blocks.some(x => x.topic);
-    /* the module graph: after the Components group in a topic Overview, else after the first paragraph */
+    const count = sec.kind === "modules" ? plural(blocks.filter(x => x.type === "module").length, "component")
+      : sec.kind === "flows" ? plural(blocks.filter(x => x.type === "flow").length, "flow")
+      : topical ? plural(new Set(blocks.map(x => x.topic).filter(Boolean)).size, "topic") : "";
+    html += `<section id="s-${esc(sec.id)}" data-sec="${esc(sec.id)}" class="sec-${esc(sec.kind)}"><h2 class="sh"><span class="sh-t">${esc(sec.title)}</span>${count ? `<span class="sh-n">${count}</span>` : ""}</h2>`;
+    /* the component map: after the Components card in a topic Overview, else after the first block */
     const graphAfter = topical ? blocks.map(x => x.topic).lastIndexOf("components") : 0;
-    let topic = null;
+    let topic = null, card = false;
+    const closeCard = () => { if (card) { html += `</div>`; card = false; } };
     blocks.forEach((block, k) => {
       const b = MAPTEXT.blocks[bi++];
       if (topical && block.topic && block.topic !== topic) {
+        closeCard();
         topic = block.topic;
-        html += `<h3 class="topic" data-topic="${esc(topic)}">${esc(TOPICS[topic] || topic)}</h3>`;
+        html += `<div class="card tcard" id="${cardId.topic(esc(topic))}" data-topic-card="${esc(topic)}"><h3 class="topic" data-topic="${esc(topic)}">${esc(TOPICS[topic] || topic)}</h3>`;
+        card = true;
       }
       let si = 0;
       const nextSeg = spans => segHTML(spans, b.segs[si++], byId);
@@ -291,6 +303,7 @@ function renderMap() {
       const claimed = segsOf(block).flat().filter(x => x.claim);
       const allGone = claimed.length > 0 && claimed.every(x => byId.get(x.claim)?.freshness === "retired");
       if (block.type === "module") {
+        closeCard();
         const design = block.design && block.design.length ? nextSeg(block.design) : null;
         const rows = (block.facts || []).map(r => [r, nextSeg(r.spans || [])]);
         const shown = rows.filter(([r]) => r.key === "responsibility"), more = rows.filter(([r]) => r.key !== "responsibility");
@@ -304,32 +317,40 @@ function renderMap() {
         const rel = (block.related || []).map(id => mods.get(id)).filter(Boolean);
         const relHTML = rel.length ? `<span class="rel">Related: ${rel.map(m => `<a href="#" data-gomod="${esc(m.id)}" data-tip="${esc(m.title || modLabel(m))}">${esc(modName(m))}</a>`).join(`<span class="sep">·</span>`)}</span>` : "";
         const moreHTML = more.length ? `<button class="more" data-more="${esc(block.id)}" aria-expanded="${open}"><span class="mt">${open ? "Less" : "More"}</span><span class="mn">${plural(more.length, "fact")}</span></button>` : "";
-        html += `<div class="mod${open ? " open" : ""}${block.title ? " comp" : ""}" data-block="${esc(block.id)}" data-path="${esc(files[0] || "")}">${head}`
+        const onMap = FIGS.get("graph")?.comps.some(c => c.module === block.id && !FIGS.get("graph").iso.includes(c.id))
+          ? `<a href="#" class="onmap" data-gocomp="${esc(block.id)}">On the component map</a>` : "";
+        html += `<div class="mod card${open ? " open" : ""}${block.title ? " comp" : ""}" id="${cardId.mod(esc(block.id))}" data-block="${esc(block.id)}" data-path="${esc(files[0] || "")}">${head}`
           + (own !== null ? `<p class="blk">${own}</p>` : "")
           + (design !== null ? `<p class="blk design">${design}</p>` : "")
           + (rows.length ? `<dl class="facts mfacts">${shown.map(([r, h]) => factHTML(r, h)).join("")}${more.map(([r, h]) => factHTML(r, h, "fx")).join("")}</dl>` : "")
-          + (moreHTML || relHTML ? `<div class="mod-foot">${moreHTML}${relHTML}</div>` : "")
+          + (moreHTML || relHTML || onMap ? `<div class="mod-foot">${moreHTML}${relHTML}${onMap}</div>` : "")
           + `</div>`;
-      } else if (block.type === "list") {
-        const tag = block.ordered ? "ol" : "ul";
-        html += `<div class="blist" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<${tag}>`
-          + (block.items || []).map(it => `<li>${nextSeg(it.spans || [])}</li>`).join("") + `</${tag}></div>`;
-      } else if (block.type === "facts") {
-        html += `<div class="bfacts" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<dl class="facts">`
-          + (block.rows || []).map(r => factHTML(r, nextSeg(r.spans || []))).join("") + `</dl></div>`;
       } else if (block.type === "flow") {
+        closeCard();
         const f = flows.get(block.flow);
-        html += `<div class="flow" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta">${hgAv("tracer", "idle static", 20)}Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
+        html += `<div class="flow card" id="${cardId.flow(esc(block.flow))}" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta">${hgAv("tracer", "idle static", 20)}Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
           + `<p class="cap blk">${own ?? ""}</p><div class="fbody">`
           + (f ? `<div class="fbar"><span class="fhint">Hover or click an arrow for its code</span><span class="fviews" role="group" aria-label="View"><button data-fview="dg" class="on" aria-pressed="true">Diagram</button><button data-fview="list" aria-pressed="false">Steps</button></span></div>`
             + `<div class="fnarrow">Shown as steps while the panel is open: the diagram would be too small to read beside it. <button data-fview="dg">Show the diagram</button></div>`
-            + `<figure class="fig wide" data-key="map:${esc(f.id)}"><div class="dgwrap"></div></figure><div class="rail">${pathHTML(f, byId, false)}</div>` : "") + `</div></div>`;
-      } else html += `<p class="blk" data-block="${esc(block.id)}">${own ?? ""}</p>`;
-      if (sec.kind === "overview" && !graphShown && k >= graphAfter && FIGS.has("graph")) {
+            + `<figure class="fig" data-key="map:${esc(f.id)}" data-title="${esc(f.title)}">${figTB(`map:${f.id}`)}<div class="dgwrap"></div></figure><div class="rail">${pathHTML(f, byId, false)}</div>` : "") + `</div></div>`;
+      } else {
+        if (!card) { html += `<div class="card">`; card = true; }
+        if (block.type === "list") {
+          const tag = block.ordered ? "ol" : "ul";
+          html += `<div class="blist" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<${tag}>`
+            + (block.items || []).map(it => `<li>${nextSeg(it.spans || [])}</li>`).join("") + `</${tag}></div>`;
+        } else if (block.type === "facts") {
+          html += `<div class="bfacts" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<dl class="facts">`
+            + (block.rows || []).map(r => factHTML(r, nextSeg(r.spans || []))).join("") + `</dl></div>`;
+        } else html += `<p class="blk" data-block="${esc(block.id)}">${own ?? ""}</p>`;
+      }
+      if (sec.kind === "overview" && !graphShown && k >= graphAfter && FIGS.has("graph") && (!topical || blocks[k + 1]?.topic !== "components")) {
+        closeCard();
         graphShown = true;
-        html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure>${graphIsoHTML()}<p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
+        html += graphCardHTML();
       }
     });
+    closeCard();
     if (doc.coverage && !covShown && sec.kind === covAt) { covShown = true; html += coverageHTML(doc.coverage); }
     html += `</section>`;
   }
@@ -342,6 +363,52 @@ function renderMap() {
   renderHeader();
   applyOverlays();
   renderFigs();
+}
+/* ---------------------------------------------------------------- the repo card (T7.18) */
+/* document.repo is `honeyguide repo-info`'s output, stored at map time: metadata with its provenance (git at a
+   commit, or the GitHub API on a date), not claims. The page never fetches it. */
+const fmtDate = s => (s ? String(s).slice(0, 10) : "");
+const fmtN = n => (n === null || n === undefined ? "" : n >= 10000 ? `${(n / 1000).toFixed(0)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const ICO = {
+  star: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m8 2.2 1.8 3.7 4 .6-2.9 2.8.7 4L8 11.4l-3.6 1.9.7-4L2.2 6.5l4-.6z"/></svg>`,
+  fork: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="4.5" cy="3.5" r="1.5"/><circle cx="11.5" cy="3.5" r="1.5"/><circle cx="8" cy="12.5" r="1.5"/><path d="M4.5 5v1.5a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2V5M8 8.5V11"/></svg>`,
+  link: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg>`,
+};
+function langBarHTML(langs) {
+  if (!langs || !langs.length) return "";
+  let x = 0;
+  const rects = langs.map((l, i) => { const w = Math.max(0.4, l.share * 1000); const r = `<rect class="lb${l.name === "Other" ? "o" : i}" x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="8"/>`; x += w; return r; }).join("");
+  const key = langs.map((l, i) => `<span class="lk"><span class="lsw lb${l.name === "Other" ? "o" : i}"></span>${esc(l.name)} <b>${(l.share * 100).toFixed(l.share < 0.01 ? 1 : 0)}%</b></span>`).join("");
+  return `<div class="langs" data-tip="Lines of tracked source at the map's commit, by file extension (docs, data and vendored code not counted)"><svg class="langbar" viewBox="0 0 1000 8" preserveAspectRatio="none" aria-hidden="true">${rects}</svg><div class="lkey">${key}</div></div>`;
+}
+function repoCardHTML(doc) {
+  const r = doc.repo;
+  const tail = `<p class="sub" id="sub"></p><div class="mem" id="mem"></div><div id="refresh"></div><div id="mapnew"></div><p class="hint">Select any text to ask about it or annotate it.</p>`;
+  if (!r) return `<header class="card repocard"><h1>${esc(doc.title || "Map")}</h1>${tail}</header>`;
+  const gh = r.github;
+  const desc = (gh && gh.description) || r.readme?.description || "";
+  const descSrc = gh && gh.description ? `GitHub description, as of ${esc(gh.as_of)}` : r.readme?.description ? `From <code>${esc(r.readme.path)}</code> line ${r.readme.description_line}` : "";
+  const sha = short(r.commit?.sha);
+  const people = r.contributors || [];
+  const more = (r.contributor_count || people.length) - people.length;
+  const row = (label, body, tip) => body ? `<div class="rf"${tip ? ` data-tip="${esc(tip)}"` : ""}><dt>${label}</dt><dd>${body}</dd></div>` : "";
+  const lic = r.license?.file ? `${r.license.spdx ? `<b>${esc(r.license.spdx)}</b>` : "Unrecognised"} <span class="q">· <code>${esc(r.license.file)}</code></span>` : `<span class="q">No licence file</span>`;
+  const stars = gh ? `<span class="gh">${ICO.star}<b>${fmtN(gh.stars)}</b> stars</span><span class="gh">${ICO.fork}<b>${fmtN(gh.forks)}</b> forks</span><span class="gh"><b>${fmtN(gh.open_issues)}</b> open issues</span> <span class="q">· as of ${esc(gh.as_of)}</span>`
+    : `<span class="q">${esc((r.github_note || "GitHub counts not fetched").replace(/^GitHub counts not fetched: /, "Not fetched: "))}</span>`;
+  const topics = gh && gh.topics && gh.topics.length ? `<div class="topics">${gh.topics.map(t => `<span class="tp">${esc(t)}</span>`).join("")}</div>` : "";
+  return `<header class="card repocard">`
+    + `<div class="rc-h"><div class="rc-t"><h1>${esc(doc.title || r.name)}</h1>${r.url ? `<a class="rlink" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" data-tip="Opens the repository in your browser">${esc(r.url.replace(/^https:\/\//, ""))}${ICO.link}</a>` : `<span class="rlink q">${esc(r.name)}</span>`}</div>`
+    + `<div class="rc-at" data-tip="The commit this map was built at">mapped at <code>${esc(sha)}</code></div></div>`
+    + (desc ? `<p class="rdesc"${descSrc ? ` data-tip="${esc(descSrc)}"` : ""}>${esc(desc)}</p>` : "")
+    + topics
+    + langBarHTML(r.languages)
+    + `<dl class="rfacts">`
+    + row("Licence", lic, r.license?.file ? "Guessed from the licence file's text (an SPDX id)" : "")
+    + row("Contributors", people.length ? `${people.map(p => esc(p.name)).join(", ")}${more > 0 ? ` <span class="q">and ${more} more</span>` : ""}` : "", "By commits, from git shortlog at the map's commit (names only)")
+    + row("GitHub", stars, gh ? "From the GitHub API (gh api), on the date shown" : "Stars, forks and issues come from the GitHub API through a signed-in gh, at map time; the page never fetches them")
+    + row("History", `${r.first_commit_date ? `created ${esc(fmtDate(r.first_commit_date))}` : ""}${r.last_commit_date ? ` · last commit ${esc(fmtDate(r.last_commit_date))}` : ""}${r.commits ? ` · ${fmtN(r.commits)} commits` : ""}${r.default_branch ? ` on <code>${esc(r.default_branch)}</code>` : ""}`, `From git at ${sha}: the first commit's date, the map commit's date, and the commits that lead to it`)
+    + `</dl>`
+    + `<div class="rc-mem">${tail}</div></header>`;
 }
 /* T7.13b: a module block's files (a component may span several; an older block has its path), its short name for
    "Related" links (its role without a leading "the", capitalised: "the training loop" -> "Training loop"; else its
@@ -387,10 +454,33 @@ function renderNoMap() {
   $("#repo").textContent = REPO_NAME;
   document.body.classList.add("nomap-on");
 }
+/* UX v4: the contents outline: each section, and under it its sub-sections (the Overview's topics and the component
+   map, each module by its short name, each flow); scroll-spy marks both levels; Find filters it */
+function tocSubs(sec) {
+  const blocks = sec.blocks || [];
+  if (sec.kind === "overview" && blocks.some(b => b.topic)) {
+    const out = [...new Set(blocks.map(b => b.topic).filter(Boolean))].map(t => [cardId.topic(t), TOPICS[t] || t, ""]);
+    if (FIGS.has("graph")) out.splice(out.findIndex(x => x[0] === "t-components") + 1 || out.length, 0, ["t-graph", "Component map", ""]);
+    return out;
+  }
+  const subs = [];
+  for (const b of blocks) {
+    if (b.type === "module") subs.push([cardId.mod(b.id), modName(b), modFiles(b).join(", ")]);
+    else if (b.type === "flow") { const f = (D.map.document.flows || []).find(x => x.id === b.flow); subs.push([cardId.flow(b.flow), f ? f.title : b.flow, ""]); }
+  }
+  if (sec.kind === "overview" && FIGS.has("graph")) subs.unshift(["t-graph", "Component map", ""]);
+  return subs;
+}
 function renderToc() {
   const doc = D.map?.document;
   if (!doc) return;
-  $("#toc").innerHTML = (doc.sections || []).map(s => `<li><a href="#s-${esc(s.id)}" data-sec="${esc(s.id)}" title="${esc(s.title)}"><span class="ini" aria-hidden="true">${esc((s.title || "?").trim()[0].toUpperCase())}</span><span class="tt">${esc(s.title)}</span><span class="n"></span></a></li>`).join("");
+  $("#toc").innerHTML = (doc.sections || []).map(s => {
+    const subs = tocSubs(s);
+    return `<li class="ts"><a href="#s-${esc(s.id)}" data-sec="${esc(s.id)}" title="${esc(s.title)}"><span class="ini" aria-hidden="true">${esc((s.title || "?").trim()[0].toUpperCase())}</span><span class="tt">${esc(s.title)}</span><span class="n"></span></a>`
+      + (subs.length ? `<ul class="tsub">${subs.map(([id, label, tip]) => `<li><a href="#${esc(id)}" data-sub="${esc(id)}" data-in="${esc(s.id)}"${tip ? ` data-tip="${esc(tip)}"` : ""}><span class="tt">${esc(label)}</span></a></li>`).join("")}</ul>` : "")
+      + `</li>`;
+  }).join("");
+  applyFindFilter();
   spy();
 }
 /* T7.15: "Needs a look (N)" in the sidebar: every map claim the Checker marked not supported, in the order the map
@@ -541,65 +631,327 @@ function buildFigures(doc, byId) {
 }
 function graphCaption() {
   const gm = FIGS.get("graph"), n = gm.edges.reduce((s, e) => s + e.calls.length, 0);
-  return `Each box is a component from Modules, named by its first file. The ${plural(n, "call")} that cross from one component to another in the ${plural(gm.flows, "traced flow")} (<a href="#s-${esc(flowsSection())}" data-goflows>Flows</a>, below) are drawn as arrows, heavier when there are more. Hover a box for its files; click it for its module, an arrow for its calls.`;
+  return `Each box is a component from Modules. Lines are the ${plural(n, "call")} that cross from one component to another in the ${plural(gm.flows, "traced flow")} (<a href="#s-${esc(flowsSection())}" data-goflows>Flows</a>, below), heavier when there are more; hover a line for its count, click it for its calls. Click a box to focus on it.`;
+}
+/* the component map's card: heading, caption, the figure (with its toolbar and focus card) and the components no
+   traced flow passes through */
+function graphCardHTML() {
+  return `<div class="card gcard" id="t-graph"><div class="gc-h"><h3 class="gtitle">Component map</h3></div><p class="figcap" id="ovcap">${graphCaption()}</p>`
+    + `<figure class="fig" id="ovgraph" data-key="graph" data-title="Component map">${figTB("graph")}<div class="dgwrap"></div><div class="gfocus" id="gfocus" hidden></div></figure>${graphIsoHTML()}</div>`;
 }
 /* the components no traced flow passes through: one quiet line under the graph, each a link to its module */
 function graphIsoHTML() {
   const gm = FIGS.get("graph");
   const iso = gm.iso.map(id => gm.comps.find(c => c.id === id)).filter(Boolean);
   if (!iso.length) return "";
-  return `<p class="figiso wide" id="ovgraph-iso"><span class="fi-l">Not in a traced flow:</span> ${iso.map(c => c.module
+  return `<p class="figiso" id="ovgraph-iso"><span class="fi-l">Not in a traced flow:</span> ${iso.map(c => c.module
     ? `<a href="#" data-gomod="${esc(c.module)}" data-tip="${esc(`${c.title ? inlineCode(c.title) : esc(c.name)}<br>Files: ${c.files.map(f => `<code>${esc(f)}</code>`).join(", ")}`)}">${esc(c.label || c.name)}</a>`
     : `<code>${esc(c.name)}</code>`).join(`<span class="sep"> · </span>`)}</p>`;
 }
 function flowsSection() { return (D.map?.document?.sections || []).find(s => s.kind === "flows")?.id || "flows"; }
-/* the width a figure gets: the map area (less the panel when it is open), 560 to 1000 px */
+/* the width a wide card gets: the map area (less the panel when it is open), 560 to 1000 px */
 function panelWidth() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pw")) || 408; }
-function figWidth() { return Math.round(Math.max(560, Math.min(1000, MAIN.clientWidth - (UI.open ? panelWidth() : 0) - 48))); }
+function figWidth() { return Math.round(Math.max(560, Math.min(1000, MAIN.clientWidth - (UI.open ? panelWidth() + 16 : 0) - 48))); }
+/* the component map's layout for a width (cached: the layout tries many row orders) */
+const GL = { key: "", G: null };
+function graphLayout(w) {
+  const gm = FIGS.get("graph"), k = `${w}|${[...UI.gexp].sort().join(",")}|${SNAP.map || ""}`;
+  if (GL.key !== k || GL.gm !== gm) { GL.key = k; GL.gm = gm; GL.G = HGD.layoutMap(gm, w, { expanded: UI.gexp }); }
+  return GL.G;
+}
 function figSVG(key, w) {
   const m = FIGS.get(key);
   if (!m) return "";
-  return key === "graph" ? HGD.renderGraph(HGD.layoutGraph(m, w)) : HGD.renderSeq(HGD.layoutSeq(m, w), m);
+  return key === "graph" ? HGD.renderMap(graphLayout(w), UI.gall ? "all" : "main") : HGD.renderSeq(HGD.layoutSeq(m, w), m);
 }
 /* Han's v3.1 choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
    (readable text over a shrunken picture); "Show the diagram" or View as diagram overrides that for the flow. */
 const MIN_SCALE = 0.85;
 /* T7.16: the overlay is as wide as its diagram, up to its own width (the map area beside the panel) less margins,
-   not the reading column's 1000px; the diagram then scales down to MIN_SCALE at most, and scrolls past that */
+   not the reading column's 1000px; the diagram then scales down to MIN_SCALE at most, and pans past that */
 const OV_MARGIN = 32;
 function ovWidth(key) {
   const m = FIGS.get(key), ov = $("#dgov");
   if (!m || !ov) return figWidth();
   const avail = Math.max(320, ov.clientWidth - 2 * OV_MARGIN);
-  const natural = key === "graph" ? HGD.layoutGraph(m, 1).natural : HGD.layoutSeq(m, 1).natural;
+  const natural = key === "graph" ? graphLayout(1000).natural : HGD.layoutSeq(m, 1).natural;
   return Math.round(Math.min(avail, Math.max(natural + 2, Math.min(560, avail))));
 }
 function tooNarrow(key, w) { const m = FIGS.get(key); return !!m && UI.open && w / HGD.layoutSeq(m, w).natural < MIN_SCALE; }
+/* the width a figure's diagram is laid out for: its own box (a card's content width), or the screen in full screen */
+function figAvail(fig) {
+  if (fig.classList.contains("fs")) return Math.max(560, innerWidth - 64);
+  if (fig.id === "dgovfig") return ovWidth(fig.dataset.key);
+  return Math.max(320, Math.round($(".dgwrap", fig).clientWidth || fig.clientWidth));
+}
 function renderFigs(force) {
   const w = figWidth();
   document.documentElement.style.setProperty("--fw", w + "px");
   for (const fl of $$(".flow", COL)) {
     const key = `map:${fl.dataset.flow}`;
-    const auto = fl.classList.contains("open") && !fl.classList.contains("view-list") && !fl.dataset.force && tooNarrow(key, w);
+    const auto = fl.classList.contains("open") && !fl.classList.contains("view-list") && !fl.dataset.force && tooNarrow(key, w - 50);
     fl.classList.toggle("view-auto", auto);
     $$("[data-fview]", $(".fviews", fl) || fl).forEach(b => { const on = auto ? b.dataset.fview === "list" : (b.dataset.fview === "list") === fl.classList.contains("view-list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
   }
   for (const fig of [...$$(".fig[data-key]", COL), $("#dgovfig")]) {
-    if (!fig || !fig.dataset.key || (!force && fig.offsetParent === null)) continue;
-    const ov = fig.id === "dgovfig", fw = ov ? ovWidth(fig.dataset.key) : w;
-    if (ov) { $("#dgov").style.setProperty("--ovw", fw + "px"); $("#dgov").style.setProperty("--ovm", OV_MARGIN + "px"); }
-    if (!force && +fig.dataset.w === fw) continue;
+    if (!fig || !fig.dataset.key || (!force && fig.offsetParent === null && !fig.classList.contains("fs"))) continue;
+    const ov = fig.id === "dgovfig";
+    if (ov) { const ow = ovWidth(fig.dataset.key); $("#dgov").style.setProperty("--ovw", ow + "px"); $("#dgov").style.setProperty("--ovm", OV_MARGIN + "px"); }
+    const fw = figAvail(fig);
+    if (fig.dataset.key === "graph") graphLayout(fw - 2);
+    const sig = `${fw}|${fig.dataset.key === "graph" ? GL.key + (UI.gall ? "a" : "m") : ""}`;
+    if (!force && fig.dataset.w === sig) { applyZoom(fig); continue; }
     if (pinned && fig.contains(pinned)) unpin();
-    fig.dataset.w = fw;
     $(".dgwrap", fig).innerHTML = figSVG(fig.dataset.key, fw - 2);
-    /* a sequence diagram shown anyway in too little room (the overlay, or "Show the diagram") keeps 0.85 and
-       scrolls sideways rather than shrinking its text further */
-    const svg = $("svg.dg-seq", fig);
-    const floored = !!svg && (fw - 2) / +svg.dataset.natural < MIN_SCALE;
-    if (floored) svg.style.width = Math.round(+svg.dataset.natural * MIN_SCALE) + "px";
-    fig.classList.toggle("scrolls", floored);
+    fig.dataset.w = `${fw}|${fig.dataset.key === "graph" ? GL.key + (UI.gall ? "a" : "m") : ""}`;
+    if (fig.dataset.key === "graph") { graphToolbar(fig); applyGFocus(); }
+    applyZoom(fig);
   }
 }
+/* ---------------------------------------------------------------- diagram viewer: zoom, pan, fit, full screen (T7.17) */
+/* Every diagram (component map, flow swimlanes, the Tracer overlay) sits in a viewport (.dgwrap) under a quiet
+   toolbar. Its scale is "fit" until the reader zooms: fit = the box's width (full screen: width and height), never
+   above 1 inline and never below the floor that keeps its text readable (MIN_SCALE for swimlanes, as before; the
+   component map's MAP.MIN_SCALE keeps its smallest text at 12 px or more). Past the floor, or zoomed in, it pans
+   (drag, or scroll). Cmd/Ctrl + scroll and pinch zoom at the pointer; + / − / 0 when focus is in the figure. The
+   scale is the SVG's CSS width (set through the CSSOM: the CSP allows no style attributes). */
+const ZM = new Map();   // figure key -> scale; none = fit
+const ZMAX = 4, ZMIN = 0.3;
+const zoomIcon = {
+  out: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3.5 8h9"/></svg>`,
+  in: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3.5 8h9M8 3.5v9"/></svg>`,
+  fs: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M13.5 2.5 9.5 6.5M6.5 13.5h-4v-4M2.5 13.5l4-4"/></svg>`,
+  close: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg>`,
+};
+function figTB(key) {
+  return `<div class="fig-tb" role="toolbar" aria-label="Diagram view"><span class="fig-tt"></span>${key === "graph" ? `<span class="gview"></span>` : ""}`
+    + `<span class="zgrp"><button type="button" data-z="out" aria-label="Zoom out" data-tip="Zoom out · −">${zoomIcon.out}</button><span class="zl" aria-live="polite">100%</span><button type="button" data-z="in" aria-label="Zoom in" data-tip="Zoom in · +">${zoomIcon.in}</button>`
+    + `<button type="button" data-z="fit" class="zt" data-tip="Fit the diagram to its box · 0">Fit</button><button type="button" data-z="fs" class="zt zfs" aria-label="Expand to full screen" data-tip="Full screen · Esc closes">${zoomIcon.fs}<span>Expand</span></button></span></div>`;
+}
+const isGraph = svg => svg && svg.classList.contains("dg-map");
+function fitScale(fig, svg) {
+  const vb = svg.viewBox.baseVal, wrap = $(".dgwrap", fig);
+  const fs = fig.classList.contains("fs");
+  const aw = wrap.clientWidth - (fs ? 64 : 0) - 2;
+  let s = aw / vb.width;
+  if (fs) s = Math.min(s, (wrap.clientHeight - 2) / vb.height, 1.5); else s = Math.min(1, s);
+  return Math.max(isGraph(svg) ? HGD.MAP.MIN_SCALE : MIN_SCALE, s);
+}
+function applyZoom(fig) {
+  const svg = $(".dgwrap > svg", fig), wrap = $(".dgwrap", fig);
+  if (!svg) return;
+  const vb = svg.viewBox.baseVal, key = fig.dataset.key, fit = fitScale(fig, svg);
+  const s = ZM.has(key) ? ZM.get(key) : fit;
+  svg.style.width = Math.round(vb.width * s) + "px";
+  svg.style.height = Math.round(vb.height * s) + "px";
+  /* zoomed in place: the box keeps the height it had at fit (within reason), and the diagram pans inside it */
+  wrap.style.height = !fig.classList.contains("fs") && ZM.has(key) ? Math.round(Math.max(320, Math.min(innerHeight * 0.78, vb.height * fit))) + "px" : "";
+  fig.classList.toggle("scrolls", vb.width * s > wrap.clientWidth + 1 || (ZM.has(key) && vb.height * s > wrap.clientHeight + 1));
+  fig.classList.toggle("zoomed", ZM.has(key));
+  const zl = $(".zl", fig);
+  if (zl) zl.textContent = Math.round(s * 100) + "%";
+  fig.dataset.scale = s.toFixed(3);
+}
+function curScale(fig) { return +fig.dataset.scale || 1; }
+function zoomTo(fig, s, cx, cy) {
+  const wrap = $(".dgwrap", fig), r = wrap.getBoundingClientRect(), s0 = curScale(fig);
+  s = Math.max(ZMIN, Math.min(ZMAX, s));
+  const ox = (cx ?? r.left + r.width / 2) - r.left, oy = (cy ?? r.top + Math.min(r.height, innerHeight - r.top) / 2) - r.top;
+  const px = (wrap.scrollLeft + ox) / s0, py = (wrap.scrollTop + oy) / s0;
+  ZM.set(fig.dataset.key, s);
+  applyZoom(fig);
+  wrap.scrollLeft = px * s - ox;
+  wrap.scrollTop = py * s - oy;
+}
+function zoomFit(fig) { ZM.delete(fig.dataset.key); applyZoom(fig); const w = $(".dgwrap", fig); w.scrollLeft = 0; w.scrollTop = 0; }
+function zoomAct(fig, act) {
+  if (act === "in") zoomTo(fig, curScale(fig) * 1.25);
+  else if (act === "out") zoomTo(fig, curScale(fig) / 1.25);
+  else if (act === "fit") zoomFit(fig);
+  else if (act === "fs") (fig.classList.contains("fs") ? closeFs() : openFs(fig));
+}
+/* full screen: the figure itself goes over the whole window (the overlay's figure takes its overlay with it) */
+let FS = null;
+function openFs(fig) {
+  if (FS) closeFs();
+  FS = fig;
+  fig.classList.add("fs");
+  document.body.classList.add("fs-on");
+  if (fig.id === "dgovfig") $("#dgov").classList.add("fs");
+  $(".fig-tt", fig).textContent = qt(fig.dataset.title || $("#dgovt")?.textContent || "");
+  fig.setAttribute("role", "dialog");
+  fig.setAttribute("aria-modal", "true");
+  fig.setAttribute("aria-label", (fig.dataset.title || "Diagram") + ", full screen");
+  const b = $('[data-z="fs"]', fig);
+  b.innerHTML = `${zoomIcon.close}<span>Close</span>`; b.setAttribute("aria-label", "Close full screen"); b.dataset.tip = "Close full screen · Esc";
+  ZM.delete(fig.dataset.key);
+  hideTip();
+  renderFigs(true);
+  b.focus({ preventScroll: true });
+}
+function closeFs() {
+  const fig = FS;
+  if (!fig) return false;
+  FS = null;
+  fig.classList.remove("fs");
+  document.body.classList.remove("fs-on");
+  $("#dgov").classList.remove("fs");
+  $(".fig-tt", fig).textContent = "";
+  fig.removeAttribute("role"); fig.removeAttribute("aria-modal"); fig.removeAttribute("aria-label");
+  const b = $('[data-z="fs"]', fig);
+  b.innerHTML = `${zoomIcon.fs}<span>Expand</span>`; b.setAttribute("aria-label", "Expand to full screen"); b.dataset.tip = "Full screen · Esc closes";
+  ZM.delete(fig.dataset.key);
+  if (pinned && fig.contains(pinned)) unpin();
+  hideTip();
+  renderFigs(true);
+  b.focus({ preventScroll: true });
+  return true;
+}
+/* Cmd/Ctrl + scroll (and a trackpad pinch, which arrives as a ctrl wheel) zooms at the pointer; plain scroll scrolls */
+document.addEventListener("wheel", e => {
+  const wrap = e.target.closest?.(".dgwrap");
+  if (!wrap || !(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const fig = wrap.closest(".fig");
+  zoomTo(fig, curScale(fig) * Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)), e.clientX, e.clientY);
+}, { passive: false });
+/* drag to pan (mouse), pinch with two fingers (touch); a drag never counts as a click */
+const PAN = { ptrs: new Map(), drag: null, moved: false, pinch: null };
+document.addEventListener("pointerdown", e => {
+  const wrap = e.target.closest?.(".dgwrap");
+  if (!wrap) return;
+  PAN.ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (PAN.ptrs.size === 2) {
+    const [a, b] = [...PAN.ptrs.values()], fig = wrap.closest(".fig");
+    PAN.pinch = { fig, d0: Math.hypot(a[0] - b[0], a[1] - b[1]), s0: curScale(fig) };
+    PAN.drag = null;
+    return;
+  }
+  if (e.button !== 0 || e.target.closest(".dg-a,.dg-e,.dg-node,.gexp")) return;
+  PAN.drag = { wrap, x: e.clientX, y: e.clientY, l: wrap.scrollLeft, t: wrap.scrollTop };
+  PAN.moved = false;
+});
+document.addEventListener("pointermove", e => {
+  if (PAN.ptrs.has(e.pointerId)) PAN.ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (PAN.pinch && PAN.ptrs.size === 2) {
+    const [a, b] = [...PAN.ptrs.values()];
+    zoomTo(PAN.pinch.fig, PAN.pinch.s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / PAN.pinch.d0, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    return;
+  }
+  const d = PAN.drag;
+  if (!d) return;
+  const dx = e.clientX - d.x, dy = e.clientY - d.y;
+  if (!PAN.moved && Math.hypot(dx, dy) < 4) return;
+  PAN.moved = true;
+  d.wrap.classList.add("panning");
+  d.wrap.scrollLeft = d.l - dx;
+  d.wrap.scrollTop = d.t - dy;
+});
+const endPan = e => {
+  PAN.ptrs.delete(e.pointerId);
+  if (PAN.ptrs.size < 2) PAN.pinch = null;
+  if (PAN.drag) { PAN.drag.wrap.classList.remove("panning"); PAN.drag = null; }
+};
+document.addEventListener("pointerup", endPan);
+document.addEventListener("pointercancel", endPan);
+
+/* ---------------------------------------------------------------- the component map: views, focus, expand (T7.17) */
+/* "Main paths" (default) or every call; a component in focus keeps its callers and callees, the rest fade; its focus
+   card lists its calls with code chips, "Ask about this component" and "Open its module". Esc or a click on empty
+   space in the map resets it. */
+function graphToolbar(fig) {
+  const G = GL.G, el = $(".gview", fig);
+  if (!G || !el) return;
+  el.innerHTML = UI.gall
+    ? `<span class="gv-l">All ${plural(G.nCalls, "call")}</span><button type="button" data-gall="0" aria-pressed="true">Main paths only</button>`
+    : `<span class="gv-l" data-tip="Main paths: every link two or more traced flows use, and each component's most-used way in">Main paths · ${G.nMain} of ${plural(G.nEdges, "link")}</span>${G.nMain < G.nEdges ? `<button type="button" data-gall="1" aria-pressed="false">Show all ${plural(G.nCalls, "call")}</button>` : ""}`;
+}
+function setGraphAll(on) {
+  UI.gall = on;
+  const fig = $("#ovgraph");
+  if (fig) { renderFigs(); const b = $("[data-gall]", fig); b?.focus({ preventScroll: true }); }
+}
+function graphNeighbours(id) {
+  const gm = FIGS.get("graph"), set = new Set([id]);
+  for (const e of gm?.edges || []) { if (e.from === id) set.add(e.to); if (e.to === id) set.add(e.from); }
+  return set;
+}
+function setGFocus(id) {
+  UI.gfocus = id && UI.gfocus !== id ? id : null;
+  applyGFocus();
+  if (UI.gfocus) $(`#ovgraph .dg-node[data-comp="${CSS.escape(UI.gfocus)}"]`)?.focus({ preventScroll: true });
+}
+function applyGFocus() {
+  const svg = $("#ovgraph .dgwrap > svg"), card = $("#gfocus");
+  if (!svg || !card) return;
+  const id = UI.gfocus && GL.G?.N[UI.gfocus] ? UI.gfocus : null;
+  svg.classList.toggle("focus", !!id);
+  const near = id ? graphNeighbours(id) : new Set();
+  for (const n of $$(".dg-node", svg)) { n.classList.toggle("on", near.has(n.dataset.comp)); n.classList.toggle("sel", n.dataset.comp === id); n.setAttribute("aria-pressed", String(n.dataset.comp === id)); }
+  for (const e of $$(".dg-e", svg)) e.classList.toggle("on", !!id && (e.dataset.from === id || e.dataset.to === id));
+  card.hidden = !id;
+  card.innerHTML = id ? focusCardHTML(id) : "";
+  const fig = $("#ovgraph");
+  const was = fig.classList.contains("focusing");
+  fig.classList.toggle("focusing", !!id);
+  /* in full screen the focus card sits beside the map: refit to the room it leaves, and bring the component into view */
+  if (fig.classList.contains("fs") && was !== !!id) applyZoom(fig);
+  if (id && fig.classList.contains("fs")) {
+    const n = $(`.dg-node[data-comp="${CSS.escape(id)}"]`, fig), w = $(".dgwrap", fig);
+    if (n) { const r = n.getBoundingClientRect(), wr = w.getBoundingClientRect(); w.scrollLeft += r.left + r.width / 2 - (wr.left + wr.width / 2); w.scrollTop += r.top + r.height / 2 - (wr.top + wr.height / 2); }
+  }
+}
+function callChips(c) {
+  const m = FIGS.get(c.flow), h = m?.hops[c.hop];
+  if (!h) return `<code>${esc(c.fn)}</code>`;
+  return `<code>${esc(c.fn)}</code>${h.chip !== null && h.chip !== undefined ? `<button class="chip" data-claim="${esc(h.claim)}" data-i="${h.chip}" aria-label="Show ${esc(h.a)}">${esc(h.a)}</button>` : ""}<span class="gf-in">${inlineCode(m.title)}, hop ${c.hop + 1}</span>`;
+}
+function focusCardHTML(id) {
+  const G = GL.G, gm = FIGS.get("graph"), b = G.N[id];
+  const ins = gm.edges.filter(e => e.to === id), outs = gm.edges.filter(e => e.from === id);
+  const list = (es, other, verb) => es.length ? `<div class="gf-sec">${verb} <span>${es.length}</span></div><ul class="gf-l">${es.map(e => `<li><div class="gf-e"><button type="button" class="gf-c" data-gfocus="${esc(e[other])}">${esc(G.N[e[other]]?.name || e[other])}</button><span class="gf-n">${plural(e.calls.length, "call")}</span><button type="button" class="gf-go" data-gcalls="${esc(e.from)}|${esc(e.to)}">in the flows</button></div><ul class="gf-calls">${e.calls.map(c => `<li>${callChips(c)}</li>`).join("")}</ul></li>`).join("")}</ul>` : "";
+  return `<div class="gf-h"><div><div class="gf-k">${esc(HGD.MAP && b.kind === "entry" ? "Entry point" : b.kind === "leaf" ? "Leaf" : "Stage")}</div><div class="gf-t"><code>${esc(b.name)}</code></div>${b.role ? `<div class="gf-r">${esc(b.role)}</div>` : ""}</div><button type="button" class="x" data-gfx aria-label="Leave focus">×</button></div>`
+    + `<div class="gf-acts"><button type="button" class="gf-ask" data-gask="${esc(id)}">${ICON.msg}Ask about this component</button>${b.module ? `<a href="#" data-gomod="${esc(b.module)}">Open its module</a>` : ""}</div>`
+    + list(ins, "from", "Called by") + list(outs, "to", "Calls")
+    + `<div class="gf-foot">Esc or a click on empty space leaves focus</div>`;
+}
+/* "Ask about this component": the panel opens anchored to the component's module (its summary, the first passage of
+   its card), the question prefilled; nothing is sent until the reader presses Ask */
+function askComponent(id) {
+  const c = FIGS.get("graph")?.comps.find(x => x.id === id);
+  const b = c?.module && MAPTEXT?.blocks.find(x => x.id === c.module);
+  if (!b) { toast("This component has no module section to anchor a question to"); return; }
+  const segs = segsOf(b.block), t0 = segs[0].map(x => x.text || "").join("");
+  const t = trimOffsets(MAPTEXT.text, b.segs[0], b.segs[0] + cpLen(t0));
+  if (!t) return;
+  UI.compose = { mode: "root", doc: "map", rev: UI.mapRev, start: t[0], end: t[1], quote: t[2] };
+  const key = `m:${t[0]}:${t[1]}`;
+  UI.cur = IDX.groups.has(key) ? key : null;
+  UI.curNode = null;
+  UI.open = true; UI.tab = "thread";
+  applyOverlays();
+  render(true);
+  const cin = $("#cin");
+  cin.value = `What does ${c.name} do, and how do the components around it use it?`;
+  autoGrow();
+  cin.focus();
+  cin.setSelectionRange(cin.value.length, cin.value.length);
+}
+function toggleExpand(id) {
+  UI.gexp.has(id) ? UI.gexp.delete(id) : UI.gexp.add(id);
+  renderFigs();
+  $(`#ovgraph .gexp[data-expand="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+}
+function goComp(moduleId) {
+  const c = FIGS.get("graph")?.comps.find(x => x.module === moduleId);
+  const fig = $("#ovgraph");
+  if (!c || !fig) return;
+  scrollMapTo($("#t-graph"), 72);
+  UI.gfocus = null;
+  setGFocus(c.id);
+  flashFig(fig);
+}
+
 function openFlow(id, view = "dg", draw = true) {
   const f = $(`.flow[data-flow="${CSS.escape(id)}"]`, COL);
   if (!f) return null;
@@ -640,7 +992,8 @@ function viewDiagram(key) {
   $("#dgovs").textContent = "Tracer answer, as a diagram · not part of the map";
   ov.classList.add("on");
   ov.dataset.from = key;
-  renderFigs();
+  ZM.delete(key);
+  renderFigs(true);
   ov.scrollTop = 0;
   $("[data-dgclose]", ov).focus({ preventScroll: true });
   return fig;
@@ -649,6 +1002,7 @@ function closeOverlay() {
   const ov = $("#dgov");
   if (!ov.classList.contains("on")) return;
   if (pinned && ov.contains(pinned)) unpin();
+  if (FS && FS.id === "dgovfig") closeFs();
   ov.classList.remove("on");
   $("#dgovfig").dataset.key = "";
   $(".dgwrap", $("#dgovfig")).innerHTML = "";
@@ -767,7 +1121,7 @@ function highlight(root, s, e, make) {
   return out;
 }
 function clearOverlays(root) {
-  for (const el of $$(".mk,.nt,.fmk", root)) { const p = el.parentNode; while (el.firstChild) p.insertBefore(el.firstChild, el); el.remove(); }
+  for (const el of $$(".mk,.nt,.fmk,.fd", root)) { const p = el.parentNode; while (el.firstChild) p.insertBefore(el.firstChild, el); el.remove(); }
   for (const leaf of $$(".lf", root)) leaf.normalize();
   for (const m of $$(".mm", root)) m.remove();
 }
@@ -798,6 +1152,7 @@ function applyOverlays() {
     MARKS.notes.set(n.id, { els, pill });
   }
   if (UI.compose && UI.compose.doc === "map") highlight(COL, UI.compose.start, UI.compose.end, mk("mk pend", {}));
+  findMarks();
   /* a discussion or note on a folded fact opens its module, so its mark is never hidden */
   for (const el of $$(".mk,.nt", COL)) if (el.closest("dd.fx")) setModOpen(el.closest(".mod"), true);
   renderMarks();
@@ -815,7 +1170,7 @@ function renderMarks() {
     m.pill.dataset.tip = `<b>${plural(n, "question")}</b>${busy ? " · an agent is at work" : ""} · open the discussion`;
     m.els.forEach(el => el.classList.toggle("active", active));
   }
-  for (const a of $$("#toc a")) {
+  for (const a of $$("#toc a[data-sec]")) {
     const c = [...IDX.groups.values()].filter(g => g.sec && g.sec.id === a.dataset.sec).length;
     $(".n", a).textContent = c || "";
   }
@@ -1365,6 +1720,7 @@ document.addEventListener("mouseover", e => {
   showTip(d, d.dataset.tip, !!d.closest(".prev"));
 });
 document.addEventListener("focusin", e => { const d = e.target.closest?.("[data-tip]"); if (d && e.target.matches(":focus-visible")) showTip(d, d.dataset.tip); else TIP.classList.remove("on"); });
+function hideTip() { TIP.classList.remove("on"); }
 let toastT = null;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1800); }
 
@@ -1394,6 +1750,9 @@ document.addEventListener("click", e => {
   const ed = el.closest("a[data-cursor]");
   if (ed && e.altKey && ed.dataset.cursor) { e.preventDefault(); location.href = ed.dataset.cursor; return; }
   if (el.closest(".lk")) return;
+  if (PAN.moved) { PAN.moved = false; if (el.closest(".dgwrap")) return; }
+  const zb = el.closest("[data-z]");
+  if (zb) { zoomAct(zb.closest(".fig"), zb.dataset.z); return; }
   const chip = el.closest(".chip,.dg-a");
   if (chip) { e.stopPropagation(); if (!chip.classList.contains("gone")) pinPreview(chip); return; }
   if (!el.closest(".prev")) unpin();
@@ -1402,10 +1761,26 @@ document.addEventListener("click", e => {
   if (dv) { viewDiagram(dv.dataset.dgview); return; }
   const fv = el.closest("[data-fview]");
   if (fv) { const f = fv.closest(".flow"); if (fv.dataset.fview === "dg") f.dataset.force = "1"; openFlow(f.dataset.flow, fv.dataset.fview); return; }
+  const gx = el.closest(".gexp[data-expand]");
+  if (gx) { hideTip(); toggleExpand(gx.dataset.expand); return; }
   const ge = el.closest(".dg-e");
-  if (ge) { TIP.classList.remove("on"); showCalls(ge.dataset.from, ge.dataset.to); return; }
+  if (ge) { hideTip(); if (FS) closeFs(); showCalls(ge.dataset.from, ge.dataset.to); return; }
   const gnode = el.closest(".dg-node");
-  if (gnode) { TIP.classList.remove("on"); goModule(gnode.dataset.comp); return; }
+  if (gnode) { hideTip(); setGFocus(gnode.dataset.comp); return; }
+  const ga = el.closest("[data-gall]");
+  if (ga) { setGraphAll(ga.dataset.gall === "1"); return; }
+  if (el.closest("[data-gfx]")) { setGFocus(null); return; }
+  const gq = el.closest("[data-gask]");
+  if (gq) { if (FS) closeFs(); askComponent(gq.dataset.gask); return; }
+  const gf = el.closest("[data-gfocus]");
+  if (gf) { UI.gfocus = null; setGFocus(gf.dataset.gfocus); return; }
+  const gc = el.closest("[data-gcalls]");
+  if (gc) { if (FS) closeFs(); const [f, t] = gc.dataset.gcalls.split("|"); showCalls(f, t); return; }
+  const gco = el.closest("[data-gocomp]");
+  if (gco) { e.preventDefault(); goComp(gco.dataset.gocomp); return; }
+  if (el.closest("#ovgraph .dgwrap") && UI.gfocus) { setGFocus(null); return; }
+  const fgo = el.closest("[data-fgo]");
+  if (fgo) { findGo(+fgo.dataset.fgo); return; }
   if (el.closest("[data-goflows]")) { e.preventDefault(); scrollMapTo($(`#s-${CSS.escape(flowsSection())}`), 24); return; }
   if (el.closest("#top")) { UI.open = true; if (!UI.cur && UI.tab === "thread") UI.tab = "nav"; render(true); return; }
   if (el.closest("#pclose")) { closePanel(); return; }
@@ -1447,13 +1822,13 @@ document.addEventListener("click", e => {
   const nsA = el.closest("[data-ns]");
   if (nsA) { e.preventDefault(); goNeeds(nsA.dataset.ns, nsA.dataset.nsflow); return; }
   const gm = el.closest("[data-gomod]");
-  if (gm) { e.preventDefault(); goModuleId(gm.dataset.gomod); return; }
+  if (gm) { e.preventDefault(); if (FS) closeFs(); goModuleId(gm.dataset.gomod); return; }
   const mo = el.closest("[data-more]");
   if (mo) { const m = mo.closest(".mod"); setModOpen(m, !m.classList.contains("open")); layout(); return; }
   const fh = el.closest(".flow-h");
   if (fh) { const f = fh.parentElement; f.classList.toggle("open"); fh.setAttribute("aria-expanded", f.classList.contains("open")); renderFigs(); layout(); return; }
   const tocA = el.closest("#toc a");
-  if (tocA) { e.preventDefault(); scrollMapTo($(tocA.getAttribute("href")), 24); return; }
+  if (tocA) { e.preventDefault(); const t = $(tocA.getAttribute("href")); scrollMapTo(t, tocA.dataset.sub ? 72 : 24); if (tocA.dataset.sub) flash(t); return; }
 });
 function goNote(id) {
   const n = D.notes.notes.find(x => x.id === id);
@@ -1481,9 +1856,26 @@ $("#cin").addEventListener("keydown", e => {
 });
 $("#cin").addEventListener("input", autoGrow);
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") { unpin(); hideTB(); closeOverlay(); return; }
+  /* Esc, one layer at a time: a pinned preview and the selection bar always; then the component map's focus; then
+     full screen; then the Tracer overlay */
+  if (e.key === "Escape") {
+    const hadPin = !!pinned;
+    unpin(); hideTB();
+    if (UI.gfocus && !hadPin) { setGFocus(null); return; }
+    if (FS && !hadPin) { closeFs(); return; }
+    if (!FS) closeOverlay();
+    return;
+  }
+  const typing = e.target.matches?.("input,textarea,[contenteditable]");
+  if (!typing && e.key === "/" && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setRail(false); $("#find").focus(); return; }
+  /* + / − / 0 zoom the diagram that has the focus */
+  const zf = !typing && !e.metaKey && !e.ctrlKey && e.target.closest?.(".fig");
+  if (zf && $(".dgwrap > svg", zf)) {
+    const act = { "+": "in", "=": "in", "-": "out", "_": "out", "0": "fit" }[e.key];
+    if (act) { e.preventDefault(); zoomAct(zf, act); return; }
+  }
   /* diagram arrows, pills, graph boxes and arrows are buttons: Enter or Space acts */
-  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".dg-a,.dg-e,.dg-node")) {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".dg-a,.dg-e,.dg-node,.gexp")) {
     e.preventDefault();
     e.target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   }
@@ -1491,13 +1883,89 @@ document.addEventListener("keydown", e => {
 function setNotesLayer(on) { document.body.classList.toggle("layer-notes", on); store.set("notesLayer", on ? "1" : "0"); layout(); }
 $("#laynotes").addEventListener("change", e => setNotesLayer(e.target.checked));
 
-/* contents highlight follows the reading position */
+/* contents highlight follows the reading position: the section, and the card within it */
 function spy() {
   const secs = $$("section[data-sec]", COL);
   let cur = secs[0];
-  for (const s of secs) if (s.getBoundingClientRect().top < 200) cur = s;
-  $$("#toc a").forEach(a => a.classList.toggle("on", !!cur && a.dataset.sec === cur.dataset.sec));
+  for (const x of secs) if (x.getBoundingClientRect().top < 160) cur = x;
+  $$("#toc a[data-sec]").forEach(a => a.classList.toggle("on", !!cur && a.dataset.sec === cur.dataset.sec));
+  let sub = null;
+  if (cur) for (const c of $$(":scope > [id]", cur)) if (c.getBoundingClientRect().top < 180) sub = c.id;
+  $$("#toc a[data-sub]").forEach(a => { const on = a.dataset.sub === sub; a.classList.toggle("on", on); if (on) a.setAttribute("aria-current", "location"); else a.removeAttribute("aria-current"); });
+  const on = $("#toc a[data-sub].on");
+  const nav = $("#tocnav");
+  if (on && nav) { const r = on.getBoundingClientRect(), n = nav.getBoundingClientRect(); if (r.top < n.top || r.bottom > n.bottom) nav.scrollTop += r.top - n.top - n.height / 2; }
 }
+/* ---------------------------------------------------------------- Find: filter the contents, find text in the map */
+/* Typing filters the outline (a section stays when its name or any of its parts match) and finds the words in the
+   map's own text: every match is outlined in the map (never amber: that is the reader's notes), the list under the box
+   names each match's section, Enter / Shift+Enter step through them, Esc clears. */
+const FIND = { q: "", hits: [], cur: -1, lower: null };
+const FIND_MAX = 200;
+function findHits(q) {
+  if (!MAPTEXT || q.length < 2) return [];
+  FIND.lower ??= MAPTEXT.text.toLowerCase();
+  const t = FIND.lower, out = [];
+  for (let i = t.indexOf(q); i >= 0 && out.length < FIND_MAX; i = t.indexOf(q, i + q.length)) {
+    const s0 = cpLen(MAPTEXT.text.slice(0, i));
+    out.push([s0, s0 + cpLen(MAPTEXT.text.slice(i, i + q.length))]);
+  }
+  return out;
+}
+function applyFindFilter() {
+  const q = FIND.q;
+  for (const li of $$("#toc li.ts")) {
+    const subs = $$(".tsub li", li);
+    const secHit = !q || $("a[data-sec]", li).textContent.toLowerCase().includes(q);
+    let any = false;
+    for (const x of subs) { const hit = !q || secHit || x.textContent.toLowerCase().includes(q); x.hidden = !hit; any = any || hit; }
+    li.hidden = !(secHit || any || FIND.hits.some(h => blockAt(h[0])?.sec?.id === $("a[data-sec]", li).dataset.sec));
+  }
+}
+function findMarks() {
+  if (!FIND.hits.length) return;
+  FIND.hits.forEach(([a, b], i) => highlight(COL, a, b, mk(i === FIND.cur ? "fd cur" : "fd", { fi: String(i) })));
+}
+function renderFindList() {
+  const el = $("#findres");
+  if (!FIND.q) { el.innerHTML = ""; el.hidden = true; return; }
+  el.hidden = false;
+  if (FIND.q.length < 2) { el.innerHTML = `<div class="fr-n">Type two letters or more</div>`; return; }
+  const n = FIND.hits.length;
+  const items = FIND.hits.slice(0, 8).map(([a, b], i) => {
+    const t = MAPTEXT.text, i0 = cpIdx(t, a), i1 = cpIdx(t, b);
+    const before = one(t.slice(Math.max(0, i0 - 28), i0)), after = one(t.slice(i1, i1 + 40));
+    const blk = blockAt(a);
+    return `<li><button type="button" data-fgo="${i}"${i === FIND.cur ? ` class="cur"` : ""}><span class="fr-t">${i0 > 28 ? "…" : ""}${esc(before)} <mark>${esc(t.slice(i0, i1))}</mark> ${esc(after)}…</span><span class="fr-s">${esc(blk?.sec?.title || "")}${blk?.block.type === "module" ? " · " + esc(modName(blk.block)) : ""}</span></button></li>`;
+  }).join("");
+  el.innerHTML = `<div class="fr-n">${n ? `${n >= FIND_MAX ? `${FIND_MAX}+` : n} match${n === 1 ? "" : "es"} in the map${n > 1 ? " · Enter for the next" : ""}` : "No match in the map's text"}</div>${items ? `<ol class="fr-l">${items}</ol>` : ""}${n > 8 ? `<div class="fr-n">and ${n - 8} more: Enter steps through all of them</div>` : ""}`;
+}
+function setFind(q) {
+  FIND.q = one(q).toLowerCase();
+  FIND.hits = findHits(FIND.q);
+  FIND.cur = -1;
+  applyFindFilter();
+  renderFindList();
+  applyOverlays();
+}
+function findGo(i) {
+  if (!FIND.hits.length) return;
+  FIND.cur = (i + FIND.hits.length) % FIND.hits.length;
+  applyOverlays();
+  renderFindList();
+  const el = $(`.fd[data-fi="${FIND.cur}"]`, COL);
+  if (el) {
+    const mod = el.closest(".mod");
+    if (mod && el.closest(".fx") && !mod.classList.contains("open")) { setModOpen(mod, true); applyOverlays(); }
+    scrollMapTo($(`.fd[data-fi="${FIND.cur}"]`, COL), 220);
+  }
+}
+let findT = null;
+$("#find").addEventListener("input", e => { clearTimeout(findT); findT = setTimeout(() => setFind(e.target.value), 120); });
+$("#find").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); clearTimeout(findT); if (one(e.target.value).toLowerCase() !== FIND.q) setFind(e.target.value); findGo(FIND.cur + (e.shiftKey ? -1 : 1)); }
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); e.target.value = ""; setFind(""); }
+});
 /* a tooltip follows its element while that element holds the focus (Tab onto a not-supported claim scrolls it into
    view, and its note must stay readable); any other tooltip closes on scroll */
 function tipOnScroll() {
@@ -1539,8 +2007,8 @@ const PW = { min: 320, max: 720, def: 408 };
 let want = (() => { const w = parseInt(store.get("panelWidth"), 10); return w >= PW.min && w <= PW.max ? w : PW.def; })();
 /* the panel never squeezes the reading column below 560px (plus room for the margin markers) */
 function maxWidth() {
-  const side = document.documentElement.classList.contains("rail") ? 56 : 224;
-  return Math.max(PW.min, Math.min(PW.max, innerWidth - side - 648));
+  const side = document.documentElement.classList.contains("rail") ? 64 : 256;
+  return Math.max(PW.min, Math.min(PW.max, innerWidth - side - 16 - 624));
 }
 function applyWidth() {
   const w = Math.max(PW.min, Math.min(want, maxWidth()));
@@ -1557,7 +2025,7 @@ $("#grip").addEventListener("pointerdown", e => {
   const grip = e.currentTarget;
   grip.setPointerCapture(e.pointerId);
   document.body.classList.add("resizing");
-  const move = ev => { want = Math.max(PW.min, Math.min(PW.max, innerWidth - ev.clientX)); applyWidth(); layout(); };
+  const move = ev => { want = Math.max(PW.min, Math.min(PW.max, innerWidth - 8 - ev.clientX)); applyWidth(); layout(); };
   const up = () => { grip.removeEventListener("pointermove", move); renderFigs(); grip.removeEventListener("pointerup", up); document.body.classList.remove("resizing"); setWant(Math.min(want, maxWidth())); };
   grip.addEventListener("pointermove", move);
   grip.addEventListener("pointerup", up);
@@ -1615,7 +2083,7 @@ async function init() {
   setTheme(document.documentElement.dataset.theme || (MQ.matches ? "dark" : "light"));
   if (store.get("notesLayer") === "0") { $("#laynotes").checked = false; document.body.classList.remove("layer-notes"); }
   setRail(document.documentElement.classList.contains("rail"));
-  $("#legend").innerHTML = `<div class="lh">Evidence, by shape</div>` + Object.entries(EV).map(([k, [name]]) => `<div><span class="sym"><span class="dot ev-${k}"></span></span>${esc(name.toLowerCase())}</div>`).join("")
+  $("#legend").innerHTML = Object.entries(EV).map(([k, [name]]) => `<div><span class="sym"><span class="dot ev-${k}"></span></span>${esc(name.toLowerCase())}</div>`).join("")
     + `<div class="gap"></div><div><span class="sym"><span class="ok">✓</span></span>checked by the Checker</div><div data-tip="On the map, a claim the Checker marked not supported keeps this mark and a faint dotted underline; hover or focus it for the Checker's note. Answers show a red &quot;not supported&quot; tag."><span class="sym"><span class="dot unsup"></span></span>not supported</div>`;
   applyWidth();
   try {

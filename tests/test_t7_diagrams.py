@@ -225,7 +225,7 @@ def test_sequence_diagrams_hold_the_hard_checks(site, chrome):
     assert c.console_errors() == []
     roles = {b["path"]: b.get("role", "") for b in DOCUMENT["sections"][1]["blocks"]}
     for flow in FLOWS:
-        sel = f'.fig[data-key="map:{flow["id"]}"] svg'
+        sel = f'.fig[data-key="map:{flow["id"]}"] .dgwrap > svg'
         g = collect(c, sel)
         check_sequence(g, flow)
         # lane headers: the lane's label and, where the Modules section has the file, its role, as on the page
@@ -247,13 +247,13 @@ def test_sequence_diagrams_hold_the_hard_checks(site, chrome):
         edges = c.js(f"""[...document.querySelectorAll('.flow[data-flow="{flow['id']}"] .rail .edge span')].map(e => e.querySelector('b').textContent + ' ' + e.textContent.slice(e.querySelector('b').textContent.length))""")
         assert [" ".join(e.split()) for e in edges] == [" ".join(p["text"].split()) for p in sorted(g["pills"], key=lambda p: p["hop"])]
     # the fixture exercises what the diagram has to handle
-    step = collect(c, '.fig[data-key="map:f-step"] svg')
+    step = collect(c, '.fig[data-key="map:f-step"] .dgwrap > svg')
     assert {x["style"] for x in step["calls"]} == {"solid", "dashed", "dotted"}
     assert c.js("""document.querySelector('.fig[data-key="map:f-step"] .k-call.s-dotted .dnote').textContent""").startswith("Trace blind spot: autograd")
     ret = c.js("""(() => { const l = document.querySelector('.fig[data-key="map:f-step"] .dg-a[data-kind="ret"][data-hop="1"] line'); return [+l.getAttribute('x1'), +l.getAttribute('x2')]; })()""")
     data_x = c.js("""+document.querySelector('.fig[data-key="map:f-step"] .life[data-lane="data"]').getAttribute('x1')""")
     assert min(ret) < data_x < max(ret)          # a return that crosses another lane
-    gen = collect(c, '.fig[data-key="map:f-gen"] svg')
+    gen = collect(c, '.fig[data-key="map:f-gen"] .dgwrap > svg')
     assert c.js("""document.querySelectorAll('.fig[data-key="map:f-gen"] .k-call path.ln').length""") == 3   # self-calls
     assert len(gen["frames"]) == 1 and [x["loop"] for x in gen["calls"]] == [None, None, "tok", "tok", None]
 
@@ -286,64 +286,142 @@ def expected_edges(flows, document):
     return want
 
 
-def check_graph(c, g, root="#ovgraph", crossings=None):
-    """The module graph's T7.4 guarantees, by component: weights ordered like counts, no crossing lines, every count
-    label on its own line and nearer to it than to any other by a label height, no text touching a line or text.
+MAP_COLLECT = r"""((sel, view) => {
+  const svg = document.querySelector(sel);
+  if (!svg) return null;
+  if (view) svg.dataset.view = view;
+  const vis = el => getComputedStyle(el).display !== 'none' && !el.closest('[style*="display: none"]');
+  const edges = [...svg.querySelectorAll('.dg-e')].filter(vis).map(e => {
+    const p = e.querySelector('.gw'), n = p.getTotalLength(), pts = [];
+    for (let i = 0; i <= Math.max(24, Math.ceil(n / 4)); i++) { const q = p.getPointAtLength(n * i / Math.max(24, Math.ceil(n / 4))); pts.push([q.x, q.y]); }
+    const hb = e.querySelector('.gh').getBBox();
+    return {from: e.dataset.from, to: e.dataset.to, n: +e.dataset.n, main: e.dataset.main === '1', w: +p.getAttribute('stroke-width'), pts, head: [hb.x, hb.y, hb.width, hb.height]};
+  });
+  const boxes = [...svg.querySelectorAll('.dg-node')].map(g => { const r = g.querySelector('.gbox'); return {id: g.dataset.comp, box: [+r.getAttribute('x'), +r.getAttribute('y'), +r.getAttribute('width'), +r.getAttribute('height')]}; });
+  const texts = [...svg.querySelectorAll('text')].map(t => { const b = t.getBBox(); return {cls: t.getAttribute('class') || '', text: t.textContent, box: [b.x, b.y, b.width, b.height], node: t.closest('.dg-node')?.dataset.comp || null, key: !!t.closest('.dg-key'), size: parseFloat(getComputedStyle(t).fontSize)}; });
+  const ctm = svg.getScreenCTM();
+  return {edges, boxes, texts, styled: svg.querySelectorAll('[style]').length - (svg.hasAttribute('style') ? 0 : 0), scale: ctm ? ctm.a : 1,
+          crossings: +svg.dataset.crossings, view: svg.dataset.view};
+})(%s, %s)"""
 
-    T7.16: the same checks hold for the top-to-bottom layout, whose drops are vertical (a label then sits beside its
-    drop, within its length). With ``crossings`` a list, lines of different components that meet are appended to it
-    instead of failing (the layout reports how many it could not avoid)."""
-    got = c.js(f"[...document.querySelectorAll('{root} .dg-e')].map(e => [e.dataset.from, e.dataset.to, +e.dataset.n, +e.querySelector('.gdrop').getAttribute('stroke-width'), e.querySelector('.gcnt').textContent])")
-    assert all(lab == f"{n} call{'s' if n > 1 else ''}" for _, _, n, _, lab in got)
-    assert all((n1 < n2) == (w1 < w2) for (_, _, n1, w1, _), (_, _, n2, w2, _) in combinations(got, 2))
-    segs = [s for s in g["segs"] if not s["key"]]
 
-    def source(s):
-        o = s["owner"] or {}
-        return o.get("from") or s.get("from") or ("start", s["y1"])
-    for s, t in combinations(segs, 2):
-        if source(s) != source(t) and segs_cross(s, t):
-            assert crossings is not None, (s, t)
-            crossings.append((source(s), source(t)))
-    for e in c.js("""[...document.querySelectorAll('%s .dg-e')].map(e => { const b = e.querySelector('.gcnt').getBBox();
-        return {from: e.dataset.from, to: e.dataset.to, box: [b.x, b.y, b.width, b.height]}; })""" % root):
-        mine = [s for s in segs if (s["owner"] or {}).get("from") == e["from"] and (s["owner"] or {}).get("to") == e["to"]]
-        assert len(mine) == 1
-        own = mine[0]
-        d_own = seg_box_distance(own, e["box"])
-        assert d_own <= 6 and not seg_hits_box(own, e["box"])
-        if own["y1"] == own["y2"]:     # left to right: the label sits above its drop, within its length
-            assert min(own["x1"], own["x2"]) < e["box"][0] and e["box"][0] + e["box"][2] < max(own["x1"], own["x2"])
-        else:                          # top to bottom: beside it, within its length
-            assert min(own["y1"], own["y2"]) < e["box"][1] and e["box"][1] + e["box"][3] < max(own["y1"], own["y2"])
-        for s in segs:
-            if s is own:
+def hover_path(c, selector):
+    """Move the pointer onto the middle of an edge's drawn line (a curve's box centre is often off the line)."""
+    pt = c.js(f"""(() => {{ const p = document.querySelector({json.dumps(selector)}); p.scrollIntoView({{block: 'center'}});
+      const n = p.getTotalLength(), q = p.getPointAtLength(n / 2), m = p.getScreenCTM(); return [m.a * q.x + m.e, m.d * q.y + m.f]; }})()""")
+    c.mouse("mouseMoved", pt[0], pt[1])
+
+
+def collect_map(c, selector="#ovgraph .dgwrap > svg", view=None):
+    out = c.js(MAP_COLLECT % (json.dumps(selector), json.dumps(view)))
+    assert out, selector
+    return out
+
+
+def _seg_cross(a, b, c_, d):
+    r = (b[0] - a[0], b[1] - a[1]); s_ = (d[0] - c_[0], d[1] - c_[1])
+    den = r[0] * s_[1] - r[1] * s_[0]
+    if abs(den) < 1e-9:
+        return None
+    t = ((c_[0] - a[0]) * s_[1] - (c_[1] - a[1]) * s_[0]) / den
+    u = ((c_[0] - a[0]) * r[1] - (c_[1] - a[1]) * r[0]) / den
+    return (a[0] + t * r[0], a[1] + t * r[1]) if 0 <= t <= 1 and 0 <= u <= 1 else None
+
+
+def drawn_crossings(edges):
+    """Points where two drawn edges cross, from the browser's own path geometry (each point once per pair)."""
+    out = []
+    for i, j in combinations(range(len(edges)), 2):
+        A, B = edges[i]["pts"], edges[j]["pts"]
+        pts = []
+        for a in range(len(A) - 1):
+            for b in range(len(B) - 1):
+                p = _seg_cross(A[a], A[a + 1], B[b], B[b + 1])
+                if p and not any(abs(p[0] - q[0]) + abs(p[1] - q[1]) < 4 for q in pts):
+                    pts.append(p)
+        out += [((edges[i]["from"], edges[i]["to"]), (edges[j]["from"], edges[j]["to"]), p) for p in pts]
+    return out
+
+
+def _dist_to_polyline(p, pts):
+    best = 1e9
+    for (ax, ay), (bx, by) in zip(pts, pts[1:], strict=False):
+        dx, dy = bx - ax, by - ay
+        t = 0 if dx == dy == 0 else max(0, min(1, ((p[0] - ax) * dx + (p[1] - ay) * dy) / (dx * dx + dy * dy)))
+        best = min(best, ((ax + t * dx - p[0]) ** 2 + (ay + t * dy - p[1]) ** 2) ** 0.5)
+    return best
+
+
+def longest_shared_run(A, B, tol=0.6):
+    """The longest stretch (in px along A) over which A stays within ``tol`` of B: a crossing gives a few px at most,
+    a shared bus segment its whole length."""
+    best = run = 0.0
+    for i, p in enumerate(A):
+        if _dist_to_polyline(p, B) < tol:
+            if i:
+                run += ((p[0] - A[i - 1][0]) ** 2 + (p[1] - A[i - 1][1]) ** 2) ** 0.5
+            best = max(best, run)
+        else:
+            run = 0.0
+    return best
+
+
+def inside(p, box, pad=1.0):
+    x, y, w, h = box
+    return x + pad < p[0] < x + w - pad and y + pad < p[1] < y + h - pad
+
+
+def check_map(c, g):
+    """The component map's guarantees (T7.17), on the browser's geometry: weights ordered like counts; no count label
+    on a line (counts are on hover); every edge has its own ports (no shared segment: no two edges share a start or
+    an end point, and no two edges run along each other); no line through a box but its own ends; no line through
+    text; no two texts overlapping; nothing styled inline (CSP)."""
+    E = g["edges"]
+    assert all((a["n"] < b["n"]) == (a["w"] < b["w"]) for a, b in combinations(E, 2))
+    assert not any(t["cls"] == "gcnt" for t in g["texts"])
+    starts = [tuple(round(v) for v in e["pts"][0]) for e in E]
+    ends = [tuple(round(v) for v in e["pts"][-1]) for e in E]
+    assert len(set(starts)) == len(starts) and len(set(ends)) == len(ends), "two edges share a port"
+    for a, b in combinations(E, 2):     # no shared run: two lines may cross, never run along each other
+        run = longest_shared_run(a["pts"], b["pts"])
+        assert run < 12, ("shared segment", a["from"], a["to"], b["from"], b["to"], run)
+    for e in E:
+        for b in g["boxes"]:
+            hits = [p for p in e["pts"][1:-1] if inside(p, b["box"], 2)]
+            assert not hits, ("line through a box", e["from"], e["to"], b["id"])
+        for t in g["texts"]:
+            if t["key"]:
                 continue
-            assert seg_box_distance(s, e["box"]) >= d_own + e["box"][3], (e, s)
-    for t in (t for t in g["texts"] if not t["key"]):
-        for s in segs:
-            assert not seg_hits_box(s, t["box"]), (t["text"], s)
-    for a, b in combinations(g["texts"], 2):
+            assert not any(inside(p, t["box"], 0.5) for p in e["pts"]), ("line through text", e["from"], e["to"], t["text"])
+    body = [t for t in g["texts"] if not t["key"]]
+    for a, b in combinations(body, 2):
         assert not boxes_overlap(a["box"], b["box"]), (a["text"], b["text"])
-    assert g["styled"] == 0
-    return got
+    for t in g["texts"]:
+        assert all(ord(ch) in SAFE for ch in t["text"]), t["text"]
+    return {(e["from"], e["to"]): e["n"] for e in E}
 
 
 def test_module_graph_counts_lines_and_labels(site, chrome):
-    """An older map whose modules are single files (``path``): each file is a component, as before T7.15."""
+    """An older map whose modules are single files (``path``): each file is a component, as before T7.15. T7.17: the
+    component map shows the main paths by default and every call with "Show all"; counts are on hover only."""
     c = chrome
     c.goto(site["url"])
-    g = collect(c, "#ovgraph svg")
-    got = check_graph(c, g)
+    g = collect_map(c, view="all")
+    got = check_map(c, g)
     # counts = the flows' calls between two different components
-    assert {(a, b): n for a, b, n, _, _ in got} == expected_edges(FLOWS, DOCUMENT)
-    # the defect T7.4 fixes: two lines into model.py, each with a "2 calls" label
-    assert sorted(n for a, b, n, _, _ in got if b == "m-model") == [2, 2]
+    assert got == expected_edges(FLOWS, DOCUMENT)
+    # the defect T7.4 fixed stays fixed: two lines into model.py, each its own
+    assert sorted(n for (a, b), n in got.items() if b == "m-model") == [2, 2]
     # boxes are named by their file; one entry point
     names = c.js("Object.fromEntries([...document.querySelectorAll('#ovgraph .dg-node')].map(n => [n.dataset.comp, n.querySelector('.gname').textContent]))")
     assert names == {"m-train": "train.py", "m-data": "data.py", "m-model": "model.py", "m-optim": "optim.py",
                      "m-engine": "engine.py"}
     assert c.js("[...document.querySelectorAll('#ovgraph .gtag')].map(t => t.closest('.dg-node').dataset.comp)") == ["m-train"]
+    # a count shows on hover, not on the line
+    c.click_el('#ovgraph [data-gall="1"]')         # engine -> model is not a main path: show every call
+    hover_path(c, '#ovgraph .dg-e[data-from="m-engine"][data-to="m-model"] .gw')
+    settle(c)
+    assert "2 calls in 1 traced flow" in c.js("document.getElementById('tip').innerText")
     # a component in no traced flow gets no box: one quiet line under the graph, linking to its module
     assert c.js("document.getElementById('ovgraph-iso').innerText") == "Not in a traced flow: Tiktoken's gpt2 encoding"
     c.click_el('#ovgraph-iso a[data-gomod="m-tok"]')
@@ -353,33 +431,40 @@ def test_module_graph_counts_lines_and_labels(site, chrome):
 
 def test_module_graph_by_component_on_the_v2_map(tmp_path_factory, chrome):
     """T7.15: one box per component (``train.py`` + ``optim.py`` is one box, its own calls inside it dropped), the
-    role as its subtitle, the files on hover; the label guarantees hold."""
+    role as its subtitle, the files on hover and (T7.17) in the expanded node; the map's guarantees hold."""
     info = serve(tmp_path_factory.mktemp("dgv2"), "v2")
     try:
         from t7_page_fixture import DOCUMENT_V2
         c = chrome
         c.goto(info["url"])
-        g = collect(c, "#ovgraph svg")
-        got = check_graph(c, g)
+        g = collect_map(c, view="all")
+        got = check_map(c, g)
         want = expected_edges(FLOWS, DOCUMENT_V2)
-        assert {(a, b): n for a, b, n, _, _ in got} == want
+        assert got == want
         assert ("m-train", "m-train") not in want and want == {("m-train", "m-data"): 1, ("m-train", "m-model"): 2,
                                                                ("m-engine", "m-model"): 2}
         nodes = c.js("""[...document.querySelectorAll('#ovgraph .dg-node')].map(n => [n.dataset.comp, n.querySelector('.gname').textContent,
             n.querySelector('.grole')?.textContent || '', n.dataset.files])""")
-        assert sorted(nodes) == sorted([["m-train", "train.py +1", "the training loop", "train.py optim.py"],
+        assert sorted(nodes) == sorted([["m-train", "train.py", "the training loop", "train.py optim.py"],
                                         ["m-data", "data.py", "the sharded token loader", "data.py"],
                                         ["m-model", "model.py", "GPT, attention blocks", "model.py"],
                                         ["m-engine", "engine.py", "sampling with a KV cache", "engine.py"]])
         c.hover_el('#ovgraph .dg-node[data-comp="m-train"] .gbox')
         settle(c)
         tip = c.js("document.getElementById('tip').innerText")
-        assert "Files: train.py, optim.py" in tip and "Click for its module" in tip
+        assert "Files: train.py, optim.py" in tip and "Click to focus" in tip
+        # the node expands to list its files, and folds again
+        assert c.js("document.querySelector('#ovgraph .gexp[data-expand=\"m-train\"] text').textContent") == "+1 file"
+        c.click_el('#ovgraph .gexp[data-expand="m-train"] rect')
+        settle(c)
+        assert c.js("[...document.querySelectorAll('#ovgraph .dg-node[data-comp=\"m-train\"] .gfile')].map(t => t.textContent)") == ["train.py", "optim.py"]
+        check_map(c, collect_map(c, view="all"))
+        c.click_el('#ovgraph .gexp[data-expand="m-train"] rect')
+        settle(c)
+        assert c.js("document.querySelectorAll('#ovgraph .gfile').length") == 0
         assert c.js("document.getElementById('ovgraph-iso').innerText") == "Not in a traced flow: Tiktoken's gpt2 encoding"
-        assert c.js("document.querySelector('#ovgraph svg').getAttribute('aria-label')") == \
-            "Module graph: 4 components and the calls between them"
-        c.click_el('#ovgraph .dg-node[data-comp="m-train"] .gbox')
-        assert c.js("document.querySelector('.mod[data-block=\"m-train\"]').classList.contains('flashed')")
+        assert c.js("document.querySelector('#ovgraph .dgwrap > svg').getAttribute('aria-label')") == \
+            "Component map: 4 components and the calls between them"
     finally:
         info["server"].shutdown()
         info["server"].server_close()
@@ -490,7 +575,7 @@ def test_tracer_path_that_is_not_a_map_flow_opens_an_overlay(site, chrome):
     assert ov[1] <= c.js("document.getElementById('panel').getBoundingClientRect().left") + 0.5
     assert ov[0] >= c.js("document.getElementById('side').getBoundingClientRect().right") - 0.5
     resp = next(r for r in site["store_obj"].load("answers")["responses"] if r["id"] == site["ids"]["r1c"])
-    g = collect(c, "#dgovfig svg")
+    g = collect(c, "#dgovfig .dgwrap > svg")
     check_sequence(g, resp["path"], {x["id"]: x["evidence"] for x in resp["claims"]})
     assert [x["loop"] for x in g["calls"]] == [h.get("loop") for h in resp["path"]["hops"]]
     c.click_el('#dgovfig .dg-a[data-kind="call"][data-hop="4"] .fn')
@@ -503,19 +588,26 @@ def test_tracer_path_that_is_not_a_map_flow_opens_an_overlay(site, chrome):
     assert c.js("document.body.classList.contains('popen')")
 
 
-def test_graph_clicks_lead_to_modules_and_calls(site, chrome):
+def test_graph_clicks_focus_components_and_lead_to_calls(site, chrome):
+    """T7.17: a box click focuses the component (its focus card leads to its module); an arrow click still opens the
+    flows and highlights its calls; hovering an arrow lists its calls."""
     c = chrome
     c.goto(site["url"])
     c.click_el('#ovgraph .dg-node[data-comp="m-data"] .gbox')
+    assert c.js("document.querySelector('#ovgraph .dgwrap > svg').classList.contains('focus')")
+    c.click_el('#gfocus a[data-gomod="m-data"]')
     top = c.js("document.querySelector('.mod[data-path=\"data.py\"]').getBoundingClientRect().top")
     assert 0 <= top <= 200 and c.js("document.querySelector('.mod[data-path=\"data.py\"]').classList.contains('flashed')")
+    c.key("Escape")
     c.js("document.getElementById('main').scrollTop = 0")
-    c.click_el('#ovgraph .dg-e[data-from="m-train"][data-to="m-model"] .gcnt')
+    c.js("""document.querySelector('#ovgraph .dg-e[data-from="m-train"][data-to="m-model"]').dispatchEvent(new MouseEvent('click', {bubbles: true}))""")
     hl = c.js("[...document.querySelectorAll('.dg-a.hl')].map(g => g.closest('svg').dataset.key + ':' + g.dataset.hop)")
     assert sorted(hl) == ["map:f-step:1", "map:f-step:2"]
     assert c.js("document.querySelector('.flow[data-flow=\"f-step\"]').classList.contains('open')")
     # hovering an arrow lists its calls
-    c.hover_el('#ovgraph .dg-e[data-from="m-engine"][data-to="m-model"] .gcnt')
+    c.js("document.getElementById('main').scrollTop = 0")
+    c.click_el('#ovgraph [data-gall="1"]')
+    hover_path(c, '#ovgraph .dg-e[data-from="m-engine"][data-to="m-model"] .gw')
     settle(c)
     tip = c.js("document.getElementById('tip').innerText")
     assert "engine.py (sampling with a KV cache) calls model.py (GPT, attention blocks)" in tip

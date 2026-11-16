@@ -78,6 +78,12 @@ another path in the memory store. `map check` and `map ingest` refuse any direct
    only in uncommitted edits can't be cited. If the tree is dirty, say so in your report.
    Then `honeyguide map draft-dir --repo REPO --fresh` and keep its `dir` as `DRAFTS`, and
    `honeyguide drafts dir --repo REPO --agent cartographer --name inputs --fresh` as `INPUTS`.
+   Then `honeyguide repo-info --repo REPO`: the repo's facts as JSON (link, default branch, first and last commit
+   dates, commit count, languages by share, licence, top contributors by name, the README's title and description
+   line with their line numbers, and GitHub stars, forks, issues and topics with an `as_of` date when `gh` is signed
+   in). The page shows them in its repo card; `map ingest` stores them, so you never write them into a draft.
+   Use them to orient yourself (how big, how old, which languages, who maintains it) and in Purpose and Who
+   it's for as described under "Repo facts".
 2. **Terrain.** Read the README and the project manifest (`pyproject.toml`, `setup.cfg`, `package.json`...).
    Glob the source files; find the entry points (scripts, CLI, `__main__`, `main()`), and the install, test
    and run commands.
@@ -97,6 +103,23 @@ another path in the memory store. `map check` and `map ingest` refuse any direct
    `readability` warnings too and fix the ones that are fair.
 7. **Save** with `map ingest DRAFTS`, then run `map validate`. Read the `warnings` (a claim no span shows, a
    loop with no hop) and fix them with another ingest if they matter.
+
+## Repo facts (repo-info)
+
+`honeyguide repo-info` gives facts with their provenance; they are not claims and you don't restate them as claims:
+
+- **Cite the README and the licence as `docs` claims.** The README's description line (`readme.path`,
+  `readme.description_line`) is a fine anchor for the opening of Purpose ("nanochat is a minimal harness for
+  training LLMs end to end"); a licence statement cites the licence file (`license.file`). Quote the lines through
+  `anchor resolve` like any other.
+- **Never put counts or dates from git or GitHub in prose**: stars, forks, issues, commit counts, contributor counts,
+  first or last commit dates. They change, they aren't lines at a commit, and the Checker can't re-check them; the
+  repo card shows them, dated. GitHub numbers are never "read in source".
+- **Use them to judge, then say what the code shows.** Many contributors and a long history suggest stable
+  interfaces worth naming in Who it's for; a two-month-old repo with one author suggests it is a personal project
+  whose README may run ahead of the code. Say what the README or code shows, cited, not the inference.
+- **Languages** tell you where the source is; if a second language holds real logic (a JS dashboard, CUDA kernels),
+  the Components group and a module should say so.
 
 ## Draft files
 
@@ -161,7 +184,7 @@ shims), and say what you left out and why in `coverage`.
 |---|---|
 | `files` | the repo paths the component covers, most important first (each must exist at the map's commit; a directory is fine). Every file maps to this module in the module graph and the flow lanes. |
 | `title` | `"<files>: <its role in a few words>"`, with the files in backticks: `` "`train.py` and `optim.py`: the loop and its optimizer" ``, `` "`scripts/`: walkthrough builder and receipt comparison" ``. The heading on the page. Required. |
-| `role` | a short noun phrase (<= 80 chars, "the training loop"): the subtitle in the module graph and the flow lanes, and the link text when another module links here. |
+| `role` | a short noun phrase (<= 80 chars; aim for 2-5 words, under about 30 characters: "the training loop", "the reason-act loop"): the subtitle in the component map's boxes and the flow lanes, the module's name in the page's contents outline, and the link text when another module links here. Not a sentence: "builds the agent and runs one turn" wraps in a box and is cut in the outline; "agent assembly" reads at a glance. |
 | `entry` | `true` on the component holding the repo's entry point. |
 | `spans` | the **summary**: 2-4 sentences on what the component is for and how it works. |
 | `design` | one paragraph (spans, claims as usual) that a reader can't get from the facts: **why** it is built this way, the trade-off it makes, or the sharp edge an engineer meets first. Required unless there is a `debug` row; write both when you can. |

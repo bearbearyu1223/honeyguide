@@ -65,7 +65,8 @@ def test_overview_topics_lists_and_facts_render_with_matching_offsets(site, chro
     # commands render as code, component keys that name files too; the module graph follows Components
     assert c.js("document.querySelector('[data-block=\"ov-cmds\"] dd code').textContent") == "uv sync"
     assert c.js("document.querySelector('[data-block=\"ov-parts\"] dt code').textContent") == "model.py"
-    assert c.js("document.querySelector('[data-block=\"ov-parts\"]').nextElementSibling.id") == "ovgraph"
+    # UX v4: the component map is its own card, right after the Components card
+    assert c.js("document.querySelector('[data-block=\"ov-parts\"]').closest('.card').nextElementSibling.id") == "t-graph"
     # every claim in a list item or a facts row carries its evidence mark and chips
     assert c.js("document.querySelectorAll('[data-block=\"ov-cmds\"] .claim').length") == 3
     assert c.js("document.querySelectorAll('[data-block=\"ov-cmds\"] .chip').length") >= 3
@@ -130,7 +131,8 @@ def test_an_old_map_still_renders(tmp_path_factory, chrome):
         assert leaves_match(c, info["store"]) > 40
         assert c.js("document.querySelectorAll('h3.topic, .facts, .more, .blist').length") == 0
         assert c.js("document.querySelectorAll('.mod').length") == 6
-        assert c.js("document.querySelector('#s-overview p.blk').nextElementSibling.id") == "ovgraph"
+        # UX v4: the component map is its own card, after the card that holds the first paragraph
+        assert c.js("document.querySelector('#s-overview p.blk').closest('.card').nextElementSibling.id") == "t-graph"
     finally:
         info["server"].shutdown()
         info["server"].server_close()
@@ -174,7 +176,9 @@ def test_a_component_is_one_box_that_leads_to_its_module(site, chrome):
     assert ["m-train", "train.py optim.py"] in nodes
     assert not any("optim.py" in files and comp != "m-train" for comp, files in nodes)
     c.js("document.querySelectorAll('.flashed').forEach(e => e.classList.remove('flashed'))")
-    c.click_el('#ovgraph .dg-node[data-comp="m-train"]')
+    # UX v4 (T7.17): a click focuses the component; its focus card leads to the module
+    c.click_el('#ovgraph .dg-node[data-comp="m-train"] .gbox')
+    c.click_el('#gfocus a[data-gomod="m-train"]')
     c.wait("document.querySelector('.mod[data-block=\"m-train\"]').classList.contains('flashed')", 5)
 
 

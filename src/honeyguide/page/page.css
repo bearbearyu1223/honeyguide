@@ -682,3 +682,274 @@ body.resizing .main,body.resizing .panel{transition:none}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+/* =====================================================================================================================
+   UX v4 (T7.17 + T7.18; docs/design/ux-v4.md): NotebookLM's feel in Honeyguide's palette. Three calm areas on a
+   tonal canvas (contents | map of cards | discussion), rounded surfaces, 8px spacing, the 28/20/16/14/12 type scale,
+   quiet chrome; a repo card; a contents outline with sub-sections, scroll-spy and Find; a diagram viewer (zoom, pan,
+   fit, full screen) for every diagram; the component map. These rules override the v3 ones above.
+   ===================================================================================================================== */
+:root{
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#FAF8F5; --sunken:#F2EFEA; --hair:#ECE8E1; --line:#E8E4DD; --line2:#DDD8CF;
+  --tint-brand:#F6ECDF; --elev:0 1px 2px rgba(36,30,20,.05),0 4px 14px rgba(36,30,20,.06);
+  --side:256px; --gap:8px; --r-card:16px;
+  --lb0:#8F5A24; --lb1:#B07A44; --lb2:#C99E70; --lb3:#DDBF9C; --lb4:#EBD9C3; --lbo:#D6D2CB;
+}
+:root[data-theme="dark"]{
+  --bg:#14161B; --surface:#1D2027; --surface-2:#23272F; --sunken:#272B33; --hair:#2E333C; --line:#2F343D; --line2:#3A3F49;
+  --tint-brand:#3A2B1E; --elev:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);
+  --lb0:#CD8C4E; --lb1:#A97445; --lb2:#86603F; --lb3:#6A5039; --lb4:#544233; --lbo:#4A4F59;
+}
+:root.rail{--side:64px}
+body{font-size:16px;line-height:1.65}
+
+/* ---------- the contents: an inset tonal panel ---------- */
+.side{top:var(--gap);left:var(--gap);bottom:var(--gap);width:calc(var(--side) - var(--gap));padding:20px 12px 16px 16px;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-card);border-right:1px solid var(--hair)}
+.repo{margin:2px 0 16px 32px}
+.find{position:relative;display:flex;align-items:center;gap:8px;margin:0 4px 8px 0;padding:0 8px 0 12px;height:36px;border-radius:999px;background:var(--sunken);color:var(--faint);border:1px solid transparent;transition:border-color var(--t),background var(--t)}
+.find:focus-within{border-color:var(--brand);background:var(--surface);color:var(--muted)}
+.find input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:14px;color:var(--ink);padding:0}
+.find input::placeholder{color:var(--faint)}
+.find input::-webkit-search-cancel-button{-webkit-appearance:none}
+.find kbd{font:500 12px var(--mono);color:var(--faint);border:1px solid var(--line2);border-radius:6px;padding:0 6px;line-height:18px}
+.find:focus-within kbd{display:none}
+.findres{margin:0 4px 8px 0;font-size:13px;line-height:1.45;max-height:34vh;overflow:auto;border-radius:12px;background:var(--surface-2);border:1px solid var(--hair);padding:8px}
+.findres[hidden]{display:none}
+.fr-n{font-size:12px;color:var(--muted);padding:2px 6px}
+.fr-l{list-style:none;margin:4px 0;padding:0}
+.fr-l button{display:block;width:100%;text-align:left;padding:6px;border-radius:8px}
+.fr-l button:hover,.fr-l button.cur{background:var(--sunken)}
+.fr-t{display:block;color:var(--soft);font-size:13px}
+.fr-t mark{background:none;color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--brand)}
+.fr-s{display:block;font-size:12px;color:var(--faint)}
+.tocnav{flex:1 1 auto;min-height:96px;overflow-y:auto;margin:0 -4px 0 -4px;padding:0 4px;scrollbar-width:thin}
+.toc{font-size:14px}
+.toc li.ts{margin:0 0 4px}
+.toc li[hidden]{display:none}
+.toc a{padding:6px 8px 6px 12px;border-radius:999px;margin:0;line-height:1.4}
+.toc a[data-sec]{font-weight:600;color:var(--soft)}
+.toc a.on[data-sec]{background:none;color:var(--ink)}
+.tsub{list-style:none;margin:0 0 6px;padding:0 0 0 8px}
+.tsub a{position:relative;font-size:13px;font-weight:400;color:var(--muted);padding:4px 8px 4px 16px}
+.tsub a::before{content:"";position:absolute;left:4px;top:7px;bottom:7px;width:2px;border-radius:2px;background:var(--line)}
+.tsub a.on{color:var(--ink);background:var(--tint-brand);font-weight:550}
+.tsub a.on::before{background:var(--brand)}
+.rail .tsub,.rail .find,.rail .findres,.rail .legbox{display:none}
+.rail .side{padding:20px 8px 16px}
+.needs{margin-top:8px}
+.layer{margin-top:12px}
+.legbox{margin-top:12px;font-size:13px;color:var(--muted)}
+.legbox summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;font-weight:500;white-space:nowrap}
+.legbox summary::-webkit-details-marker{display:none}
+.legbox summary::after{content:"▸";font-size:10px;color:var(--faint);margin-left:auto}
+.legbox[open] summary::after{content:"▾"}
+.legbox summary:hover{background:var(--sunken);color:var(--ink)}
+.legbox .legend{margin:4px 0 0 12px;line-height:1.9}
+.legend{margin-top:0}
+.theme{margin-top:12px;border-radius:999px;padding:5px 12px}
+
+/* ---------- the map area: a reading column of cards ---------- */
+.main{left:var(--side);padding:0 0 160px;scroll-padding-top:72px}
+.col{padding-top:56px!important}
+body.popen .main{padding-right:calc(var(--pw) + 2 * var(--gap))}
+.col{width:clamp(560px,calc(100% - 96px),680px);padding:0}
+.card{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-card);padding:24px 28px;margin:0 0 16px}
+.card .dot.ev-seen_at_runtime{box-shadow:0 0 0 1.7px var(--surface),0 0 0 3.1px var(--e1)}
+.card .node{--pbg:var(--surface)}
+/* the measure: 35em of Inter at 16px is 66-75 characters of running text */
+.card p.blk,.card .blist li{max-width:35em}
+.col p{margin:0 0 16px}
+.card > :last-child,.card .blist:last-child,.card p.blk:last-child{margin-bottom:0}
+section{margin-top:48px}
+h1{font-size:28px;line-height:1.2;letter-spacing:-.03em}
+/* sticky section headers */
+h2.sh{position:sticky;top:0;z-index:6;display:flex;align-items:baseline;gap:12px;margin:0 0 16px;padding:16px 4px 12px;font-size:20px;font-weight:650;letter-spacing:-.02em;
+  border-bottom:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+h2.sh{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding-left:calc((var(--fw) - 100%) / 2 + 4px);padding-right:calc((var(--fw) - 100%) / 2)}
+.fig.fs.focusing .dgwrap{margin-right:400px}
+h2.sh .sh-n{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+h3.topic{font-size:12px;letter-spacing:.08em;margin:0 0 12px;color:var(--muted)}
+h2 + h3.topic{margin-top:0}
+.tcard h3.topic{margin-top:0}
+.blist,.bfacts{margin:0 0 16px}
+.facts{font-size:15px}
+.facts dt{font-size:13px}
+
+/* ---------- the repo card ---------- */
+.repocard{padding:32px 32px 24px;margin-bottom:8px}
+.rc-h{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.rc-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rlink{display:inline-flex;align-items:center;gap:6px;font:500 14px var(--sans);color:var(--brand);text-decoration:none;align-self:flex-start;border-radius:6px}
+.rlink:hover{text-decoration:underline;text-underline-offset:3px}
+.rlink svg{width:14px;height:14px}
+.rc-at{flex:none;font-size:12px;color:var(--muted);background:var(--sunken);border-radius:999px;padding:4px 12px;margin-top:6px;white-space:nowrap}
+.rc-at code{background:none;padding:0;color:var(--soft);font-size:12px}
+.rdesc{font-size:16px;color:var(--soft);margin:16px 0 0!important;max-width:35em}
+.topics{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.tp{font-size:12px;font-weight:500;color:var(--brand);background:var(--tint-brand);border-radius:999px;padding:2px 10px}
+.langs{margin:20px 0 0}
+.langbar{display:block;width:100%;height:8px;border-radius:999px;overflow:hidden}
+.lb0{fill:var(--lb0);background:var(--lb0)} .lb1{fill:var(--lb1);background:var(--lb1)} .lb2{fill:var(--lb2);background:var(--lb2)}
+.lb3{fill:var(--lb3);background:var(--lb3)} .lb4{fill:var(--lb4);background:var(--lb4)} .lbo{fill:var(--lbo);background:var(--lbo)}
+.lkey{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:13px;color:var(--muted)}
+.lkey .lk{display:inline-flex;align-items:center;gap:6px}
+.lkey .lsw{width:8px;height:8px;border-radius:50%;flex:none}
+.lkey b{font-weight:600;color:var(--soft)}
+.rfacts{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--hair)}
+.rf dt{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.rf dd{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}
+.rf dd b{font-weight:600}
+.rf dd .q,.rlink.q{color:var(--muted)}
+.rf dd code{font-size:12px}
+.rf .gh{display:inline-flex;align-items:center;gap:4px;margin-right:12px}
+.rf .gh svg{color:var(--muted)}
+.rc-mem{margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--hair)}
+.rc-mem .sub{font-size:13px;margin:0}
+.rc-mem .mem{margin:6px 0 0}
+.rc-mem .hint{font-size:12px;margin:6px 0 0}
+.repocard > .sub{margin-top:8px}
+
+/* ---------- module, flow, coverage cards ---------- */
+.mod.card,.mod.comp.card,.mod.comp.card:first-of-type{padding:24px 28px}
+.mod-files{margin:8px 0 12px}
+.mod-files code{font-size:12px}
+.mtag{font-size:11px;letter-spacing:.06em}
+h3.mod-t{font-size:16px;font-weight:620}
+.mod p.design::before{font-size:12px;letter-spacing:.08em}
+.mod-foot{margin:8px 0 0;gap:4px 16px}
+.rel{font-size:13px}
+.onmap{font-size:13px;color:var(--brand);text-decoration:none;margin-left:auto}
+.onmap:hover{text-decoration:underline;text-underline-offset:3px}
+.flow.card,.flow.card:first-of-type{padding:20px 28px;border-top:1px solid var(--hair)}
+.flow.card.open{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding-bottom:24px}
+.flow.card.open .cap{max-width:35em}
+.flow.card .fbar{max-width:none}
+.cov.card{padding:24px 28px;margin-top:24px}
+.cov.card h3.topic{margin-top:0}
+.chip{font-size:12px}
+
+/* ---------- the component map card ---------- */
+.gcard{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:24px 24px 16px}
+.gtitle{font-size:12px;line-height:1.4;text-transform:uppercase;letter-spacing:.08em;font-weight:650;color:var(--muted);margin:0 0 8px}
+.gcard .figcap{max-width:76ch;margin:0 0 12px;font-size:14px}
+.gcard .figiso{margin:12px 0 0;font-size:13px}
+
+/* ---------- the diagram viewer ---------- */
+.fig{border:1px solid var(--hair);border-radius:12px;background:var(--surface);margin:12px 0 8px;overflow:hidden}
+.gcard .fig{margin:0}
+.fig-tb{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--hair);background:var(--surface-2);min-height:48px;flex-wrap:wrap}
+.fig-tt{font-weight:650;font-size:16px;margin-right:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fig-tt:empty{display:none}
+.gview{display:flex;align-items:center;gap:8px;margin-right:auto;font-size:13px;color:var(--muted)}
+.fig.fs .gview{margin-right:0}
+.gview button{font-size:13px;font-weight:600;color:var(--brand);border-radius:999px;padding:4px 12px;background:var(--tint-brand)}
+.gview button:hover{background:color-mix(in srgb,var(--brand) 16%,var(--surface))}
+.zgrp{display:inline-flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--hair);border-radius:999px;padding:2px}
+.zgrp button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:32px;height:28px;border-radius:999px;color:var(--soft);font-size:13px;font-weight:500;padding:0 8px;transition:background var(--t),color var(--t)}
+.zgrp button:hover{background:var(--sunken);color:var(--ink)}
+.zgrp svg{width:16px;height:16px}
+.zl{font:500 12px var(--mono);color:var(--muted);min-width:44px;text-align:center}
+.dgwrap{overflow:auto;border-radius:0 0 12px 12px;overscroll-behavior:contain;scrollbar-width:thin}
+.dg{width:auto;max-width:none;margin:0 auto}
+.fig.scrolls .dgwrap{cursor:grab}
+.dgwrap.panning{cursor:grabbing;user-select:none}
+.fig.scrolls::after{content:"Drag to pan · Ctrl or ⌘ + scroll to zoom";right:12px;bottom:12px;font-size:12px;border-radius:999px;padding:2px 10px;background:var(--surface);color:var(--muted);border:1px solid var(--hair)}
+.fig.fs.scrolls::after,.fig.zoomed.scrolls::after{content:"Drag to pan"}
+/* full screen: the figure over everything */
+body.fs-on .main{z-index:90}
+body.fs-on .top{display:none}
+.fig.fs{position:fixed;inset:0;z-index:95;margin:0!important;width:auto!important;border:0;border-radius:0;display:flex;flex-direction:column;background:var(--bg)}
+.fig.fs .fig-tb{padding:12px 16px 12px 24px;background:var(--surface);box-shadow:var(--elev)}
+.fig.fs .dgwrap{flex:1;height:auto!important;border-radius:0;padding:16px 32px}
+.fig.fs .dg{background:var(--surface);border-radius:16px}
+.dgov.fs{left:0!important;right:0!important;z-index:95;padding:0;backdrop-filter:none}
+.dgov.fs .dgov-c{width:100%;max-width:none}
+.dgov.fs .dgov-h{display:none}
+.dgov .fig{overflow:hidden}
+
+/* ---------- the component map (SVG) ---------- */
+.dg-map text{font-family:var(--sans);font-size:13px}
+.dg-map .bandbg{fill:var(--surface-2);stroke:none}
+.dg-map .b-entry .bandbg{fill:color-mix(in srgb,var(--tint-brand) 55%,var(--surface))}
+:root[data-theme="dark"] .dg-map .b-entry .bandbg{fill:color-mix(in srgb,var(--tint-brand) 35%,var(--surface))}
+.dg-map .bandt{font-size:13px;font-weight:650;letter-spacing:.08em;fill:var(--muted)}
+.dg-map .bandn{font-size:13px;fill:var(--faint)}
+.dg-map .bandc{cursor:help}
+.dg-map .gbox{fill:var(--surface);stroke:var(--line2);stroke-width:1;transition:stroke var(--t),fill var(--t)}
+.dg-map .dg-node:hover .gbox{stroke:var(--soft)}
+.dg-map .gname{font:600 14.5px var(--mono);fill:var(--ink)}
+.dg-map .grole{font-size:13px;fill:var(--muted)}
+.dg-map .gfile{font:13px var(--mono);fill:var(--soft)}
+.dg-map .gtag{font-size:13px;font-weight:600;fill:var(--brand)}
+.dg-map .gtagbox{fill:var(--tint-brand);stroke:none}
+.dg-map .gexp{cursor:pointer;outline:none}
+.dg-map .gexp rect{fill:var(--sunken);stroke:none;transition:fill var(--t)}
+.dg-map .gexp text{font-size:13px;font-weight:500;fill:var(--muted)}
+.dg-map .gexp:hover rect{fill:var(--tint-brand)}
+.dg-map .gexp:hover text{fill:var(--brand)}
+.dg-map .gexp:focus-visible rect{stroke:var(--brand);stroke-width:2}
+.dg-map .gw{fill:none;stroke:var(--muted);stroke-linecap:round;opacity:.8;transition:stroke var(--t),opacity var(--t)}
+.dg-map .gh{fill:var(--muted);opacity:.8;transition:fill var(--t),opacity var(--t)}
+.dg-map .gst .gw{opacity:1;stroke:var(--soft)}
+.dg-map .gst .gh{fill:var(--soft);opacity:1}
+.dg-map .gstart{font:13px var(--mono);fill:var(--soft)}
+.dg-map .hitl{fill:none;stroke:transparent;stroke-width:14}
+.dg-map[data-view="main"] .dg-e.minor{display:none}
+.dg-map .dg-e:hover .gw,.dg-map .dg-e:focus-visible .gw{stroke:var(--green);opacity:1}
+.dg-map .dg-e:hover .gh,.dg-map .dg-e:focus-visible .gh{fill:var(--green);opacity:1}
+.dg-map .dg-key .lgt{font-size:13px}
+/* focus: the component, its callers and callees; everything else fades */
+.dg-map.focus .dg-node:not(.on),.dg-map.focus .dg-e:not(.on),.dg-map.focus .gst{opacity:.14}
+.dg-map.focus .dg-e.on{display:inline}
+.dg-map.focus .dg-e.on .gw{stroke:var(--brand);opacity:1}
+.dg-map.focus .dg-e.on .gh{fill:var(--brand);opacity:1}
+.dg-map.focus .dg-node.sel .gbox{stroke:var(--brand);stroke-width:2;fill:color-mix(in srgb,var(--tint-brand) 60%,var(--surface))}
+.dg-map .dg-node,.dg-map .dg-e,.dg-map .gst{transition:opacity 160ms var(--ease)}
+/* the focus card: under the map inline, beside it in full screen */
+.gfocus{border-top:1px solid var(--hair);background:var(--surface-2);padding:16px 20px;font-size:14px;line-height:1.5}
+.gfocus[hidden]{display:none}
+.fig.fs .gfocus{position:absolute;top:72px;right:24px;width:360px;max-height:calc(100vh - 96px);overflow:auto;border:1px solid var(--hair);border-radius:16px;background:var(--surface);box-shadow:var(--elev)}
+.gf-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.gf-k{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.gf-t code{font-size:15px;font-weight:600;background:none;padding:0;color:var(--ink)}
+.gf-r{color:var(--muted);font-size:14px}
+.gf-acts{display:flex;align-items:center;gap:16px;margin:12px 0 4px;flex-wrap:wrap}
+.gf-ask{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--brand-ink);background:var(--brand);border-radius:999px;padding:6px 14px}
+.gf-ask:hover{filter:brightness(1.08)}
+.gf-acts a{font-size:13px;color:var(--brand);text-underline-offset:3px}
+.gf-sec{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:12px 0 4px}
+.gf-sec span{color:var(--muted)}
+.gf-l{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 24px}
+.fig.fs .gf-l{grid-template-columns:1fr}
+.gf-e{display:flex;align-items:baseline;gap:8px}
+.gf-c{font:600 13px var(--mono);color:var(--ink);border-radius:6px}
+.gf-c:hover{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.gf-n{font-size:12px;color:var(--muted)}
+.gf-go{font-size:12px;color:var(--brand);margin-left:auto}
+.gf-go:hover{text-decoration:underline;text-underline-offset:3px}
+.gf-calls{list-style:none;margin:2px 0 8px;padding:0 0 0 12px;border-left:2px solid var(--hair);font-size:13px}
+.gf-calls li{margin:2px 0;overflow-wrap:anywhere}
+.gf-calls code{font-size:12px}
+.gf-in{display:block;font-size:12px;color:var(--faint)}
+.gf-foot{font-size:12px;color:var(--faint);margin-top:8px}
+
+/* ---------- the find marks in the map: an outline, never amber ---------- */
+.fd{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--brand) 55%,transparent);border-radius:2px}
+.fd.cur{background:var(--tint-brand);box-shadow:inset 0 -2px 0 var(--brand)}
+
+/* ---------- the discussion panel: the same inset surface ---------- */
+.panel{top:var(--gap);right:var(--gap);bottom:var(--gap);border:1px solid var(--hair);border-radius:var(--r-card);transform:translateX(calc(100% + 2 * var(--gap)))}
+.composer{border-radius:0 0 var(--r-card) var(--r-card)}
+.p-head{padding:12px 12px 0 20px}
+.top{top:20px;right:24px;border-radius:999px;height:36px;padding:0 14px 0 12px;border-color:var(--hair);box-shadow:var(--elev)}
+.dgov{left:var(--side)}
+body.popen .dgov{right:calc(var(--pw) + 2 * var(--gap))}
+.prev,.tip{box-shadow:var(--elev)}
+
+/* ---------- narrow windows ---------- */
+@media (max-width: 1100px){ .rfacts{grid-template-columns:1fr} }
+/* a claim's marks may wrap between each other inside a card (four chips ran past the card's edge); each stays whole */
+.card .cite{white-space:normal}
+.card .cite>*{white-space:nowrap}
+/* the outline scrolls under a soft fade, never cut mid-line */
+.tocnav{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent);padding-bottom:20px}

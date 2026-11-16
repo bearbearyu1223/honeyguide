@@ -267,9 +267,12 @@ def test_draft_dir_check_and_ingest(tmp_path, monkeypatch):
     assert code == 0 and out["valid"], out
     assert out["claims"] == 5 and out["flows"] == 1 and out["files"][0] == "claims-a.json"
     assert out["overview_words"] > 50 and w.store.load("map")["document"] is None   # check saves nothing
+    monkeypatch.setenv("HONEYGUIDE_NO_GH", "1")
     code, out = w.call("map", "ingest", str(d))
     assert code == 0 and out["revision"] and len(out["saved"]) == 5, out
     doc = w.store.load("map")["document"]
+    # T7.18: ingest stores the repo card (git facts; GitHub counts off here)
+    assert doc["repo"]["commits"] >= 1 and doc["repo"]["github"] is None and doc["repo"]["github_note"].startswith("GitHub counts not fetched")
     assert [s["kind"] for s in doc["sections"]] == ["overview", "modules", "flows"] and doc["flows"][0]["id"] == "p1"
     assert doc["sections"][0]["blocks"][3]["rows"][0]["spans"][0]["claim"].startswith("c_")
     code, out = w.call("map", "validate", "--strict")

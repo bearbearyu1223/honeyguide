@@ -477,6 +477,9 @@ def check_document(document: Any, strict: bool = False) -> tuple[list[str], list
                     errors.append(f"sections[{s}].blocks[{b}]: related names the module itself")
                 elif ref not in module_ids:
                     errors.append(f"sections[{s}].blocks[{b}]: related {ref!r} is not a module block id")
+    if "repo" in document:
+        from .repoinfo import check_repo_info
+        errors += check_repo_info(document["repo"])
     if "coverage" in document:
         check_coverage(document["coverage"], "document.coverage", errors)
     elif strict:

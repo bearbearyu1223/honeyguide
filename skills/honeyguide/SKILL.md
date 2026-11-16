@@ -43,7 +43,10 @@ start over.
 1. `honeyguide activity start --repo REPO --agent cartographer --status "Exploring the repo"`; keep the entry
    `id` as `ACTIVITY`.
 2. Dispatch the `honeyguide:cartographer` subagent with `REPO`, `HG`, `MODE: explore`, `ACTIVITY`, and any
-   focus or budget the user gave.
+   focus or budget the user gave. It runs `honeyguide repo-info` first (the repo card's facts: link, languages,
+   licence, contributors, dates, and GitHub counts when `gh` is signed in) and `map ingest` stores them in the map.
+   If the user wants stars and forks on the card and `gh auth status` fails, tell them `gh auth login` and then
+   `honeyguide repo-info --repo REPO --save` refreshes the card; the page never fetches anything itself.
 3. `honeyguide activity finish --repo REPO --id ACTIVITY --state done` (or `--state failed --status "<why>"`).
 4. Check the map: `honeyguide activity start --repo REPO --agent checker --status "Checking the map"`, dispatch
    `honeyguide:checker` with `SCOPE: map`, finish the activity.

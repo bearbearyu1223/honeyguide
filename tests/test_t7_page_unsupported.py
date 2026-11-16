@@ -76,7 +76,9 @@ def test_hover_shows_the_red_flag_and_the_checkers_note(site, chrome):
     deps = site["ids"]["deps"]
     sel = f'#col .claim[data-claim="{deps}"]'
     c.js(f"document.querySelector('{sel}').scrollIntoView({{block: 'center'}})")
-    c.hover_el(sel)
+    # the middle of its first line (a claim that wraps has empty space at its box's centre)
+    r = c.js(f"(() => {{ const q = document.querySelector('{sel}').getClientRects()[0]; return [q.left + q.width / 2, q.top + q.height / 2]; }})()")
+    c.mouse("mouseMoved", r[0], r[1])
     settle(c, 300)
     assert near(deco(c, sel)[2], color(c, "--flag"))
     tip = c.js("document.getElementById('tip').innerText")
@@ -148,6 +150,7 @@ def test_needs_a_look_lists_them_and_leads_to_each(site, chrome):
 def test_answers_keep_their_pill_and_the_legend_shows_the_mark(site, chrome):
     c = chrome
     c.goto(site["url"])
+    c.click_el("#legbox summary")                       # UX v4: the evidence key is folded under one row
     assert "not supported" in c.js("document.getElementById('legend').innerText")
     assert c.js("!!document.querySelector('#legend .dot.unsup')")
     # the training-loop answer has one claim the Checker flagged: in the panel it keeps the red pill

@@ -15,6 +15,7 @@ from .gitio import GitError, Repo
 from .preview import preview
 from .refresh import plan_refresh
 from .repoid import identify
+from .repoinfo import repo_info
 from .store import Store, StoreError, all_claims, export_bundle, import_bundle, is_shared
 
 
@@ -308,10 +309,38 @@ def cmd_map_ingest(args) -> int:
         if not checked["valid"]:
             raise ContractError("validation_failed", f"{len(checked['errors'])} problem(s); nothing was saved "
                                 "(run map check, fix every error, then ingest again)", checked["errors"])
+        # T7.18: the repo card's facts, gathered at map time (git, and gh when signed in); refreshed on every ingest
+        if isinstance(data.get("document"), dict):
+            data["document"]["repo"] = repo_info(repo, claims.commit_of(repo, data.get("commit")))
         saved = claims.save_claims(store, repo, data)
         return {**saved, "readability": checked["readability"], **_draft_summary(data, files)}
     args.takes_input = False
     return run_json(args, func)
+
+
+def cmd_repo_info(args) -> int:
+    """``repo-info``: the repo card's facts as one JSON object; ``--save`` also stores them in the saved map's
+    document (``document.repo``), which ``map ingest`` otherwise does at map time."""
+    try:
+        repo = Repo.open(args.repo)
+        info = repo_info(repo, args.commit or "HEAD", gh=None if args.no_gh else "auto")
+        if args.save:
+            _, identity, store = _open(args)
+            if not store.exists() or store.load("map").get("document") is None:
+                raise ContractError("not_found", "no saved map to store the repo card in (map the repo first)")
+            info = repo_info(repo, args.commit or store.load("map")["commit"] or "HEAD",
+                             gh=None if args.no_gh else "auto")
+
+            def put(layer: dict) -> None:
+                layer["document"]["repo"] = info
+            store.update("map", put)
+        out, code = {"ok": True, **info}, 0
+    except (ContractError, GitError, StoreError, OSError) as exc:
+        err = _contract_error(exc)
+        out, code = err.to_dict(), 1
+        print(f"honeyguide: {err.code}: {err.message}", file=sys.stderr)
+    print(json.dumps(out, indent=1, ensure_ascii=False))
+    return code
 
 
 def cmd_serve(args) -> int:
@@ -411,6 +440,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("dir")
     p.add_argument("--repo", default=".")
     p.set_defaults(func=cmd_map_ingest)
+    p = add("repo-info", cmd_repo_info, "the repo card's facts as JSON: link, languages, licence, contributors, dates, "
+            "and GitHub counts when gh is signed in")
+    p.add_argument("--commit", help="read git at this commit (default: HEAD; with --save, the map's commit)")
+    p.add_argument("--save", action="store_true", help="also store them in the saved map (document.repo)")
+    p.add_argument("--no-gh", action="store_true", help="never run gh (no GitHub counts)")
     p = add("serve", cmd_serve, "the local map page and its API on 127.0.0.1")
     p.add_argument("--port", type=int, default=8780)
     p = add("watch", cmd_watch, "print one line per new question (for the session's Monitor)")

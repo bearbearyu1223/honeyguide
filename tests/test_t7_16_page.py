@@ -24,7 +24,7 @@ import pytest
 from cdp import Chrome, chrome_path
 from t7_16_nanochat import NANOCHAT_COMPS, NANOCHAT_EDGES, NANOCHAT_ISO, NANOCHAT_STARTS, NANOCHAT_WINDOW_PATH
 from t7_page_fixture import A, C, S, answer, answer_anchor, ask, build, check_all
-from test_t7_diagrams import check_graph, collect
+
 
 from honeyguide.gitio import Repo
 from honeyguide.mapdoc import text_revision
@@ -229,7 +229,7 @@ OVERLAY = """((path) => {
   const fig = viewDiagram(key);
   return new Promise(r => setTimeout(() => {
     const ov = document.getElementById('dgov').getBoundingClientRect(), box = document.querySelector('#dgov .dgov-c').getBoundingClientRect();
-    const svg = fig.querySelector('svg'), panel = document.getElementById('panel').getBoundingClientRect();
+    const svg = fig.querySelector('.dgwrap > svg'), panel = document.getElementById('panel').getBoundingClientRect();
     r({ov: [ov.left, ov.right], box: [box.left, box.right], svg: svg.getBoundingClientRect().width, natural: +svg.dataset.natural,
        scrolls: fig.classList.contains('scrolls'), panelLeft: document.body.classList.contains('popen') ? panel.left : null,
        scrollW: fig.querySelector('.dgwrap').scrollWidth, clientW: fig.querySelector('.dgwrap').clientWidth});
@@ -268,81 +268,81 @@ def test_the_overlay_is_as_wide_as_its_diagram(site, chrome):
     c.key("Escape")
 
 
-# -- 9. the nanochat module graph, top to bottom --------------------------------------------------------------------------
+# -- 9 (T7.16), redone in T7.17: the nanochat component map ----------------------------------------------------------------
 
-GRAPH = """((comps, edges, starts, iso) => {
+GRAPH = """((comps, edges, starts, iso, view) => {
   const gm = {comps: comps.map(([id, name, role, entry]) => ({id, name, role, entry, files: [name], module: null, title: ''})),
-    edges: edges.map(([from, to, n]) => ({from, to, calls: [...Array(n)].map((_, i) => ({fn: 'f' + i, flow: 'map:x', title: 'x', hop: i}))})),
+    edges: edges.map(([from, to, n], k) => ({from, to, calls: [...Array(n)].map((_, i) => ({fn: 'f' + i, flow: 'map:' + ((k + i) %% 5), title: 'x', hop: i}))})),
     starts: starts.map(([comp, label]) => ({comp, label, flow: 'map:x'})), iso, flows: 5};
   FIGS.set('graph', gm);
+  UI.gall = view === 'all';
   renderFigs(true);
-  const lr = HGD.layoutGraphLR(gm, 1000), tb = HGD.layoutGraphTB(gm, 1000);
-  const svg = document.querySelector('#ovgraph svg');
+  const svg = document.querySelector('#ovgraph .dgwrap > svg'), fig = document.getElementById('ovgraph');
   const rows = {};
   for (const n of svg.querySelectorAll('.dg-node .gbox')) rows[n.getAttribute('y')] = (rows[n.getAttribute('y')] || 0) + 1;
-  return {lr: lr.natural, tb: tb.natural, dir: svg.dataset.dir, crossings: +svg.dataset.crossings, rows: Object.values(rows),
+  return {crossings: +svg.dataset.crossings, main: +svg.dataset.crossingsMain, all: +svg.dataset.crossingsAll, rows: Object.values(rows),
           boxes: svg.querySelectorAll('.dg-node').length, arrows: svg.querySelectorAll('.dg-e').length,
-          shown: svg.getBoundingClientRect().width, vb: svg.viewBox.baseVal.width};
+          shown: svg.getBoundingClientRect().width, vb: svg.viewBox.baseVal.width, scale: +fig.dataset.scale, calls: +svg.dataset.calls,
+          button: fig.querySelector('[data-gall]')?.textContent || ''};
 })(%s)"""
 
 
-def test_the_nanochat_graph_is_laid_out_top_to_bottom(site, chrome):
+def test_the_nanochat_component_map(site, chrome):
+    """The real nanochat map's components and calls (10 boxes, 17 links, 27 calls across 5 flows): the map's
+    guarantees hold in both views, the main paths cross fewer times than T7.16's 7, the crossings reported are the
+    ones drawn, and at fit no text is under 12 px."""
+    from test_t7_diagrams import check_map, collect_map, drawn_crossings
     c = chrome
     open_at(c, site["url"], "", width=1440)
     c.js("document.getElementById('pclose')?.click()")
-    assert c.js("document.querySelector('#ovgraph svg').dataset.dir") == "lr"      # the fixture's small graph: as before
     args = ", ".join(json.dumps(x) for x in (NANOCHAT_COMPS, NANOCHAT_EDGES, NANOCHAT_STARTS, NANOCHAT_ISO))
-    out = c.js(GRAPH % args)
-    assert out["boxes"] == 10 and out["arrows"] == 17
-    assert 1000 / out["lr"] < 0.8                     # left to right would shrink it (to 57%)
-    assert out["dir"] == "tb" and out["tb"] <= 1000 and out["shown"] >= out["tb"] - 1   # it fits, at full size
-    assert max(out["rows"]) <= 3 and sum(out["rows"]) == 10
-    g = collect(c, "#ovgraph svg")
-    drawn = []
-    got = check_graph(c, g, crossings=drawn)
-    want = {(a, b): n for a, b, n in NANOCHAT_EDGES}
-    assert {(a, b): n for a, b, n, _, _ in got} == want
-    # the crossings the layout reports are the ones drawn (pairs of different components' lines that meet)
-    assert len(drawn) == out["crossings"], (len(drawn), out["crossings"], drawn)
-    print(f"nanochat graph, top to bottom: {out['tb']}px wide (left to right: {out['lr']}px), rows {out['rows']}, "
-          f"{out['crossings']} crossing(s)")
+    out = {}
+    for view in ("main", "all"):
+        o = c.js(GRAPH % (args + ", " + json.dumps(view)))
+        assert o["boxes"] == 10 and o["arrows"] == 17 and o["calls"] == 27
+        g = collect_map(c)
+        got = check_map(c, g)
+        if view == "all":
+            assert got == {(a, b): n for a, b, n in NANOCHAT_EDGES}
+        else:
+            assert o["button"] == "Show all 27 calls" and len(got) < 17
+        drawn = drawn_crossings(g["edges"])
+        assert len(drawn) == o["crossings"], (view, len(drawn), o["crossings"], drawn)
+        # text at fit: never under 12 px on screen
+        smallest = min(t["size"] * g["scale"] for t in g["texts"])
+        assert smallest >= 12 - 1e-6, smallest
+        assert o["scale"] >= 12 / 13 - 1e-3
+        out[view] = o
+    assert out["main"]["crossings"] < 7                    # T7.16's top-to-bottom layout drew 7
+    print(f"nanochat component map: rows {out['all']['rows']}, {out['main']['crossings']} crossing(s) in the main paths, "
+          f"{out['all']['crossings']} with every call; fit {out['main']['scale']:.3f}")
 
 
-def test_the_top_to_bottom_layout_has_no_crossings_when_none_are_needed(site, chrome):
+def test_the_component_map_has_no_crossings_when_none_are_needed(site, chrome):
     """A chain with a long edge and a fan: drawable without a crossing, so it is drawn without one."""
+    from test_t7_diagrams import check_map, collect_map, drawn_crossings
     c = chrome
     open_at(c, site["url"], "", width=1440)
     comps = [("a", "a.py", "the entry", True), ("b", "b.py", "step two", False), ("c", "c.py", "step three", False),
              ("d", "d.py", "the end", False), ("e", "e.py", "a side branch", False)]
     edges = [("a", "b", 2), ("b", "c", 1), ("c", "d", 1), ("a", "d", 1), ("a", "e", 3), ("e", "d", 1)]
-    out = c.js("""((comps, edges) => {
-      const gm = {comps: comps.map(([id, name, role, entry]) => ({id, name, role, entry, files: [name], module: null, title: ''})),
-        edges: edges.map(([from, to, n]) => ({from, to, calls: [...Array(n)].map((_, i) => ({fn: 'f' + i, flow: 'map:x', title: 'x', hop: i}))})),
-        starts: [{comp: 'a', label: 'main', flow: 'map:x'}], iso: [], flows: 1};
-      const G = HGD.layoutGraphTB(gm, 1000);
-      document.querySelector('#ovgraph .dgwrap').innerHTML = HGD.renderGraph(G);
-      return G.crossings; })(%s, %s)""" % (json.dumps(comps), json.dumps(edges)))
-    assert out == 0
-    drawn = []
-    check_graph(c, collect(c, "#ovgraph svg"), crossings=drawn)
-    assert drawn == []
+    o = c.js(GRAPH % ", ".join(json.dumps(x) for x in (comps, edges, [("a", "main")], [], "all")))
+    assert o["all"] == 0
+    g = collect_map(c)
+    check_map(c, g)
+    assert drawn_crossings(g["edges"]) == []
 
 
-def test_the_top_to_bottom_layout_draws_a_cycle(site, chrome):
-    """A call back up (a cycle) runs from the caller's bottom up beside the rows to the callee's top; the label and
-    text checks hold and the crossings reported are the ones drawn."""
+def test_the_component_map_draws_a_cycle(site, chrome):
+    """A call back up (a cycle) runs in its own channel right of the boxes, from the caller's side to the callee's;
+    the map's checks hold and the crossings reported are the ones drawn."""
+    from test_t7_diagrams import check_map, collect_map, drawn_crossings
     c = chrome
     open_at(c, site["url"], "", width=1440)
     comps = [("a", "a.py", "the entry", True), ("b", "b.py", "the worker", False), ("c", "c.py", "a helper", False)]
     edges = [("a", "b", 2), ("b", "c", 1), ("c", "a", 1), ("b", "a", 1)]
-    out = c.js("""((comps, edges) => {
-      const gm = {comps: comps.map(([id, name, role, entry]) => ({id, name, role, entry, files: [name], module: null, title: ''})),
-        edges: edges.map(([from, to, n]) => ({from, to, calls: [...Array(n)].map((_, i) => ({fn: 'f' + i, flow: 'map:x', title: 'x', hop: i}))})),
-        starts: [{comp: 'a', label: 'main', flow: 'map:x'}], iso: [], flows: 1};
-      const G = HGD.layoutGraphTB(gm, 1000);
-      document.querySelector('#ovgraph .dgwrap').innerHTML = HGD.renderGraph(G);
-      return [G.crossings, document.querySelectorAll('#ovgraph .dg-e').length]; })(%s, %s)""" % (json.dumps(comps), json.dumps(edges)))
-    assert out[1] == 4
-    drawn = []
-    check_graph(c, collect(c, "#ovgraph svg"), crossings=drawn)
-    assert len(drawn) == out[0]
+    o = c.js(GRAPH % ", ".join(json.dumps(x) for x in (comps, edges, [("a", "main")], [], "all")))
+    assert o["arrows"] == 4 and c.js("document.querySelectorAll('#ovgraph .dg-e.back').length") == 2
+    g = collect_map(c)
+    check_map(c, g)
+    assert len(drawn_crossings(g["edges"])) == o["crossings"]

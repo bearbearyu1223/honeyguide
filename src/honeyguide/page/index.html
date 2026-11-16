@@ -21,10 +21,12 @@
     <button class="railbtn" id="railbtn" aria-label="Collapse the contents" aria-expanded="true" data-tip="Collapse the contents"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M6.5 2.5v11"/></svg></button>
   </div>
   <div class="repo" id="repo"></div>
-  <nav><ul class="toc" id="toc"></ul></nav>
+  <div class="find" role="search"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><input id="find" type="search" placeholder="Find in the map" aria-label="Find sections and text in the map" aria-controls="findres" autocomplete="off" spellcheck="false"><kbd aria-hidden="true">/</kbd></div>
+  <div class="findres" id="findres" hidden></div>
+  <nav class="tocnav" id="tocnav" aria-label="Sections"><ul class="toc" id="toc"></ul></nav>
   <div class="needs" id="needs"></div>
   <label class="layer" id="layer" data-tip="Your notes are a separate layer. Hiding them leaves the map as the Cartographer wrote it."><input type="checkbox" id="laynotes" checked><span class="sw"></span><span class="lt">My notes</span> <span class="n" id="laycount"></span></label>
-  <div class="legend" id="legend"></div>
+  <details class="legbox" id="legbox"><summary>Evidence key</summary><div class="legend" id="legend"></div></details>
   <button class="theme" id="theme" aria-label="Switch theme"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 0 0 12z" fill="currentColor"/></svg><span id="themelabel">Dark</span></button>
 </aside>
 
@@ -59,7 +61,7 @@
   <button data-act="note" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3-7.5 7.5H3v-3z"/></svg>Annotate</button>
   <button data-act="copy" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1 1 0 0 0 10 2.5H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy</button>
 </div>
-<div class="dgov" id="dgov" role="dialog" aria-labelledby="dgovt"><div class="dgov-c"><div class="dgov-h"><div><div class="dgov-t" id="dgovt"></div><div class="dgov-s" id="dgovs"></div></div><button class="x" data-dgclose aria-label="Close the diagram">×</button></div><figure class="fig" id="dgovfig" data-key=""><div class="dgwrap"></div></figure></div></div>
+<div class="dgov" id="dgov" role="dialog" aria-labelledby="dgovt"><div class="dgov-c"><div class="dgov-h"><div><div class="dgov-t" id="dgovt"></div><div class="dgov-s" id="dgovs"></div></div><button class="x" data-dgclose aria-label="Close the diagram">×</button></div><figure class="fig" id="dgovfig" data-key=""><div class="fig-tb" role="toolbar" aria-label="Diagram view"><span class="fig-tt"></span><span class="zgrp"><button type="button" data-z="out" aria-label="Zoom out" data-tip="Zoom out · −"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3.5 8h9"/></svg></button><span class="zl" aria-live="polite">100%</span><button type="button" data-z="in" aria-label="Zoom in" data-tip="Zoom in · +"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3.5 8h9M8 3.5v9"/></svg></button><button type="button" data-z="fit" class="zt" data-tip="Fit the diagram to its box · 0">Fit</button><button type="button" data-z="fs" class="zt zfs" aria-label="Expand to full screen" data-tip="Full screen · Esc closes"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M13.5 2.5 9.5 6.5M6.5 13.5h-4v-4M2.5 13.5l4-4"/></svg><span>Expand</span></button></span></div><div class="dgwrap"></div></figure></div></div>
 <div class="tip" id="tip" role="tooltip"></div>
 <div class="prev" id="prev"></div>
 <div class="toast" id="toast" role="status"></div>

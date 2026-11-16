@@ -71,7 +71,8 @@ Rules, all checked before anything is written:
 | `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
 | `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
 | `map check DIR` | the draft files in `DIR` (below) | `map validate --strict`'s result + `{files, claims, blocks, flows, overview_words}`; saves nothing |
-| `map ingest DIR` | the draft files in `DIR` | the same check, then `claims save`'s result + `readability`; on any error, `validation_failed` and nothing written |
+| `map ingest DIR` | the draft files in `DIR` | the same check, then `claims save`'s result + `readability`; on any error, `validation_failed` and nothing written. Stores `repo-info` (at the map's commit) as `document.repo` (T7.18) |
+| `repo-info` | none; `[--commit C] [--save] [--no-gh]` | the repo card's facts (below, "Repo info"); `--save` also stores them as the saved map's `document.repo` |
 | `verdict set` | `{claim, verdict, note?, anchors?, commit?}` or `{verdicts: [...]}` | `{set: n, current_again: [id]}` |
 | `inbox` | none | `{open: [question], investigating: [question]}` |
 | `question show` | `{id}` | `{question, thread: [ancestors, oldest first], context}` (`context` = retrieval: map claims, earlier answers, shared notes) |
@@ -221,6 +222,40 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   `revision` = first 12 hex of sha256 of the plain text plus the flows' JSON, set by the script; annotations on
   the map re-anchor when it changes.
 - Answers use the same `spans` (or plain `text`); `answer:<id>` plain text is the spans joined.
+
+## Repo info (T7.18)
+
+`honeyguide repo-info --repo REPO` prints one JSON object (stdlib, git only; `gh` only as below):
+
+```json
+{"ok": true, "schema": 1, "name": "karpathy/nanochat", "url": "https://github.com/karpathy/nanochat", "host": "github.com",
+ "generated_at": "2026-11-16T05:45:40Z", "default_branch": "master",
+ "commit": {"sha": "92d63d4e…", "date": "2026-07-03T22:54:57+00:00"},
+ "first_commit_date": "2025-10-13T06:49:24-07:00", "last_commit_date": "2026-07-03T22:54:57+00:00", "commits": 441,
+ "languages": [{"name": "Python", "lines": 7775, "share": 0.953}, {"name": "Shell", "lines": 384, "share": 0.047}],
+ "source_lines": 8159, "license": {"spdx": "MIT", "file": "LICENSE"},
+ "contributors": [{"name": "Andrej Karpathy", "commits": 283}, …], "contributor_count": 57,
+ "readme": {"path": "README.md", "title": "nanochat", "title_line": 1, "description": "…", "description_line": 6},
+ "github": null, "github_note": "GitHub counts not fetched: gh is not signed in (gh auth login)"}
+```
+
+- **From git, at one commit** (the map's): the remote as an https link (credentials, port and `.git` dropped), the
+  default branch (`origin/HEAD`), the commit's date, the first commit's author date, the commit count, languages by
+  lines of tracked text source per extension (vendored directories skipped; top 5 + "Other"), the licence file and
+  an SPDX id guessed from its text (null when unrecognised), contributors from `git shortlog -sne` joined by email
+  and returned **by name only** (top 5; emails never leave the command), the README's first heading and first
+  prose line.
+- **From GitHub**, only when `gh` is installed, `gh auth status` succeeds and the remote is on github.com: `github` =
+  `{stars, forks, open_issues, topics, description, as_of}` from `gh api repos/<owner>/<repo>`, `as_of` the UTC date.
+  Otherwise `github` is null and `github_note` says why. `HONEYGUIDE_NO_GH=1` (or `--no-gh`) turns it off.
+- **Stored** as `document.repo` by `map ingest` (refreshed on every ingest) or `repo-info --save`. It is not plain
+  text, so it changes neither the revision nor any offset. `check_document` refuses a card without a name, with an
+  email in a contributor, or with GitHub counts without `as_of`.
+- **Not claims.** The card's facts carry their provenance (git at a commit; the GitHub API on a date) and are shown
+  as such; they are never served as claims, and no evidence label is added for them: a claim must be re-checkable
+  against lines at a commit, and counts and dates are not. The README description and the licence *are* lines, so
+  an agent that uses them in prose cites them as `docs` claims.
+- **The page never fetches** any of it (the CSP stays offline): it renders what the map document holds.
 
 ## Readability (T7.13)
 
