@@ -9,9 +9,22 @@ goes to the run archive, outside the repo: <archive>/<run-id>/
   log.jsonl                 append-only events: start, done, restart after interruption, retry, stop
   runs/<id>/                prompt.txt, command.txt (token hidden), transcript.jsonl (stream-json), stderr.txt,
                             result.json (the result event), meta.json (status, answer, tokens, cost, model, wall)
+  runs/map-s<k>/            also map.json and validation.json (the build's own map and its check), and
+    fix/<n>/                one folder per fix round, the same files plus that round's map.json and validation.json
   attempts/<id>/<n>/        earlier attempts of a run re-run with --retry-failed or after a usage-limit stop
-  maps/seed<k>/             map.json (the Cartographer's output), validation.json, map.md (what map runs read)
+  maps/seed<k>/             the last round's map.json and validation.json; map.md (what map runs read) only when
+                            the map passes the check
   outline/                  outline.md (what outline runs read), outline.json (its size and the maps' sizes)
+
+The eval map: the Cartographer (eval mode, Read/Grep/Glob) returns the claims save input; maprender.validate_map
+checks it. It is used only if it passes: no structure error and no draft error other than unresolved anchors
+(those are counted, never fixed). A map that fails gets up to config map_fix_rounds fix rounds: each a new
+isolated run (same isolation, model, effort, tools and map schema, a fresh repo copy) whose prompt holds the
+blocking errors verbatim and the fix instructions, with the previous map as a file outside the working dir
+(--add-dir). caps.map_usd covers the build and its fix rounds; each round's --max-budget-usd is what is left. The
+map run's meta.json records fix_rounds (round, errors_in, errors_out, cost, wall_s) and its usage is the total;
+log.jsonl gets a map_fix event per round. A map still failing after the rounds makes the map run invalid_answer,
+and every map and outline run waits for a usable map (blocked).
 
 Resuming: run the same command with the same --run-id. Finished runs are skipped. A run that was interrupted
 (started, no result) or stopped by the usage limit is run again, and the log says so. A failed run (status error)
@@ -199,15 +212,56 @@ class Runner:
     def _hide(self, s: str) -> str:
         return s.replace(self.token, "<token>") if self.token else s
 
+    def _new_root(self) -> tuple[Path, Path, Path, Path]:
+        """A throwaway run root under config scratch: (root, config dir, HOME, working dir path)."""
+        root = Path(tempfile.mkdtemp(prefix="hg-eval-", dir=str(C.expand(self.cfg["scratch"]))))
+        cfg_dir, home, work = root / "cfg", root / "home", root / "work"
+        for x in (cfg_dir, home, home / "tmp"):
+            x.mkdir(parents=True)
+        return root, cfg_dir, home, work
+
+    def _call(self, d: Path, run, prompt: str, timeout: int) -> dict:
+        """Run one isolated `claude -p`; save prompt.txt, command.txt (token hidden), transcript.jsonl, stderr.txt
+        and result.json in d. Output that contains the token is withheld."""
+        (d / "prompt.txt").write_text(prompt)
+        shown = list(run.argv)
+        shown[2] = f"<prompt.txt: {len(prompt)} chars>"
+        (d / "command.txt").write_text("\n".join(P.isolate.describe(P.isolate.Run(
+            argv=shown, env=run.env, cwd=run.cwd, redact=run.redact))) + f"\ncwd:  {run.cwd}\n")
+        t0 = time.monotonic()
+        timed_out = False
+        try:
+            p = subprocess.run(run.argv, env=run.env, cwd=run.cwd, capture_output=True, text=True, timeout=timeout)
+            out, err, code = p.stdout, p.stderr, p.returncode
+        except subprocess.TimeoutExpired as exc:
+            out = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            err = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+            code, timed_out = None, True
+        wall = time.monotonic() - t0
+        token_seen = bool(self.token) and (self.token in out or self.token in err)
+        if token_seen:
+            out, err = "", "[withheld: the token appeared in this run's output]\n"
+        parsed = RR.parse_stream(out)
+        (d / "transcript.jsonl").write_text(out)
+        (d / "stderr.txt").write_text(err)
+        if parsed["result"] is not None:
+            (d / "result.json").write_text(json.dumps(parsed["result"], indent=1, sort_keys=True) + "\n")
+        return {"out": out, "err": err, "code": code, "timed_out": timed_out, "wall": wall,
+                "token_seen": token_seen, "parsed": parsed, "result": parsed["result"]}
+
+    @staticmethod
+    def _classify(c: dict, ok: bool) -> tuple[str, str]:
+        st, reason = RR.classify(c["code"], c["result"], c["err"], ok, c["timed_out"])
+        if c["token_seen"]:
+            st, reason = "error", "token in output (output withheld)"
+        return st, reason
+
     def _execute(self, item: P.Item) -> dict:
         d = self.archive.run_dir(item.id)
         d.mkdir(parents=True, exist_ok=True)
         (d / "started").write_text(now() + "\n")
-        root = Path(tempfile.mkdtemp(prefix="hg-eval-", dir=str(C.expand(self.cfg["scratch"]))))
+        root, cfg_dir, home, work = self._new_root()
         try:
-            cfg_dir, home, work = root / "cfg", root / "home", root / "work"
-            for x in (cfg_dir, home, home / "tmp"):
-                x.mkdir(parents=True)
             if item.kind == "answer" and item.condition == "no-access":
                 wd = W.make_empty_workdir(work)
             else:
@@ -221,27 +275,9 @@ class Runner:
             spec = P.run_spec(self.cfg, item, prompt=prompt, workdir=work, config_dir=cfg_dir, home_dir=home,
                               claude_bin=self.claude_bin)
             run = P.build_command(self.cfg, item, spec, P.child_env_source(self.token, self.parent_env))
-            (d / "prompt.txt").write_text(prompt)
-            shown = list(run.argv)
-            shown[2] = f"<prompt.txt: {len(prompt)} chars>"
-            (d / "command.txt").write_text("\n".join(P.isolate.describe(P.isolate.Run(
-                argv=shown, env=run.env, cwd=run.cwd, redact=run.redact))) + f"\ncwd:  {run.cwd}\n")
-            t0 = time.monotonic()
-            timed_out = False
-            try:
-                p = subprocess.run(run.argv, env=run.env, cwd=run.cwd, capture_output=True, text=True,
-                                   timeout=self.cfg["timeout_map_s" if item.kind == "map" else "timeout_answer_s"])
-                out, err, code = p.stdout, p.stderr, p.returncode
-            except subprocess.TimeoutExpired as exc:
-                out = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-                err = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
-                code, timed_out = None, True
-            wall = time.monotonic() - t0
-            token_seen = bool(self.token) and (self.token in out or self.token in err)
-            if token_seen:
-                out, err = "", "[withheld: the token appeared in this run's output]\n"
-            parsed = RR.parse_stream(out)
-            result = parsed["result"]
+            c = self._call(d, run, prompt,
+                           self.cfg["timeout_map_s" if item.kind == "map" else "timeout_answer_s"])
+            result = c["result"]
             map_obj = answer = None
             if item.kind == "map":
                 map_obj, how = M.extract_json(result or {})
@@ -249,48 +285,147 @@ class Runner:
             else:
                 answer, how = RR.parse_answer(result)
                 ok = answer is not None
-            st, reason = RR.classify(code, result, err, ok, timed_out)
-            if token_seen:
-                st, reason = "error", "token in output (output withheld)"
-            (d / "transcript.jsonl").write_text(out)
-            (d / "stderr.txt").write_text(err)
-            if result is not None:
-                (d / "result.json").write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
+            st, reason = self._classify(c, ok)
             usage = RR.usage_summary(result)
-            init = parsed["init"] or {}
-            meta = {"id": item.id, "item": asdict(item), "status": st, "reason": reason, "exit": code,
-                    "wall_s": round(wall, 1), "started": (d / "started").read_text().strip(), "ended": now(),
+            init = c["parsed"]["init"] or {}
+            meta = {"id": item.id, "item": asdict(item), "status": st, "reason": reason, "exit": c["code"],
+                    "wall_s": round(c["wall"], 1), "started": (d / "started").read_text().strip(), "ended": now(),
                     "model_requested": self.cfg["model"], "model_init": init.get("model"),
-                    "models_used": usage["models"], "usage": usage, "tool_calls": parsed["tool_calls"],
-                    "tool_names": parsed["tool_names"], "answer": answer, "answer_read_from": how,
+                    "models_used": usage["models"], "usage": usage, "tool_calls": c["parsed"]["tool_calls"],
+                    "tool_names": c["parsed"]["tool_names"], "answer": answer, "answer_read_from": how,
                     "workdir": str(work), "workdir_files": wd["files"], "agent_files_removed": wd["removed"],
-                    "prompt_chars": len(prompt), "leak_scan": P.isolate.leak_scan(out + err)}
-            if item.kind == "map" and st == "ok":
-                meta["map"] = self._save_map(item.map_seed, map_obj, how)
-                if not meta["map"]["usable"]:
-                    meta["status"], meta["reason"] = "invalid_answer", "map: " + meta["map"]["reason"]
-            (d / "meta.json").write_text(json.dumps(meta, indent=1, sort_keys=True) + "\n")
-            return meta
+                    "prompt_chars": len(prompt), "leak_scan": P.isolate.leak_scan(c["out"] + c["err"])}
         finally:
             shutil.rmtree(root, ignore_errors=True)
+        if item.kind == "map" and st == "ok":
+            self._finish_map(item, d, map_obj, how, meta)
+            meta["ended"] = now()
+        (d / "meta.json").write_text(json.dumps(meta, indent=1, sort_keys=True) + "\n")
+        return meta
 
-    def _save_map(self, seed: int, obj: dict, how: str) -> dict:
+    # -- the eval map: check, fix rounds, save -----------------------------------------------------------
+    def _check_map(self, obj: dict, how: str) -> dict:
+        v = M.validate_map(self.clone, self.commit, obj)
+        v["read_from"] = how
+        return v
+
+    @staticmethod
+    def _write_round(d: Path, obj: dict, v: dict) -> None:
+        """One round's map.json and validation.json, kept in that round's run folder."""
+        (d / "map.json").write_text(json.dumps(obj, indent=1, sort_keys=True) + "\n")
+        (d / "validation.json").write_text(json.dumps(v, indent=1, sort_keys=True) + "\n")
+
+    def _finish_map(self, item: P.Item, d: Path, obj: dict, how: str, meta: dict) -> None:
+        """The map build returned a map: check it; while it fails the check, run up to map_fix_rounds fix rounds
+        (runs/<id>/fix/<n>/), each capped at what is left of caps.map_usd; save the last round's map to
+        maps/seed<k>/ (map.md only when it passes). Updates meta: status, usage (build + fixes), fix_rounds."""
+        cap, rounds = float(self.cfg["caps"]["map_usd"]), int(self.cfg.get("map_fix_rounds", 0))
+        v = self._check_map(obj, how)
+        self._write_round(d, obj, v)
+        build_usage, build_wall = meta["usage"], meta["wall_s"]
+        usages, walls, rows = [build_usage], [build_wall], []
+        stop = ""
+        n = 0
+        while not v["usable"] and n < rounds:
+            n += 1
+            budget = P.fix_budget(cap, sum(u["cost_usd"] for u in usages))
+            if budget <= 0:
+                stop = f"no budget left for fix round {n} (caps.map_usd ${cap:g} spent)"
+                n -= 1
+                break
+            errors_in = list(v["blocking_errors"])
+            fd = d / "fix" / str(n)
+            fd.mkdir(parents=True, exist_ok=True)
+            status(f"  map seed {item.map_seed}: {len(errors_in)} validation error(s); fix round {n} of {rounds} "
+                   f"(budget ${budget:g})")
+            fm = self._fix_round(item, fd, obj, errors_in, n, rounds, budget)
+            usages.append(fm["usage"])
+            walls.append(fm["wall_s"])
+            row = {"round": n, "errors_in": len(errors_in), "errors_out": None, "cost": fm["usage"]["cost_usd"],
+                   "wall_s": fm["wall_s"], "status": fm["status"], "reason": fm["reason"]}
+            if fm["status"] == "ok":
+                obj, how = fm["map_obj"], fm["read_from"]
+                v = self._check_map(obj, how)
+                self._write_round(fd, obj, v)
+                row["errors_out"] = len(v["blocking_errors"])
+            rows.append(row)
+            self.archive.log("map_fix", id=item.id, **row)
+            if fm["status"] != "ok":
+                stop = f"fix round {n}: {fm['status']}" + (f" ({fm['reason']})" if fm["reason"] else "")
+                if fm["status"] == "usage_limit":
+                    meta["status"], meta["reason"] = "usage_limit", f"usage limit in map fix round {n}"
+                break
+        meta["build_usage"], meta["build_wall_s"] = build_usage, build_wall
+        meta["usage"] = RR.sum_usage(usages)
+        meta["models_used"] = meta["usage"]["models"]
+        meta["wall_s"] = round(sum(walls), 1)
+        meta["fix_rounds"] = rows
+        meta["totals"] = {"cost_usd": meta["usage"]["cost_usd"], "wall_s": meta["wall_s"], "fix_rounds": len(rows),
+                          "map_cap_usd": cap}
+        meta["map"] = self._save_map(item.map_seed, obj, v)
+        meta["map"]["fix_rounds"] = len(rows)
+        if meta["status"] == "usage_limit":
+            return
+        if not v["usable"]:
+            why = stop or f"still failing after {len(rows)} fix round(s)"
+            meta["status"], meta["reason"] = "invalid_answer", f"map: {v['reason']}; {why}"
+
+    def _fix_round(self, item: P.Item, fd: Path, prev: dict, errors: list[str], n: int, rounds: int,
+                   budget: float) -> dict:
+        """One fix round, isolated like the build (fresh root and repo copy, same model, effort, tools and map
+        schema); the previous map is root/prev/map.json, outside the working dir, reached with --add-dir."""
+        (fd / "started").write_text(now() + "\n")
+        root, cfg_dir, home, work = self._new_root()
+        try:
+            wd = W.make_repo_workdir(self.clone, self.commit, self.remove, work)
+            (root / "prev").mkdir()
+            prev_file = root / "prev" / "map.json"
+            text = json.dumps(prev, indent=1, sort_keys=True) + "\n"
+            prev_file.write_text(text)
+            prompt = P.map_fix_prompt(work, prev_file, text.count("\n"), errors, n, rounds)
+            spec = P.fix_run_spec(self.cfg, prompt=prompt, workdir=work, map_file=prev_file, budget=budget,
+                                  config_dir=cfg_dir, home_dir=home, claude_bin=self.claude_bin)
+            run = P.build_command(self.cfg, item, spec, P.child_env_source(self.token, self.parent_env), budget=budget)
+            c = self._call(fd, run, prompt, self.cfg["timeout_map_s"])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        obj, how = M.extract_json(c["result"] or {})
+        st, reason = self._classify(c, obj is not None)
+        usage = RR.usage_summary(c["result"])
+        init = c["parsed"]["init"] or {}
+        fm = {"id": item.id, "fix_round": n, "status": st, "reason": reason, "exit": c["code"],
+              "wall_s": round(c["wall"], 1), "started": (fd / "started").read_text().strip(), "ended": now(),
+              "budget_usd": budget, "errors_in": errors, "model_requested": self.cfg["model"],
+              "model_init": init.get("model"), "models_used": usage["models"], "usage": usage,
+              "tool_calls": c["parsed"]["tool_calls"], "tool_names": c["parsed"]["tool_names"],
+              "map_read_from": how, "workdir_files": wd["files"], "agent_files_removed": wd["removed"],
+              "prompt_chars": len(prompt), "previous_map_chars": len(text),
+              "leak_scan": P.isolate.leak_scan(c["out"] + c["err"])}
+        (fd / "meta.json").write_text(json.dumps(fm, indent=1, sort_keys=True) + "\n")
+        return fm | {"map_obj": obj, "read_from": how}
+
+    def _save_map(self, seed: int, obj: dict, v: dict) -> dict:
+        """maps/seed<k>/: the final round's map.json and validation.json; map.md (what map runs read) only when the
+        map passes the check."""
         md = self.archive.map_dir(seed)
         md.mkdir(parents=True, exist_ok=True)
         (md / "map.json").write_text(json.dumps(obj, indent=1, sort_keys=True) + "\n")
-        v = M.validate_map(self.clone, self.commit, obj)
-        v["read_from"] = how
+        v = dict(v)
         if v["usable"]:
             resolved, _ = M.resolve_anchors(M.Repo.open(self.clone), self.commit, obj.get("claims"))
             text = M.render_map(obj, resolved)
             (md / "map.md").write_text(text)
             v["chars"], v["tokens_est"] = len(text), OB.est_tokens(text)
+        elif (md / "map.md").exists():
+            (md / "map.md").unlink()     # an earlier attempt's text must not be read by map runs
         (md / "validation.json").write_text(json.dumps(v, indent=1, sort_keys=True) + "\n")
         status(f"  map seed {seed}: {v.get('claims', 0)} claims, anchors {v['anchors_resolved']}/"
                f"{v['anchors_total']} resolved, draft valid {v['draft_valid']}, "
+               f"{len(v.get('blocking_errors', []))} blocking error(s), {'usable' if v['usable'] else 'NOT usable'}, "
                f"{v.get('tokens_est', 0)} tokens (est.)")
         return {k: v[k] for k in ("usable", "anchors_total", "anchors_resolved", "draft_valid")} | {
-            "reason": v.get("reason", ""), "tokens_est": v.get("tokens_est", 0)}
+            "reason": v.get("reason", ""), "tokens_est": v.get("tokens_est", 0),
+            "blocking_errors": len(v.get("blocking_errors", []))}
 
     # -- the outline -------------------------------------------------------------------------------------
     def ensure_outline(self) -> str:
@@ -389,6 +524,11 @@ class Runner:
         if self.stop_reason:
             self.archive.log("stop", reason=self.stop_reason)
             print(f"stopped: {self.stop_reason}")
+        for s in range(1, self.seeds + 1):
+            m = metas.get(f"map-s{s}") or {}
+            if m.get("status") == "invalid_answer":
+                print(f"map seed {s}: not usable after {len(m.get('fix_rounds', []))} fix round(s): "
+                      f"{m.get('reason', '')} (maps/seed{s}/validation.json)")
         if blocked:
             print(f"blocked: {len(blocked)} runs need a usable map (see maps/*/validation.json)")
         if by.get("error"):
@@ -423,6 +563,11 @@ def dry_run(cfg: dict, plan: dict, archive: Archive, claude_bin: str) -> None:
     seeds = cfg["sizes"][plan["size"]]["map_seeds"]
     print(f"maps       {seeds} map seed(s); map pass k reads seed ((k-1) mod {seeds}) + 1: "
           + ", ".join(f"pass {k} -> seed {C.map_seed_for_pass(k, seeds)}" for k in range(1, cfg['passes']['map'] + 1)))
+    mb = est["map_build"]
+    if n["map builds"]:
+        print(f"map fix    up to {mb['fix_rounds']} fix round(s) per build when the map fails the check; build + "
+              f"fixes capped at ${cfg['caps']['map_usd']:g} together; per map ${mb['usd'][0]:g}-${mb['usd'][1]:g}, "
+              f"{mb['min'][0]:g}-{mb['min'][1]:g} min (build alone .. build + every fix round)")
     print(f"ESTIMATE   ${est['usd'][0]:.0f}-${est['usd'][1]:.0f} list price; "
           f"{est['minutes_wall'][0] / 60:.1f}-{est['minutes_wall'][1] / 60:.1f} h wall at concurrency "
           f"{est['concurrency']} (config [estimate] ranges; not measured)")
@@ -458,6 +603,16 @@ def dry_run(cfg: dict, plan: dict, archive: Archive, claude_bin: str) -> None:
             print("  " + lines[1])
             print(f"  cwd:  {root / 'work'} (no-access: an empty dir; else git archive of the pin, "
                   f"agent files removed: {', '.join(cfg['repos'][plan['repo']].get('remove', [])) or 'none'})")
+        if it.kind == "map" and cfg.get("map_fix_rounds", 0):
+            prev = root / "prev" / "map.json"
+            fspec = P.fix_run_spec(cfg, prompt="", workdir=root / "work", map_file=prev,
+                                   budget=cfg["caps"]["map_usd"], config_dir=root / "cfg", home_dir=root / "home",
+                                   claude_bin=claude_bin)
+            frun = P.build_command(cfg, it, fspec, env_src, budget=cfg["caps"]["map_usd"])
+            frun.argv[2] = "<prompt: fix head + the blocking errors + Cartographer brief>"
+            print(f"  fix round n (only if the map fails the check; --max-budget-usd is what is left of "
+                  f"${cfg['caps']['map_usd']:g}; a fresh RUN_ROOT):")
+            print("  " + P.isolate.describe(frun)[0])
     for cond, prompt in examples.items():
         print(f"--- example prompt ({cond}) ---")
         print(prompt.rstrip())

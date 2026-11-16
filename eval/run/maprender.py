@@ -2,8 +2,11 @@
 
 The Cartographer in eval mode returns the full `claims save` input ({"target", "mode", "document", "claims"}).
 Validation uses Honeyguide's own code (honeyguide.claims, honeyguide.mapdoc) against the pinned clone, at the
-pinned commit. Invalid anchors are counted and listed, never fixed: the map is used as the Cartographer wrote it,
-and the rendered text marks an anchor that did not resolve as "[path: quote not found]".
+pinned commit. A map is usable only if it passes the check: no structure error (check_document, strict) and no
+draft error (validate_draft, strict) other than an anchor that did not resolve. Those are `blocking_errors`; the
+runner sends them back to the Cartographer in up to `map_fix_rounds` fix rounds (evalrun.py). Unresolved anchors
+alone never refuse a map: they are counted and listed (a measurement, never fixed by the runner), and the rendered
+text marks each as "[path: quote not found]".
 
 The rendered text is what a map-condition run reads (appended to its prompt): every section, block and flow hop,
 each claim followed by its citation ([path:start-end] per resolved anchor, or its evidence label when it cites no
@@ -17,12 +20,14 @@ import json
 import re
 from typing import Any
 
-from honeyguide.claims import resolve_one, validate_draft
+from honeyguide.claims import UNANCHORED, resolve_one, validate_draft
 from honeyguide.contract import ContractError
 from honeyguide.gitio import Repo
 from honeyguide.mapdoc import TOPIC_TITLES, check_document, normalize_document
 
 FENCE = re.compile(r"^```(?:json)?\s*\n(.*)\n```\s*$", re.S)
+# A draft error about one anchor that did not resolve: "claims[3] (key).anchors[0]: not_found: ..."
+ANCHOR_ERROR = re.compile(r"^claims\[\d+\](?: \(.*?\))?\.anchors\[\d+\]: ")
 
 
 def extract_json(result: dict) -> tuple[Any, str]:
@@ -70,27 +75,57 @@ def resolve_anchors(repo: Repo, commit: str, claims: list) -> tuple[dict[str, li
     return out, {"anchors_total": total, "anchors_resolved": found, "unresolved": problems}
 
 
+def waive_unresolved(repo: Repo, commit: str, data: dict) -> dict:
+    """A copy of the map for the check only (never saved or rendered): every anchor that does not resolve is
+    dropped, and a claim left with no anchor is labelled searched_not_found, so validate_draft checks the rest of
+    the map (which it skips once any claim fails to build)."""
+    out = copy.deepcopy(data)
+    for c in out.get("claims") or []:
+        if not isinstance(c, dict) or not isinstance(c.get("anchors"), list) or not c["anchors"]:
+            continue
+        kept = [a for a in c["anchors"] if resolve_one(repo, commit, a)[0] == "found"]
+        if len(kept) < len(c["anchors"]):
+            c["anchors"] = kept
+            if not kept and c.get("evidence") not in UNANCHORED:
+                c["evidence"] = "searched_not_found"
+    return out
+
+
+def _draft(repo: Repo, commit: str, data: dict) -> tuple[bool, list[str]]:
+    try:
+        v = validate_draft(repo, dict(data, commit=commit), strict=True)
+        return bool(v.get("valid")), list(v.get("errors", []))
+    except ContractError as exc:
+        return False, [str(exc)]
+
+
 def validate_map(clone, commit: str, data: Any) -> dict:
-    """Everything the scorer prints about one map: structure, anchors, Honeyguide's own draft validation."""
+    """Everything the scorer prints about one map: structure, anchors, Honeyguide's own draft validation, and the
+    check the runner applies (`usable` is True only when `blocking_errors` is empty)."""
     if not isinstance(data, dict) or not isinstance(data.get("document"), dict):
         return {"usable": False, "reason": "no document object", "anchors_total": 0, "anchors_resolved": 0,
-                "unresolved": [], "structure_errors": [], "draft_valid": False, "draft_errors": []}
+                "unresolved": [], "structure_errors": [], "draft_valid": False, "draft_errors": [],
+                "blocking_errors": ["document: must be an object"]}
     repo = Repo.open(clone)
     _, counts = resolve_anchors(repo, commit, data.get("claims"))
     doc = normalize_document(copy.deepcopy(data["document"]))
     s_err, s_warn = check_document(doc, strict=True)
-    try:
-        v = validate_draft(repo, dict(data, commit=commit), strict=True)
-        draft_valid, draft_errors = bool(v.get("valid")), list(v.get("errors", []))
-    except ContractError as exc:
-        draft_valid, draft_errors = False, [str(exc)]
+    draft_valid, draft_errors = _draft(repo, commit, data)
+    rest = [e for e in draft_errors if not ANCHOR_ERROR.match(e)]
+    if len(rest) < len(draft_errors):    # anchors failed, so the draft check stopped at the claims: run the rest
+        rest = [e for e in _draft(repo, commit, waive_unresolved(repo, commit, data))[1]
+                if not ANCHOR_ERROR.match(e)]
+    blocking = list(dict.fromkeys(s_err + rest))
     claims = [c for c in data.get("claims") or [] if isinstance(c, dict)]
     labels: dict[str, int] = {}
     for c in claims:
         labels[str(c.get("evidence"))] = labels.get(str(c.get("evidence")), 0) + 1
-    return {"usable": True, "claims": len(claims), "evidence": dict(sorted(labels.items())), **counts,
-            "structure_errors": s_err, "structure_warnings": s_warn, "draft_valid": draft_valid,
-            "draft_errors": draft_errors}
+    out = {"usable": not blocking, "claims": len(claims), "evidence": dict(sorted(labels.items())), **counts,
+           "structure_errors": s_err, "structure_warnings": s_warn, "draft_valid": draft_valid,
+           "draft_errors": draft_errors, "blocking_errors": blocking}
+    if blocking:
+        out["reason"] = f"{len(blocking)} validation error(s)"
+    return out
 
 
 def _cite(rows: list, evidence: str | None) -> str:

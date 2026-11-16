@@ -461,5 +461,9 @@ next; don't judge your own claims as checked.
 The eval builds maps with Read, Grep and Glob only. Do Explore steps 2-5 the same way (the same document
 shape, topics, facts and quality bar), then return the full `claims save` input (`{"target": "map", "mode":
 "replace", "document": ..., "claims": [...]}`, the draft files' contents assembled into one object) as your
-final answer, one JSON object and nothing else. `meta.json`'s `coverage` goes in as `document.coverage`. The eval's runner validates and saves it, and may send you the
-`details` to fix. Every hop is `unseen` or `blind_spot`.
+final answer, one JSON object and nothing else. `meta.json`'s `coverage` goes in as `document.coverage`, and
+`flows.json`'s path records go in as `document.flows` (required: every `flow` block names one). Every hop is
+`unseen` or `blind_spot`. The eval's runner validates it with the same checks as `map check`; a map that fails is
+not used. It then sends you the error list, verbatim, up to 2 times in a new session (`MODE: fix`, with your
+previous map as a file to Read): fix every error as in "Fixing validation errors" and return the whole corrected
+object again. An anchor that doesn't resolve is counted, not sent back.

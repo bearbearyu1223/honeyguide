@@ -1,10 +1,130 @@
 {
  "type": "object",
  "properties": {
-  "target": {"type": "string"},
-  "mode": {"type": "string"},
-  "document": {"type": "object"},
-  "claims": {"type": "array", "items": {"type": "object"}}
+  "target": {
+   "type": "string"
+  },
+  "mode": {
+   "type": "string"
+  },
+  "document": {
+   "type": "object",
+   "properties": {
+    "title": {
+     "type": "string"
+    },
+    "coverage": {
+     "type": "object"
+    },
+    "sections": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object"
+     }
+    },
+    "flows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "title": {
+        "type": "string"
+       },
+       "lanes": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "label": {
+           "type": "string"
+          },
+          "path": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "id",
+          "label"
+         ]
+        }
+       },
+       "loops": {
+        "type": "array",
+        "items": {
+         "type": "object"
+        }
+       },
+       "hops": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "object",
+         "properties": {
+          "from": {
+           "type": "string"
+          },
+          "to": {
+           "type": "string"
+          },
+          "call": {
+           "type": "string"
+          },
+          "trace": {
+           "enum": [
+            "seen",
+            "unseen",
+            "blind_spot"
+           ]
+          },
+          "claim": {
+           "type": "string"
+          }
+         },
+         "required": [
+          "from",
+          "to",
+          "call",
+          "trace",
+          "claim"
+         ]
+        }
+       }
+      },
+      "required": [
+       "id",
+       "title",
+       "lanes",
+       "hops"
+      ]
+     }
+    }
+   },
+   "required": [
+    "title",
+    "sections",
+    "flows",
+    "coverage"
+   ]
+  },
+  "claims": {
+   "type": "array",
+   "items": {
+    "type": "object"
+   }
+  }
  },
- "required": ["target", "mode", "document", "claims"]
+ "required": [
+  "target",
+  "mode",
+  "document",
+  "claims"
+ ]
 }

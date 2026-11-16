@@ -49,6 +49,10 @@ def validate_config(cfg: dict) -> None:
             v = size.get(t)
             if v != "all" and not (isinstance(v, int) and v >= 0):
                 raise ValueError(f"config: sizes.{name}.{t} must be 'all' or a count")
+    n = cfg.get("map_fix_rounds")
+    if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n <= 5:
+        raise ValueError("config: map_fix_rounds must be a count from 0 to 5 (fix rounds after a map build whose map "
+                         "fails the check)")
     for k in ("timeout_answer_s", "timeout_map_s"):
         if not isinstance(cfg.get(k), int) or cfg[k] <= 0:
             raise ValueError(f"config: {k} must be a positive number of seconds")

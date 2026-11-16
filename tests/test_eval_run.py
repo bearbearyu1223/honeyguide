@@ -6,6 +6,8 @@
 - the run stops at a usage limit and resumes; failed runs stay failed until --retry-failed (earlier attempt
   kept); an interrupted run is restarted and logged; --max-runs and --max-cost stop cleanly;
 - the token never reaches a file (the whole tmp tree is searched), even when the child prints it;
+- the eval map is used only if it passes the check; a failing map gets up to map_fix_rounds isolated fix rounds
+  (errors verbatim, previous map through --add-dir, the rest of the map cap), each archived and costed;
 - pure helpers: outline size matching, status classification, answer parsing, list-price rebuild.
 """
 
@@ -91,7 +93,8 @@ def test_dry_run_runs_nothing_and_reads_no_token(fx, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "1 no-access + 2 explore + 2 outline + 3 map = 8" in out and "= 33 runs" in out
     assert not fx["calls"].exists() and not fx["archive"].exists()
-    assert out.count("argv: ") == 33 and "<set, hidden>" in out and FX.TOKEN not in out
+    assert out.count("argv: ") == 34 and "<set, hidden>" in out and FX.TOKEN not in out    # + the fix-round shape
+    assert "map fix    up to 2 fix round(s) per build" in out and "--add-dir" in out
     for flag in ISOLATION:
         assert flag in out
     assert "ESTIMATE" in out and "not measured" in out
@@ -229,7 +232,9 @@ def test_map_build_validated_and_rendered(fx):
     evalrun.main(args(fx, "--run-id", "r"))
     md = fx["archive"] / "r" / "maps" / "seed1"
     v = json.loads((md / "validation.json").read_text())
-    assert v["anchors_total"] == 3 and v["anchors_resolved"] == 2 and not v["draft_valid"]
+    # the one unresolved anchor makes draft_valid false but does not refuse the map (measured, not fixed)
+    assert v["anchors_total"] == 4 and v["anchors_resolved"] == 3 and not v["draft_valid"]
+    assert v["usable"] and v["blocking_errors"] == [] and v["structure_errors"] == []
     assert v["unresolved"][0]["claim"] == "c3"
     text = (md / "map.md").read_text()
     assert "[pkg/core.py:" in text and "[scripts/main.py: quote not found]" in text
@@ -238,6 +243,12 @@ def test_map_build_validated_and_rendered(fx):
     meta = json.loads((fx["archive"] / "r" / "runs" / "map-s1" / "meta.json").read_text())
     assert meta["status"] == "ok" and meta["models_used"] == ["claude-opus-5-5"]
     assert meta["agent_files_removed"] == ["CLAUDE.md", "AGENTS.md", ".claude"]
+    # (c) a map that passes on the first try runs no fix round
+    assert meta["fix_rounds"] == [] and meta["totals"]["fix_rounds"] == 0
+    assert meta["usage"]["cost_usd"] == meta["build_usage"]["cost_usd"]
+    assert not (fx["archive"] / "r" / "runs" / "map-s1" / "fix").exists()
+    assert not any(c["cond"] == "mapfix" for c in calls(fx))
+    assert not any(e["event"] == "map_fix" for e in events(fx, "r"))
 
 
 def test_map_prompt_is_the_cartographer_brief_in_eval_mode(tmp_path):
@@ -362,3 +373,201 @@ def test_unusable_map_blocks_map_and_outline_runs_until_retried(fx, capsys):
     assert evalrun.main(args(fx, "--run-id", "r", "--retry-failed")) == 0
     assert any(e["event"] == "retry_failed" and e["id"] == "map-s1" for e in events(fx, "r"))
     assert {c["cond"] for c in calls(fx)[n:]} >= {"mapbuild", "map", "outline"}
+
+
+# ------------------------------------------------------------------------------------------------------------
+# the map check and its fix rounds
+
+FAKE_COST = (10 * 4 + 1000 * 0.2 + 500 * 8 + 100 * 20) / 1e6      # what fake_claude reports per call
+
+
+def set_control(fx, **kw):
+    ctl = fx["fake"].parent / "claude.json"
+    control = json.loads(ctl.read_text())
+    ctl.write_text(json.dumps(dict(control, **kw)))
+
+
+def run_to_end(fx, run_id="r"):
+    evalrun.main(args(fx, "--run-id", run_id))
+    return evalrun.main(args(fx, "--run-id", run_id))       # resume after the fixture's usage-limit stop
+
+
+def test_map_missing_flows_is_refused_then_fixed(fx, capsys, tmp_path):
+    """(a) the pilot's failure: no document.flows. The map is refused, one fix round returns a valid map, the map
+    is used, and the round is archived and costed."""
+    bad = FX.map_without_flows()
+    set_control(fx, map_output=bad, fix_outputs=[FX.MAP_OUTPUT])
+    assert run_to_end(fx) == 0
+    run = fx["archive"] / "r" / "runs" / "map-s1"
+    build_v = json.loads((run / "validation.json").read_text())
+    err = "sections[1].blocks[0]: flow 'run' is not in document.flows"
+    assert not build_v["usable"] and build_v["blocking_errors"] == [err]
+    fixes = [c for c in calls(fx) if c["cond"] == "mapfix"]
+    assert len(fixes) == 1
+    f = fixes[0]
+    # isolated like the build: same flags, tools, model; a fresh repo copy; the previous map through --add-dir only
+    for flag in ISOLATION:
+        assert flag in f["argv"]
+    assert f["argv"][f["argv"].index("--tools") + 1] == "Read,Grep,Glob"
+    assert f["argv"][f["argv"].index("--model") + 1] == "claude-opus-5-5"
+    assert f["argv"][f["argv"].index("--max-budget-usd") + 1] == f"{P.fix_budget(20.0, FAKE_COST):g}" == "19.99"
+    assert json.loads(f["argv"][f["argv"].index("--json-schema") + 1]) == json.loads(P.MAP_SCHEMA.read_text())
+    assert set(f["env"]) <= ALLOWED_ENV and f["token_present"]
+    assert "pkg/core.py" in f["files"] and not any(Path(x).name in W.AGENT_NAMES for x in f["files"])
+    assert f["add_dir_files"] == ["map.json"] and Path(f["previous"]).parent == Path(f["add_dir"])
+    assert not Path(f["previous"]).is_relative_to(f["cwd"])
+    assert f["previous_map"] == bad
+    assert f"\n- {err}\n" in f["prompt"] and "fix round 1 of 2" in f["prompt"]
+    assert "general_knowledge" in f["prompt"] and "document.flows" in f["prompt"]
+    # archived as its own attempt
+    fd = run / "fix" / "1"
+    for name in ("prompt.txt", "command.txt", "transcript.jsonl", "stderr.txt", "result.json", "meta.json",
+                 "map.json", "validation.json"):
+        assert (fd / name).exists(), name
+    fm = json.loads((fd / "meta.json").read_text())
+    assert fm["status"] == "ok" and fm["budget_usd"] == 19.99 and fm["errors_in"] == [err]
+    assert "<token>" in (fd / "command.txt").read_text() or "<set, hidden>" in (fd / "command.txt").read_text()
+    # the map run: usable, the last round's map saved, the round recorded, cost = build + fix
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["status"] == "ok"
+    assert [{k: r[k] for k in ("round", "errors_in", "errors_out", "status")} for r in meta["fix_rounds"]] == [
+        {"round": 1, "errors_in": 1, "errors_out": 0, "status": "ok"}]
+    assert meta["fix_rounds"][0]["cost"] == pytest.approx(FAKE_COST)
+    assert meta["usage"]["cost_usd"] == pytest.approx(2 * FAKE_COST)
+    assert meta["usage"]["tokens"]["output_tokens"] == 200 and meta["totals"]["fix_rounds"] == 1
+    md = fx["archive"] / "r" / "maps" / "seed1"
+    assert json.loads((md / "map.json").read_text()) == FX.MAP_OUTPUT
+    assert json.loads((md / "validation.json").read_text())["usable"]
+    assert "## Flow run:" in (md / "map.md").read_text()
+    ev = [e for e in events(fx, "r") if e["event"] == "map_fix"]
+    assert len(ev) == 1 and ev[0]["errors_in"] == 1 and ev[0]["errors_out"] == 0
+    assert {"map", "outline"} <= {c["cond"] for c in calls(fx)}
+    # the archive's spent total counts the fix round once
+    by_meta = sum(float(json.loads(p.read_text())["usage"]["cost_usd"])
+                  for p in (fx["archive"] / "r").glob("runs/*/meta.json"))
+    assert evalrun.Archive(fx["archive"] / "r").spent() == pytest.approx(by_meta)
+    assert FX.files_containing(tmp_path, FX.TOKEN) == []
+    assert list((fx["archive"].parent / "scratch").iterdir()) == []
+
+
+def test_map_still_invalid_after_two_rounds_blocks_map_runs(fx, capsys):
+    """(b) every fix round returns a failing map: two rounds, then the map run is invalid_answer and every map and
+    outline run is blocked; the runner prints why."""
+    set_control(fx, map_output=FX.map_without_flows(), fix_outputs=[FX.map_without_flows()])
+    assert run_to_end(fx) == 3
+    out = capsys.readouterr().out
+    assert "map seed 1: not usable after 2 fix round(s): map: 1 validation error(s); still failing after 2 fix " \
+           "round(s)" in out
+    assert "blocked: 20 runs need a usable map" in out
+    assert [c["cond"] for c in calls(fx)].count("mapfix") == 2
+    assert {c["cond"] for c in calls(fx)} == {"mapbuild", "mapfix", "explore", "no-access"}
+    run = fx["archive"] / "r" / "runs" / "map-s1"
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["status"] == "invalid_answer"
+    assert [(r["round"], r["errors_in"], r["errors_out"]) for r in meta["fix_rounds"]] == [(1, 1, 1), (2, 1, 1)]
+    assert meta["usage"]["cost_usd"] == pytest.approx(3 * FAKE_COST)
+    budgets = [c["argv"][c["argv"].index("--max-budget-usd") + 1] for c in calls(fx) if c["cond"] == "mapfix"]
+    assert budgets == ["19.99", "19.98"]                     # what is left of the map cap each time
+    for n in (1, 2):
+        assert not json.loads((run / "fix" / str(n) / "validation.json").read_text())["usable"]
+    md = fx["archive"] / "r" / "maps" / "seed1"
+    assert (md / "validation.json").exists() and not (md / "map.md").exists()
+    assert [e["round"] for e in events(fx, "r") if e["event"] == "map_fix"] == [1, 2]
+
+
+def test_failed_fix_round_stops_the_rounds(fx, capsys):
+    set_control(fx, map_output=FX.map_without_flows(), fix_behaviors=["error"])
+    assert run_to_end(fx) == 3
+    meta = json.loads((fx["archive"] / "r" / "runs" / "map-s1" / "meta.json").read_text())
+    assert meta["status"] == "invalid_answer" and "fix round 1: error" in meta["reason"]
+    assert len(meta["fix_rounds"]) == 1 and meta["fix_rounds"][0]["errors_out"] is None
+    assert [c["cond"] for c in calls(fx)].count("mapfix") == 1
+
+
+def test_no_fix_rounds_when_configured_zero(fx):
+    fx["config"].write_text(fx["config"].read_text().replace("map_fix_rounds = 2", "map_fix_rounds = 0"))
+    set_control(fx, map_output=FX.map_without_flows())
+    assert run_to_end(fx) == 3
+    meta = json.loads((fx["archive"] / "r" / "runs" / "map-s1" / "meta.json").read_text())
+    assert meta["status"] == "invalid_answer" and meta["fix_rounds"] == []
+    assert "mapfix" not in {c["cond"] for c in calls(fx)}
+
+
+def test_map_schema_requires_flows():
+    """(d) the --json-schema every map build and fix round gets requires document.flows (and title, sections, coverage),
+    with hops shaped as the draft validator wants them."""
+    schema = json.loads(P.MAP_SCHEMA.read_text())
+    doc = schema["properties"]["document"]
+    assert set(doc["required"]) == {"title", "sections", "flows", "coverage"}
+    flow = doc["properties"]["flows"]["items"]
+    assert set(flow["required"]) == {"id", "title", "lanes", "hops"}
+    hop = flow["properties"]["hops"]["items"]
+    assert set(hop["required"]) == {"from", "to", "call", "trace", "claim"}
+    assert hop["properties"]["trace"]["enum"] == ["seen", "unseen", "blind_spot"]
+    cfg = C.load_config()
+    item = P.Item(id="map-s1", kind="map", repo="nanochat", pass_no=1, map_seed=1)
+    spec = P.run_spec(cfg, item, prompt="p", workdir=Path("/w/work"), config_dir=Path("/w/cfg"),
+                      home_dir=Path("/w/home"), claude_bin="claude")
+    assert json.loads(spec.json_schema) == schema
+
+
+def test_check_ignores_unresolved_anchors_but_not_what_they_hide(fx):
+    """An unresolved anchor stops Honeyguide's draft check at the claims; the runner's check still sees the rest
+    (here a span citing a claim key that does not exist)."""
+    m = json.loads(json.dumps(FX.MAP_OUTPUT))
+    m["document"]["sections"][0]["blocks"][1]["spans"][0]["claim"] = "nope"
+    v = M.validate_map(fx["clone"], fx["commit"], m)
+    assert all(M.ANCHOR_ERROR.match(e) for e in v["draft_errors"])          # all Honeyguide reported
+    assert v["blocking_errors"] == ["document: claim 'nope' is not a saved claim"] and not v["usable"]
+    assert M.validate_map(fx["clone"], fx["commit"], {"claims": []})["blocking_errors"]
+
+
+def test_fix_budget_and_usage_sum():
+    assert P.fix_budget(20.0, 13.42) == 6.58 and P.fix_budget(20.0, 19.999) == 0.0
+    assert P.fix_budget(20.0, 25.0) == 0.0 and P.fix_budget(1.5, 0.0) == 1.5
+    a = RR.usage_summary({"usage": {"input_tokens": 1, "output_tokens": 2}, "total_cost_usd": 0.5,
+                          "modelUsage": {"m1": {}}, "num_turns": 3})
+    b = RR.usage_summary({"usage": {"input_tokens": 10, "cache_creation": {"ephemeral_1h_input_tokens": 4}},
+                          "total_cost_usd": 0.25, "modelUsage": {"m2": {}}, "num_turns": 1})
+    s = RR.sum_usage([a, b])
+    assert s["tokens"]["input_tokens"] == 11 and s["tokens"]["output_tokens"] == 2 and s["cache_write_1h"] == 4
+    assert s["cost_usd"] == 0.75 and s["models"] == ["m1", "m2"] and s["num_turns"] == 4
+    assert RR.sum_usage([]) == RR.usage_summary(None)
+
+
+def test_map_fix_prompt_and_isolation_spec(tmp_path):
+    errs = ["sections[2].blocks[0]: flow 'pretrain-step' is not in document.flows", "x: y"]
+    p = P.map_fix_prompt(tmp_path / "work", tmp_path / "prev" / "map.json", 812, errs, 2, 2)
+    assert p.startswith(f"MODE: fix\nREPO: {tmp_path / 'work'}\nPREVIOUS: {tmp_path / 'prev' / 'map.json'}\n")
+    assert "fix round 2 of 2" in p and "812 lines" in p and "2 error(s)" in p
+    assert "".join(f"- {e}\n" for e in errs) in p and p.endswith(P.cartographer_body())
+    cfg = C.load_config()
+    spec = P.fix_run_spec(cfg, prompt=p, workdir=tmp_path / "work", map_file=tmp_path / "prev" / "map.json",
+                          budget=6.58, config_dir=tmp_path / "cfg", home_dir=tmp_path / "home", claude_bin="claude")
+    item = P.Item(id="map-s1", kind="map", repo="nanochat", pass_no=1, map_seed=1)
+    run = P.build_command(cfg, item, spec, {"CLAUDE_CODE_OAUTH_TOKEN": "t"}, budget=6.58)
+    assert run.argv[run.argv.index("--add-dir") + 1] == str(tmp_path / "prev")
+    assert run.argv[run.argv.index("--max-budget-usd") + 1] == "6.58"
+    assert run.argv[run.argv.index("--tools") + 1] == "Read,Grep,Glob"
+    with pytest.raises(ValueError, match="outside the working dir"):     # isolate still refuses a file inside it
+        P.isolate.build_run(P.fix_run_spec(cfg, prompt=p, workdir=tmp_path, map_file=tmp_path / "map.json",
+                                           budget=1, config_dir=tmp_path.parent / "c",
+                                           home_dir=tmp_path.parent / "h", claude_bin="claude"), {})
+
+
+def test_config_map_fix_rounds_validated():
+    cfg = C.load_config()
+    assert cfg["map_fix_rounds"] == 2 and C.load_config(C.HERE / "config_smoke.toml")["map_fix_rounds"] == 2
+    for bad in (None, -1, 6, "2", True):
+        with pytest.raises(ValueError, match="map_fix_rounds"):
+            C.validate_config(dict(cfg, map_fix_rounds=bad))
+
+
+def test_estimate_allows_the_fix_rounds():
+    cfg = C.load_config()
+    item = P.Item(id="map-s1", kind="map", repo="nanochat", pass_no=1, map_seed=1)
+    e = P.estimate(cfg, [item])
+    lo, hi = cfg["estimate"]["map_build_usd"]
+    assert e["usd"] == (lo, min(cfg["caps"]["map_usd"], hi * 3))
+    assert e["minutes_sequential"][1] == cfg["estimate"]["map_build_min"][1] * 3
+    assert P.estimate(dict(cfg, map_fix_rounds=0), [item])["usd"] == (lo, hi)

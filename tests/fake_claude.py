@@ -4,7 +4,11 @@ The tests copy this file to <dir>/claude (with a shebang for the test's Python) 
 control file:
   {"rules": [{"match": "<substring of the prompt>", "cond": "map" (optional), "behavior": "...",
               "answer": {"items": [...], "text": "..."}}, ...],
-   "map_output": {...claims save input...}, "map_behavior": "ok"}
+   "map_output": {...claims save input...}, "map_behavior": "ok",
+   "fix_outputs": [{...}, ...], "fix_behaviors": ["ok", ...]}
+A map fix round (prompt starts "MODE: fix") returns fix_outputs[n-1] for the n-th fix call (the last one repeats;
+default map_output) with fix_behaviors[n-1] (default ok); it records the --add-dir folder's files and whether the
+PREVIOUS file in the prompt was there.
 behaviors: ok, error, capped, usage_limit, usage_limit_once (first call usage limit, later ok), bad_json,
 echo_token (prints the token it was given, to test that the runner withholds it).
 Each call is appended to <dir>/calls.jsonl: the argv without the prompt, a prompt hash, the condition it saw, the
@@ -26,6 +30,8 @@ def condition(argv, prompt):
     tools = argv[argv.index("--tools") + 1] if "--tools" in argv else None
     if tools == "":
         return "no-access"
+    if prompt.startswith("MODE: fix\n"):
+        return "mapfix"
     if "MODE: explore" in prompt and "Eval mode" in prompt:
         return "mapbuild"
     if "Notes about this repository" in prompt:
@@ -54,13 +60,30 @@ def main():
     cond = condition(argv, prompt)
     calls = HERE / "calls.jsonl"
     shown = [a for i, a in enumerate(argv) if i != argv.index("-p") + 1]
+    extra = {}
+    if "--add-dir" in argv:
+        add = argv[argv.index("--add-dir") + 1]
+        extra["add_dir"] = add
+        extra["add_dir_files"] = listing(add)
+    if cond == "mapfix":
+        prev = next(ln.split(": ", 1)[1] for ln in prompt.splitlines() if ln.startswith("PREVIOUS: "))
+        extra["previous"] = prev
+        extra["previous_map"] = json.loads(Path(prev).read_text()) if Path(prev).exists() else None
+        extra["prompt"] = prompt.split("\n-----\n")[0]       # the head and the errors, not the brief
+    n_fix = 0
+    if calls.exists():
+        n_fix = sum(1 for ln in calls.read_text().splitlines() if json.loads(ln)["cond"] == "mapfix")
     with calls.open("a") as f:
         f.write(json.dumps({"argv": shown, "prompt_sha": hashlib.sha256(prompt.encode()).hexdigest(),
                             "cond": cond, "cwd": cwd, "files": listing(cwd), "env": sorted(os.environ),
                             "home": os.environ.get("HOME"), "token_present": bool(os.environ.get(TOKEN_VAR)),
-                            "path": os.environ.get("PATH")}) + "\n")
+                            "path": os.environ.get("PATH"), **extra}) + "\n")
     if cond == "mapbuild":
         behavior, answer = CONTROL.get("map_behavior", "ok"), CONTROL["map_output"]
+    elif cond == "mapfix":
+        outs = CONTROL.get("fix_outputs") or [CONTROL["map_output"]]
+        behs = CONTROL.get("fix_behaviors") or ["ok"]
+        answer, behavior = outs[min(n_fix, len(outs) - 1)], behs[min(n_fix, len(behs) - 1)]
     else:
         behavior, answer = "ok", {"items": [], "text": "I could not tell."}
         for r in CONTROL["rules"]:

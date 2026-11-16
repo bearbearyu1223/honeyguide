@@ -18,11 +18,15 @@ seed = 0                           # run order shuffle, bootstrap, blind-sheet s
 concurrency = 1                    # runs at once (1 = sequential)
 timeout_answer_s = 1200           # wall-clock kill per answering run (a killed run is logged as an error)
 timeout_map_s = 5400              # per eval map build (the T7.9 Cartographer runs took 31-39 min)
+# A map that fails the check (maprender.validate_map: structure or draft errors; unresolved anchors alone don't
+# count) gets up to this many fix rounds: a new isolated run with the error list and the previous map. Each round
+# also has timeout_map_s; caps.map_usd covers the build and its fix rounds together.
+map_fix_rounds = 2
 answers_dir = "eval/human/answers" # Han's T5/T6 answers (read only)
 
 [caps]
 answer_usd = 1.5                   # --max-budget-usd per answering run (a capped run counts as wrong)
-map_usd = 20.0                     # --max-budget-usd per eval map build
+map_usd = 20.0                     # --max-budget-usd per eval map build, fix rounds included (a round gets what's left)
 max_cost_usd = 150.0               # stop starting runs once this much (list price) is spent in the run archive
 
 [passes]                           # runs per question and condition (plan section 3)

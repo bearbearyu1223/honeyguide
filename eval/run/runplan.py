@@ -9,12 +9,20 @@ How the map or outline reaches a run: appended to the prompt, as a "Notes" block
 The explore, outline and map conditions therefore run the byte-identical command line apart from the prompt
 (isolate's "explore" settings: working dir = a fresh copy, tools Read, Grep, Glob, no --add-dir); no-access runs
 the same brief in an empty dir with no tools.
+
+A map build whose map fails the check (maprender.validate_map) gets up to `map_fix_rounds` fix rounds: each is a
+new isolated run with the build's settings (fresh repo copy, Read/Grep/Glob, same model, effort and map schema)
+whose prompt holds the errors and the fix instructions; the previous map is a file outside the working dir, in its
+own folder, reached through `--add-dir` (isolate's "map" settings: the only condition that allows an extra file
+next to the repo tools). The fix round's `--max-budget-usd` is what is left of `caps.map_usd` after the build and
+the earlier rounds.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 import sys
 from dataclasses import asdict, dataclass
@@ -111,6 +119,34 @@ def map_prompt(repo_dir: Path) -> str:
     return MAP_HEAD.replace("{repo_dir}", str(repo_dir)) + cartographer_body()
 
 
+MAP_FIX_HEAD = (
+    "MODE: fix\nREPO: {repo_dir}\nPREVIOUS: {map_file}\n"
+    "You have no Bash tool: this is an eval map build, fix round {round} of {rounds}. The map you returned (the full "
+    "claims save input) is in PREVIOUS, {lines} lines of JSON: Read it in parts (offset and limit). It failed the "
+    "eval runner's validation with the {n} error(s) listed below, one per line, exactly as the validator wrote them.\n"
+    "Fix every one of them. Never get around an error by relabelling a claim you read in source as "
+    "`general_knowledge`. Keep everything that was not wrong as it was; re-read the code in REPO with Read, Grep "
+    "and Glob where an error needs it. `document.flows` is required: every `flow` block names a path record "
+    "there. Then return the whole corrected object (target, mode, document with its title, coverage, sections and "
+    "flows, and every claim) as your final answer, one JSON object and nothing else.\n"
+    "The brief you built the map from follows the errors; its \"Fixing validation errors\" and \"Eval mode (no "
+    "Bash tool)\" sections apply.\n\nErrors:\n")
+
+
+def map_fix_prompt(repo_dir: Path, map_file: Path, map_lines: int, errors: list[str], round_no: int,
+                   rounds: int) -> str:
+    """A fix round's prompt: the head, the errors verbatim (one per line), then the Cartographer brief. Pure."""
+    head = (MAP_FIX_HEAD.replace("{repo_dir}", str(repo_dir)).replace("{map_file}", str(map_file))
+            .replace("{round}", str(round_no)).replace("{rounds}", str(rounds)).replace("{lines}", str(map_lines))
+            .replace("{n}", str(len(errors))))
+    return head + "".join(f"- {e}\n" for e in errors) + "\n-----\n\n" + cartographer_body()
+
+
+def fix_budget(cap: float, spent: float) -> float:
+    """What is left of the map cap for the next fix round, rounded down to the cent (0.0 when none is left)."""
+    return max(0.0, math.floor(round((cap - spent) * 100, 6)) / 100)
+
+
 def compact_json(path: Path) -> str:
     return json.dumps(json.loads(path.read_text()), separators=(",", ":"))
 
@@ -130,10 +166,24 @@ def run_spec(cfg: dict, item: Item, *, prompt: str, workdir: Path, config_dir: P
         json_schema=compact_json(MAP_SCHEMA if item.kind == "map" else ANSWER_SCHEMA), claude_bin=claude_bin)
 
 
-def build_command(cfg: dict, item: Item, spec: isolate.RunSpec, parent_env: dict) -> isolate.Run:
-    """isolate.build_run, with the map build's budget set above isolate's $5 one-shot ceiling when configured."""
+def fix_run_spec(cfg: dict, *, prompt: str, workdir: Path, map_file: Path, budget: float, config_dir: Path,
+                 home_dir: Path, claude_bin: str) -> isolate.RunSpec:
+    """A map fix round: the build's settings plus the previous map as an extra file (isolate's "map" condition,
+    which validates that the file lives outside the working dir)."""
+    return isolate.RunSpec(
+        condition="map", working_dir=workdir, tools=REPO_TOOLS, extra_file=map_file, model=cfg["model"],
+        effort=cfg["effort"], budget_usd=min(budget, 5.0), config_dir=config_dir, home_dir=home_dir, prompt=prompt,
+        output_format="stream-json", json_schema=compact_json(MAP_SCHEMA), claude_bin=claude_bin)
+
+
+def build_command(cfg: dict, item: Item, spec: isolate.RunSpec, parent_env: dict,
+                  budget: float | None = None) -> isolate.Run:
+    """isolate.build_run, with the map build's budget set above isolate's $5 one-shot ceiling when configured.
+    budget: a fix round's own cap (what is left of caps.map_usd)."""
     run = isolate.build_run(spec, parent_env)
     cap = cfg["caps"]["map_usd"] if item.kind == "map" else cfg["caps"]["answer_usd"]
+    if budget is not None:
+        cap = budget
     i = run.argv.index("--max-budget-usd")
     run.argv[i + 1] = f"{cap:g}"
     return run
@@ -152,15 +202,23 @@ def child_env_source(token: str | None, parent: dict) -> dict:
 # Estimates (dry run only)
 
 def estimate(cfg: dict, items: list[Item]) -> dict:
-    """Low/high cost and wall minutes from config [estimate]: labelled estimates, not measurements."""
+    """Low/high cost and wall minutes from config [estimate]: labelled estimates, not measurements.
+
+    A map build's low end is the build alone (the map passes the check); its high end allows every fix round:
+    cost up to caps.map_usd (which covers the build and its fixes), time up to (1 + map_fix_rounds) builds."""
     est = cfg["estimate"]
+    rounds = int(cfg.get("map_fix_rounds", 0))
     lo_usd = hi_usd = lo_min = hi_min = 0.0
+    map_hi_usd = min(cfg["caps"]["map_usd"], est["map_build_usd"][1] * (1 + rounds))
+    map_hi_min = est["map_build_min"][1] * (1 + rounds)
     for it in items:
         key = "map_build" if it.kind == "map" else it.condition
         lo_usd += est[f"{key}_usd"][0]
-        hi_usd += est[f"{key}_usd"][1]
         lo_min += est[f"{key}_min"][0]
-        hi_min += est[f"{key}_min"][1]
+        hi_usd += map_hi_usd if it.kind == "map" else est[f"{key}_usd"][1]
+        hi_min += map_hi_min if it.kind == "map" else est[f"{key}_min"][1]
     conc = max(1, int(cfg.get("concurrency", 1)))
     return {"usd": (lo_usd, hi_usd), "minutes_sequential": (lo_min, hi_min),
-            "minutes_wall": (lo_min / conc, hi_min / conc), "concurrency": conc}
+            "minutes_wall": (lo_min / conc, hi_min / conc), "concurrency": conc,
+            "map_build": {"fix_rounds": rounds, "usd": (est["map_build_usd"][0], map_hi_usd),
+                          "min": (est["map_build_min"][0], map_hi_min)}}

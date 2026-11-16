@@ -92,6 +92,20 @@ def usage_summary(result: dict | None) -> dict:
             "num_turns": int(result.get("num_turns") or 0), "duration_ms": int(result.get("duration_ms") or 0)}
 
 
+def sum_usage(parts: list[dict]) -> dict:
+    """usage_summary rows added up (a map build plus its fix rounds): tokens, cache writes, cost, turns and
+    duration summed; models the union."""
+    out = usage_summary(None)
+    for u in parts:
+        for k in TOKEN_FIELDS:
+            out["tokens"][k] += u["tokens"][k]
+        for k in ("cache_write_1h", "cache_write_5m", "num_turns", "duration_ms"):
+            out[k] += u[k]
+        out["cost_usd"] += u["cost_usd"]
+        out["models"] = sorted(set(out["models"]) | set(u["models"]))
+    return out
+
+
 def parse_answer(result: dict | None) -> tuple[dict | None, str]:
     """The answer object ({items, text}) and how it was read, or (None, why not)."""
     if not result:

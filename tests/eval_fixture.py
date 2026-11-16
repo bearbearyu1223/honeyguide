@@ -171,16 +171,41 @@ def trace() -> dict:
     return {"events": ev}
 
 
+def _span(text: str, claim: str | None = None) -> dict:
+    return {"text": text, **({"claim": claim} if claim else {})}
+
+
+# A map that passes the runner's check (strict structure, draft rules) with one anchor that does not resolve (c3):
+# unresolved anchors are counted, never a reason to refuse the map.
+_TOPICS = [
+    ("purpose", [_span("The package computes a value from an input number: "),
+                 _span("`compute` calls `helper` and then `finish`", "c1"), _span(", and "),
+                 _span("`finish` doubles its input", "c2"), _span(".")]),
+    ("users", [_span("It is a small example used to test the evaluation runner, so its users are the tests.")]),
+    ("capabilities", [_span("It can compute a doubled successor of a number, and it negates negative numbers.")]),
+    ("commands", [_span("There is one script that you run with Python to print a result.")]),
+    ("entry-points", [_span("The script starts the work: "), _span("`scripts/main.py` runs `Engine.run`", "c3"),
+                      _span(".")]),
+    ("components", [_span("All of the logic lives in one core module, which the script imports.")]),
+    ("start-here", [_span("Start by reading the compute function in the core module, then the script.")]),
+]
 MAP_OUTPUT = {
     "target": "map", "mode": "replace",
-    "document": {"title": "fx", "sections": [
-        {"id": "overview", "kind": "overview", "title": "Overview", "blocks": [
-            {"id": "b-purpose", "type": "text", "topic": "purpose",
-             "spans": [{"text": "`compute` calls `helper` and then `finish`", "claim": "c1"},
-                       {"text": ", and "}, {"text": "`finish` doubles its input", "claim": "c2"}]},
-            {"id": "b-list", "type": "list", "spans": [{"text": "Entry points:"}],
-             "items": [{"spans": [{"text": "`scripts/main.py` runs `Engine.run`", "claim": "c3"}]}]}]}],
-        "flows": []},
+    "document": {
+        "title": "fx",
+        "coverage": {"deep": [{"area": "pkg/core.py", "why": "all of the logic"}],
+                     "scanned": [{"area": "scripts/main.py", "why": "the entry script"}],
+                     "skipped": [{"area": "tests/", "why": "tests only"}]},
+        "sections": [
+            {"id": "overview", "kind": "overview", "title": "Overview",
+             "blocks": [{"id": f"b-{k}", "type": "text", "topic": k, "spans": sp} for k, sp in _TOPICS]},
+            {"id": "flows", "kind": "flows", "title": "Flows", "blocks": [
+                {"id": "b-flow-run", "type": "flow", "flow": "run",
+                 "spans": [_span("Running the engine computes the value in two steps.")]}]}],
+        "flows": [{"id": "run", "title": "What happens when you call Engine.run()",
+                   "lanes": [{"id": "core", "label": "core.py", "path": "pkg/core.py"}],
+                   "hops": [{"from": "core", "to": "core", "call": "compute(x)", "trace": "unseen",
+                             "claim": "c4"}]}]},
     "claims": [
         {"key": "c1", "text": "compute calls helper then finish", "evidence": "read_in_source",
          "anchors": [{"path": "pkg/core.py", "anchor": "y = helper(x)"}]},
@@ -188,8 +213,18 @@ MAP_OUTPUT = {
          "anchors": [{"path": "pkg/core.py", "anchor": "return y * 2"}]},
         {"key": "c3", "text": "main runs Engine.run", "evidence": "read_in_source",
          "anchors": [{"path": "scripts/main.py", "anchor": "this text is not in the file"}]},
+        {"key": "c4", "text": "Engine.run calls compute", "evidence": "read_in_source",
+         "anchors": [{"path": "pkg/core.py", "anchor": "return compute(x)"}]},
     ],
 }
+
+
+def map_without_flows() -> dict:
+    """MAP_OUTPUT as the pilot's Cartographer returned nanochat's: no document.flows, so its flow block names a
+    path record that isn't there (and the hop's claim c4 is shown nowhere)."""
+    m = json.loads(json.dumps(MAP_OUTPUT))
+    del m["document"]["flows"]
+    return m
 
 
 def rules() -> list[dict]:
@@ -243,6 +278,7 @@ seed = 0
 concurrency = 1
 timeout_answer_s = 60
 timeout_map_s = 60
+map_fix_rounds = 2
 answers_dir = "{tmp / 'answers'}"
 
 [caps]

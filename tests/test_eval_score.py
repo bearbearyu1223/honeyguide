@@ -190,7 +190,7 @@ def test_capture_end_to_end(scored, capsys):
     # by type: explore callers F1 = 2PR/(P+R) with P 2/3, R 2/4; flow LCS 2 of 3 required
     assert row("  callers ")[2:4] == ["0.000", "0.571"] and row("  flow ")[2:4] == ["0.000", "0.667"]
     assert "other path 3, invented 3" in out and "decided are not callers 2" in out
-    assert "anchors 2/3 resolved" in out and "unresolved: c3 scripts/main.py (not_found)" in out
+    assert "anchors 3/4 resolved" in out and "unresolved: c3 scripts/main.py (not_found)" in out
     assert "map - explore" in out and "n=3" in out
     assert "fx-cal-01__outline__p1 capped (error_max_budget_usd)" in out
     assert "graded 0 of 6 finished answers" in out and "awaiting grades" in out
