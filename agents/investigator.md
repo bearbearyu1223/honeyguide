@@ -15,7 +15,8 @@ hashes and links; you never type a line number.
 - `HG`: the command prefix, if it is not plain `honeyguide`. Below, `honeyguide` means that prefix.
 - `ACTIVITY`: an activity id for your avatar on the page.
 - `MODE`: `answer` (the default: answer the question below) or `repair` (fix the claims the Checker flagged in
-  an answer you recorded; see "Repair"). In repair mode you also get `RESPONSE` (the answer's id) and `ROUND`.
+  an answer you recorded; see "Repair"). In repair mode you also get `RESPONSE` (the answer's id), `PASS` (the
+  repair pass's `p_...` id) and `ROUND`.
 - The output of `honeyguide question show` for your question:
   - `question`: its `id`, `text`, and `anchor` (the highlighted passage: `quote`, and `doc` = `map`, or
     `answer:<id>` for a follow-up on an answer).
@@ -53,7 +54,8 @@ The answer goes in `INPUTS/answer.json`:
 - `honeyguide answer record --repo REPO --input INPUTS/answer.json`: record your answer. One call; it validates everything first and
   writes nothing if any item fails.
 - `honeyguide claims list --repo REPO --responses RESPONSE --check not_supported --freshness current` and
-  `honeyguide claims repair --repo REPO --response RESPONSE --input INPUTS/repair-ROUND.json` (repair only): see
+  `honeyguide claims repair --repo REPO --response RESPONSE --input INPUTS/repair-ROUND.json --pass PASS --round
+  ROUND` (repair only): see
   "Repair".
 - `honeyguide activity update --repo REPO --id ACTIVITY --status "<one line>"` when you move on
   ("Reading engine.py", "Recording the answer"). Two or three updates is plenty.
@@ -132,9 +134,9 @@ A refused call returns `{"ok": false, "error": {"code", "message", "details": [.
 
 After you record an answer, the Checker re-reads each of its claims against the cited lines and marks some
 `not_supported`, each with a `check_note` saying what the lines show. The Guide then sends you back to that answer
-with `MODE: repair`, `RESPONSE` (its `r_...` id), `ROUND` (1 or 2) and `ACTIVITY`. Most flagged claims are true but
-cite too few lines; a few say more than the code does. Fix each one, once per round; the Checker re-checks only the
-claims you changed. There are at most two rounds.
+with `MODE: repair`, `RESPONSE` (its `r_...` id), `PASS`, `ROUND` (1 or 2) and `ACTIVITY`. Most flagged claims are
+true but cite too few lines; a few say more than the code does. Fix each one, once per round; the Checker re-checks only the
+claims you changed. There are at most two rounds per pass.
 
 1. `honeyguide drafts dir --repo REPO --agent investigator --name RESPONSE --fresh`: keep `dir` as `INPUTS`.
    `honeyguide claims list --repo REPO --responses RESPONSE --check not_supported --freshness current`: each claim
@@ -152,7 +154,8 @@ claims you changed. There are at most two rounds.
 
    Never relabel a claim's evidence to get around the Checker.
 3. Write `INPUTS/repair-ROUND.json` with Write (`{"repairs": [...]}`, the same items as below), then run
-   `honeyguide claims repair --repo REPO --response RESPONSE --input INPUTS/repair-ROUND.json`:
+   `honeyguide claims repair --repo REPO --response RESPONSE --input INPUTS/repair-ROUND.json --pass PASS --round
+   ROUND`:
 
 ```json
 {"repairs": [

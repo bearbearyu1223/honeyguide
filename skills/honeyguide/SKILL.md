@@ -145,18 +145,20 @@ Checker one look at each fix. It runs after the map check in Explore (step 5) an
 
 1. **Count**: `honeyguide claims list --repo REPO --scope map --check not_supported --freshness current --json`.
    `N` = its `count`. If `N` is 0, the pass is done.
+   **Pass id**: `honeyguide claims repair-pass --repo REPO`; keep its `pass` (`p_` + 12 hex) as `PASS`. One per
+   repair pass, used by both rounds; mint a new one for every later pass (a later Refresh, a re-run).
 2. **Repair**, round `R` (1, then 2): `honeyguide activity start --repo REPO --agent cartographer --status
-   "Repairing N claims"`, dispatch `honeyguide:cartographer` with `MODE: repair`, `ROUND: R` and `ACTIVITY`. For
+   "Repairing N claims"`, dispatch `honeyguide:cartographer` with `MODE: repair`, `PASS`, `ROUND: R` and `ACTIVITY`. For
    each flagged claim it widens or adds anchors, rewrites the claim narrower, or retires it, and saves them all
    with `honeyguide claims repair --input <file>` (ids are kept, so questions and notes survive; every changed
-   claim is back to unchecked). It reports `changed` (the ids it anchored or rewrote), `retired`, and the ids it left. Finish the
+   claim is back to unchecked; `--pass PASS --round R` record which pass and round each repair belongs to). It reports `changed` (the ids it anchored or rewrote), `retired`, and the ids it left. Finish the
    activity.
 3. **Re-check** only the changed claims: if `changed` has `M` ids, `honeyguide activity start --repo REPO
    --agent checker --status "Re-checking M"`, dispatch `honeyguide:checker` with `SCOPE:` those ids, finish
    the activity.
 4. **Again, once**: count as in step 1. If `R` is 1 and `N` > 0, run round 2 (steps 2-3) on what is left. Stop
-   after round 2: `claims repair` refuses a third repair of a claim, and what is still not_supported stays
-   flagged; the page lists it under "Needs a look".
+   after round 2: `claims repair` refuses a third repair of a claim in one pass, and what is still not_supported
+   stays flagged; the page lists it under "Needs a look". A later pass (new `PASS`) gets two rounds of its own.
 5. Tell the user, per round: repaired (anchors widened, claims rewritten), retired, re-checked supported, and
    still flagged.
 
@@ -167,16 +169,20 @@ The same pass as section 7, run by the agent that wrote the answer (`honeyguide:
 
 1. **Count**: `honeyguide claims list --repo REPO --responses <response id> --check not_supported --freshness
    current`. `N` = its `count`. If `N` is 0, the pass is done.
+   **Pass id**: `honeyguide claims repair-pass --repo REPO`; keep its `pass` as `PASS` (one per answer's pass,
+   used by both rounds; parallel passes on different answers each get their own).
 2. **Repair**, round `R` (1, then 2): `honeyguide activity start --repo REPO --agent <that agent> --question Q
-   --status "Repairing N claims"`, dispatch it with `MODE: repair`, `RESPONSE: <response id>`, `ROUND: R`,
-   `REPO`, `HG` and `ACTIVITY`. It widens anchors, narrows claims (and the answer's sentence that shows them) or
-   retires them with `honeyguide claims repair --response <response id> --input <file>`, ids kept, and reports
+   --status "Repairing N claims"`, dispatch it with `MODE: repair`, `RESPONSE: <response id>`, `PASS: <pass id>`,
+   `ROUND: R`, `REPO`, `HG` and `ACTIVITY`. It widens anchors, narrows claims (and the answer's sentence that shows them) or
+   retires them with `honeyguide claims repair --response <response id> --pass PASS --round R --input <file>`,
+   ids kept, and reports
    `changed`, `retired` and what it left. Finish the activity.
 3. **Re-check** only the changed claims: `M` = the number of `changed` ids; `honeyguide activity start --repo
    REPO --agent checker --question Q --status "Re-checking M claims"`, dispatch `honeyguide:checker` with `SCOPE:`
    those ids, finish the activity.
-4. **Again, once**: count as in step 1. If `R` is 1 and `N` > 0, run round 2 (steps 2-3). Stop after round 2;
-   what is still not_supported stays flagged on the answer.
+4. **Again, once**: count as in step 1. If `R` is 1 and `N` > 0, run round 2 (steps 2-3). Stop after round 2
+   (`claims repair` refuses a third repair of a claim in one pass); what is still not_supported stays flagged on
+   the answer.
 
 The answer stays answered throughout: the page shows each repaired claim unchecked until its re-check lands.
 

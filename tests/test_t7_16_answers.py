@@ -11,6 +11,8 @@ from honeyguide import inbox
 from honeyguide.mapdoc import space_sentences, spans_text, text_revision
 from honeyguide.repair import MAX_ROUNDS
 
+P1, P2 = "p_0000000000a1", "p_0000000000b2"
+
 GEN = {"path": "engine.py", "anchor": "def generate(self, tokens):", "extent": "block"}
 CALL = {"path": "engine.py", "anchor": "return list(engine.generate(prompt))"}
 
@@ -93,7 +95,7 @@ def test_repair_an_answer_keeps_ids_resets_the_check_and_rewrites_its_spans(tmp_
     w, q, r, ids = answered(tmp_path, monkeypatch)
     map_before = json.dumps(w.store.load("map"), sort_keys=True)
     f = tmp_path / "repair-1.json"
-    f.write_text(json.dumps({"repairs": [
+    f.write_text(json.dumps({"pass": P1, "round": 1, "repairs": [
         {"claim": ids["s2"], "action": "rewrite", "text": "the generator yields once per loop step",
          "span": "The generator yields once per loop step.", "anchors": [GEN]},
         {"claim": ids["s3"], "action": "anchor",
@@ -123,7 +125,7 @@ def test_repair_an_answer_refuses_other_claims_and_stops_after_two_rounds(tmp_pa
     w, q, r, ids = answered(tmp_path, monkeypatch, agent="investigator")
     before = json.dumps(w.store.load("answers"), sort_keys=True)
     map_claim = w.store.load("map")["claims"][0]["id"]
-    code, out = w.call("claims", "repair", data={"response": r["id"], "repairs": [
+    code, out = w.call("claims", "repair", data={"pass": P1, "round": 1, "response": r["id"], "repairs": [
         {"claim": map_claim, "action": "retire", "reason": "x"},
         {"claim": ids["s2"], "action": "rewrite", "text": "narrower"},           # shown by a span: needs span
         {"claim": ids["s1"], "action": "retire", "reason": "supported"}]})
@@ -133,26 +135,29 @@ def test_repair_an_answer_refuses_other_claims_and_stops_after_two_rounds(tmp_pa
     assert "repair takes not_supported claims only" in details
     assert json.dumps(w.store.load("answers"), sort_keys=True) == before
     # a map repair can't reach an answer's claim, and an unknown answer is not_found
-    code, out = w.call("claims", "repair", data={"repairs": [{"claim": ids["s3"], "action": "retire", "reason": "x"}]})
+    code, out = w.call("claims", "repair", data={"pass": P1, "round": 1, "repairs": [{"claim": ids["s3"], "action": "retire", "reason": "x"}]})
     assert code == 1 and "no such map claim" in out["error"]["details"][0]
-    code, out = w.call("claims", "repair", data={"response": "r_000000000000",
+    code, out = w.call("claims", "repair", data={"pass": P1, "round": 1, "response": "r_000000000000",
                                                  "repairs": [{"claim": ids["s3"], "action": "retire", "reason": "x"}]})
     assert code == 1 and out["error"]["code"] == "not_found"
-    # at most two rounds, as on the map
+    # at most two rounds per pass, as on the map; the next pass gets its own two, recorded as rounds 1 and 2
     widen = {"response": r["id"], "repairs": [{"claim": ids["s3"], "action": "anchor",
                           "anchors": [{"path": "engine.py", "anchor": "def __init__(self, model):", "extent": "block"}]}]}
-    for n in range(1, MAX_ROUNDS + 1):
-        code, out = w.call("claims", "repair", data=widen)
-        assert code == 0 and out["rounds"] == {ids["s3"]: n}, out
-        code, out = w.call("verdict", "set", "--id", ids["s3"], "--verdict", "not_supported", "--note", f"round {n}")
-        assert code == 0, out
-    code, out = w.call("claims", "repair", data=widen)
-    assert code == 1 and "already repaired 2 times" in out["error"]["details"][0]
+    for pid in (P1, P2):
+        for n in range(1, MAX_ROUNDS + 1):
+            code, out = w.call("claims", "repair", data={**widen, "pass": pid, "round": n})
+            assert code == 0 and out["rounds"] == {ids["s3"]: n}, out
+            code, out = w.call("verdict", "set", "--id", ids["s3"], "--verdict", "not_supported", "--note", f"round {n}")
+            assert code == 0, out
+        code, out = w.call("claims", "repair", data={**widen, "pass": pid, "round": MAX_ROUNDS})
+        assert code == 1 and f"already repaired 2 times in pass {pid}" in out["error"]["details"][0]
+    c = next(c for c in response(w, r["id"])["claims"] if c["id"] == ids["s3"])
+    assert [(e["pass"], e["round"]) for e in c["repairs"]] == [(P1, 1), (P1, 2), (P2, 1), (P2, 2)]
 
 
 def test_retire_an_answer_claim(tmp_path, monkeypatch):
     w, q, r, ids = answered(tmp_path, monkeypatch)
-    code, out = w.call("claims", "repair", data={"response": r["id"], "repairs": [
+    code, out = w.call("claims", "repair", data={"pass": P1, "round": 1, "response": r["id"], "repairs": [
         {"claim": ids["s2"], "action": "retire", "reason": "the code yields once per step, not three times"}]})
     assert code == 0 and out["retired"] == [ids["s2"]] and out["spans_rewritten"] == 0
     c = next(c for c in response(w, r["id"])["claims"] if c["id"] == ids["s2"])

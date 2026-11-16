@@ -66,7 +66,8 @@ Rules, all checked before anything is written:
 | `claims save` | `{target: "map", mode: "replace"\|"add", commit?, document?, claims: [draft], retire?: [{claim, reason}]}` | `{saved: [{key, id}], revision, retired: [id], warnings}` |
 | `claims list` | `{scope?: "map"\|"answers"\|"all", responses?: [r_...], check?, freshness?, ids?}` | `{claims: [claim + response], count}` |
 | `claims retire` | `{claim \| claims: [id], reason}` | `{retired: [id], already_retired: [id]}` |
-| `claims repair` | `{repairs: [{claim, action: "anchor"\|"rewrite"\|"retire", anchors?, text?, span?, reason?}], response?, commit?}`; flag `--response r_...` | `{changed: [id], retired: [id], spans_rewritten, revision, still_not_supported, rounds: {id: n}, response?}` |
+| `claims repair` | `{pass, round, repairs: [{claim, action: "anchor"\|"rewrite"\|"retire", anchors?, text?, span?, reason?}], response?, commit?}`; flags `--response r_...`, `--pass p_...`, `--round 1\|2` | `{changed: [id], retired: [id], spans_rewritten, revision, still_not_supported, pass, round, rounds: {id: n}, response?}`; `rounds` = each claim's repairs in this pass |
+| `claims repair-pass` | none | `{pass}`: a fresh repair-pass id, `p_` + 12 hex (random; nothing stored) |
 | `drafts dir` | none; `--agent NAME [--name N] [--fresh]` | `{dir}`: `<memory>/drafts/<agent>/[<name>/]`, created, for `--input` files |
 | `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
 | `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
@@ -109,7 +110,12 @@ draft rules); `rewrite` replaces its `text`, optionally its anchors, and, throug
 showing it (required when any span does; the document's revision is recomputed); `retire` retires it with
 `freshness_reason` "repair: <reason>". Ids never change. Every anchored or rewritten claim gets `check:
 "unchecked"`, an empty `check_note` and no `checked_at`; each repaired claim gains `repairs: [{round, action, at,
-check_note, text, anchors}]` (what it was before). A claim with 2 repairs is refused (`MAX_ROUNDS`). All items are
+check_note, text, anchors, pass}]` (what it was before). Every call names its repair `pass` (from `claims
+repair-pass`; the Guide mints one per repair pass and passes it to both rounds) and its `round` in that pass (1 or 2);
+both are required (`bad_input` otherwise). The cap is per claim **per pass**: a claim with 2 repairs in this pass is
+refused (`MAX_ROUNDS`), and so is a round at or below one it already had in this pass (a repeated round 1, or round
+1 after round 2). History entries saved without `pass` (before passes existed) count as one legacy pass, so they
+never use up a new pass's rounds. All items are
 checked before anything is written. `claims list` rows carry `repairs`, and `spans: true` adds `shown_as` (the
 span texts) to map claims.
 

@@ -16,12 +16,19 @@ show the claim, and the answer's text and revision follow. Without it, map claim
 
 Claim ids never change, so questions and notes on them survive. Every anchored or rewritten claim goes back to
 ``check: unchecked`` (its old verdict and note move into its ``repairs`` history), so the Checker re-checks exactly
-the changed claims. A claim takes at most ``MAX_ROUNDS`` repairs; after that it stays flagged. Nothing is written
-unless the whole call is valid.
+the changed claims. Nothing is written unless the whole call is valid.
+
+Passes and rounds: every call names its repair ``pass`` (an id ``p_<12 hex>`` from ``claims repair-pass``, which the
+Guide mints once per repair pass) and its ``round`` within that pass (1 or 2). A claim takes at most ``MAX_ROUNDS``
+repairs **per pass**, one per round; after that it stays flagged until a later pass. Each ``repairs`` history entry
+records its ``pass`` and ``round``. Entries saved before passes existed have no ``pass``; together they count as one
+legacy pass, so they never use up a new pass's rounds.
 """
 
 from __future__ import annotations
 
+import re
+import secrets
 from typing import Any
 
 from .claims import commit_of, label_errors, resolve_one
@@ -33,6 +40,30 @@ from .store import Store, now_iso
 ACTIONS = ("anchor", "rewrite", "retire")
 MAX_ROUNDS = 2
 MAX_REASON = 500
+PASS_ID = re.compile(r"p_[0-9a-f]{12}")
+LEGACY_PASS = None   # the ``pass`` of a history entry saved before passes existed
+
+
+def new_pass() -> dict:
+    """``claims repair-pass``: a fresh repair-pass id (48 random bits; nothing is stored)."""
+    return {"pass": "p_" + secrets.token_hex(6)}
+
+
+def _pass_round(data: dict) -> tuple[str, int]:
+    pid, rnd = data.get("pass"), data.get("round")
+    errors = []
+    if not isinstance(pid, str) or not PASS_ID.fullmatch(pid):
+        errors.append("pass: needs the repair pass's id (p_ + 12 hex, from claims repair-pass)")
+    if isinstance(rnd, bool) or not isinstance(rnd, int) or not 1 <= rnd <= MAX_ROUNDS:
+        errors.append(f"round: needs the round within the pass, 1 to {MAX_ROUNDS}")
+    if errors:
+        raise ContractError("bad_input", "; ".join(errors), errors)
+    return pid, rnd
+
+
+def pass_history(claim: dict, pid: str | None) -> list[dict]:
+    """The claim's repairs in pass ``pid`` (``LEGACY_PASS``: the entries saved without a pass)."""
+    return [e for e in claim.get("repairs") or [] if e.get("pass") == pid]
 
 
 def _loc(anchor: dict) -> str:
@@ -74,10 +105,11 @@ def _response_of(answers: dict, rid: str) -> dict:
 
 
 def repair(repo: Repo, store: Store, data: Any) -> dict:
-    """``claims repair``: ``{repairs: [{claim, action: anchor|rewrite|retire, anchors?, text?, span?, reason?}],
-    response?, commit?}``. Without ``response``, map claims; with it, that answer's claims. Anchors resolve at
+    """``claims repair``: ``{pass, round, repairs: [{claim, action: anchor|rewrite|retire, anchors?, text?, span?,
+    reason?}], response?, commit?}``. Without ``response``, map claims; with it, that answer's claims. Anchors resolve at
     ``commit`` (default: the map's commit, or the answer's)."""
     items = _items(data)
+    pid, rnd = _pass_round(data)
     rid = data.get("response")
     if rid is not None and (not isinstance(rid, str) or not rid.strip()):
         raise ContractError("bad_input", "response must be an answer id (r_...)")
@@ -143,8 +175,12 @@ def repair(repo: Repo, store: Store, data: Any) -> dict:
             return [f"{cid}: {claim.get('freshness')}; repair takes current claims (stale ones go through refresh)"]
         if claim.get("check") != "not_supported":
             return [f"{cid}: check is {claim.get('check')}; repair takes not_supported claims only"]
-        if len(claim.get("repairs") or []) >= MAX_ROUNDS:
-            return [f"{cid}: already repaired {MAX_ROUNDS} times; it stays flagged"]
+        done = pass_history(claim, pid)
+        if len(done) >= MAX_ROUNDS:
+            return [f"{cid}: already repaired {MAX_ROUNDS} times in pass {pid}; it stays flagged"]
+        if any(e.get("round", 0) >= rnd for e in done):
+            last = max(e.get("round", 0) for e in done)
+            return [f"{cid}: already repaired in round {last} of pass {pid}; this call is round {rnd}"]
         if "anchors" in plan:
             return label_errors(claim["evidence"], plan["anchors"], cid)
         return []
@@ -181,7 +217,7 @@ def repair(repo: Repo, store: Store, data: Any) -> dict:
         for cid, plan in plans.items():
             claim = by_id[cid]
             history = list(claim.get("repairs") or [])
-            entry = {"round": len(history) + 1, "action": plan["action"], "at": stamp,
+            entry = {"pass": pid, "round": rnd, "action": plan["action"], "at": stamp,
                      "check_note": claim.get("check_note") or "", "text": claim["text"],
                      "anchors": [_loc(a) for a in claim["anchors"]]}
             history.append(entry)
@@ -223,5 +259,6 @@ def repair(repo: Repo, store: Store, data: Any) -> dict:
             store.write_held("answers", layer)
         left = [c["id"] for c in claims if c.get("check") == "not_supported" and c.get("freshness") == "current"]
     return {"changed": changed, "retired": retired, "spans_rewritten": spans_rewritten, "revision": rev,
-            "still_not_supported": len(left), "rounds": {cid: len(by_id[cid]["repairs"]) for cid in plans},
+            "still_not_supported": len(left), "pass": pid, "round": rnd,
+            "rounds": {cid: len(pass_history(by_id[cid], pid)) for cid in plans},
             **({"response": rid} if rid is not None else {})}

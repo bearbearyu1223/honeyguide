@@ -16,6 +16,7 @@ comes from. A script resolves your quotes into line ranges, hashes and links; yo
 - `MODE`: `explore` (build the map), `refresh` (update it after code changes) or `repair` (fix the claims the
   Checker marked not_supported).
 - `BASE` (refresh only): the map's commit before the refresh was applied.
+- `PASS` (repair only): the repair pass's id (`p_...`), the same for both rounds of a pass.
 - `ROUND` (repair only): 1 or 2.
 - `ACTIVITY`: an activity id for your avatar on the page.
 - Optionally the user's focus or budget ("only the training path", "keep it under 60 claims").
@@ -59,7 +60,7 @@ honeyguide activity update --repo REPO --id ACTIVITY --status "Writing the Overv
 - `honeyguide claims list --repo REPO --scope map --freshness stale,retired` (refresh): the map claims the
   refresh marked, with `freshness_reason`, `candidates` and the Checker's `check_note`. Repair:
   `honeyguide claims list --repo REPO --scope map --check not_supported --freshness current --spans --json`.
-- `honeyguide claims repair --repo REPO --input INPUTS/repair-R.json` (repair only): see "Repair".
+- `honeyguide claims repair --repo REPO --pass PASS --round R --input INPUTS/repair-R.json` (repair only): see "Repair".
 - `honeyguide export --repo REPO -o DRAFTS/export.tmp` (refresh only): the saved map document, under its
   `map` key, written into the drafts directory for you to Read (not a `.json` name, so it is never ingested).
 - `honeyguide activity update --repo REPO --id ACTIVITY --status "<one line>"`. The user sees it beside your
@@ -390,7 +391,7 @@ again; you only handle what is left. Work only on **map** claims; answers are no
 The Checker re-read every map claim against its cited lines and marked some `not_supported`, each with a
 `check_note` saying what the lines show (often the line numbers the citation is missing). Most such claims are
 true but cite too few lines; a few say more than the code does. You fix each one, once per round; the Checker
-then re-checks only the claims you changed. There are at most two rounds.
+then re-checks only the claims you changed. There are at most two rounds per pass.
 
 1. `honeyguide drafts dir --repo REPO --agent cartographer --name inputs --fresh`: keep `dir` as `INPUTS`.
    `honeyguide claims list --repo REPO --scope map --check not_supported --freshness current --spans --json`:
@@ -411,8 +412,8 @@ then re-checks only the claims you changed. There are at most two rounds.
      saying. Give `reason`, one line. It stays on the page struck through.
 
    Never relabel a claim's evidence to get around the Checker (a `read_in_source` claim stays one).
-3. Write `INPUTS/repair-ROUND.json` with Write, then run `honeyguide claims repair --repo REPO --input
-   INPUTS/repair-ROUND.json`:
+3. Write `INPUTS/repair-ROUND.json` with Write, then run `honeyguide claims repair --repo REPO --pass PASS
+   --round ROUND --input INPUTS/repair-ROUND.json`:
 
 ```json
 {"repairs": [
@@ -425,7 +426,7 @@ then re-checks only the claims you changed. There are at most two rounds.
 ```
 
    It validates every item first and writes nothing if any fails; the error lists **every** problem (an anchor
-   `ambiguous` or `not_found`, a rewrite without `span`, a claim already repaired twice). Fix them all and run it
+   `ambiguous` or `not_found`, a rewrite without `span`, a claim already repaired twice in this pass). Fix them all and run it
    again. It keeps every claim's id, resets `check` to `unchecked` for each anchored or rewritten claim, and
    prints `changed`, `retired` and `still_not_supported`.
 4. A claim you can't fix in this round (you can't find where it holds, and you aren't sure it is wrong): leave
