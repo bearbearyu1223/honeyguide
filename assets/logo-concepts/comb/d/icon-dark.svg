@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <style>.c{stroke:#C98348}.f{fill:#C98348}.t{stroke:#E2C25C}.d{fill:#E2C25C}</style>
+  <defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="96" height="96"><rect width="96" height="96" fill="#fff"/><path d="M48 83.2 L48 31.5" fill="none" stroke="#000" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/></mask></defs>
+  <g mask="url(#m)"><path class="f" d="M28.9 44.8 L46 54.7 L46 74.3 L28.9 84.2 L11.9 74.3 L11.9 54.7 Z M67.1 44.8 L84.1 54.7 L84.1 74.3 L67.1 84.2 L50 74.3 L50 54.7 Z"/></g>
+  <path class="d" d="M48 11.8 L65.1 21.7 L65.1 41.3 L48 51.2 L30.9 41.3 L30.9 21.7 Z"/>
+  <path class="t" d="M48 83.2 L48 31.5" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
