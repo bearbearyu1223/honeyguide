@@ -1,0 +1,10 @@
+{
+  "status": "provisional",
+  "scope": "specified successful paths",
+  "flows": [
+    {"repo": "nanochat", "flow": "Base model training", "labels": ["R","R","R","R","R","R","O","R"]},
+    {"repo": "nanochat", "flow": "Autoregressive inference", "labels": ["R","R","R","R","R","R","R","R"]},
+    {"repo": "waku-agent", "flow": "Agent tool-use loop", "labels": ["R","R","O","R","R","R","R","R","R"]},
+    {"repo": "waku-agent", "flow": "Persistent memory lifecycle", "labels": ["R","R","R","R","O","R","R"]}
+  ]
+}

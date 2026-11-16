@@ -1,0 +1,167 @@
+{
+ "bounds": {
+  "questions": [
+   6,
+   15
+  ],
+  "rubric_bullets": [
+   2,
+   5
+  ],
+  "target": 10
+ },
+ "chore": "T5 why/how questions",
+ "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+ "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "next_number": 11,
+ "questions": [
+  {
+   "id": "wk-why-01",
+   "relevant": "waku/; docs/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain transport-specific input/output handling",
+    "shared agent behavior",
+    "reuse",
+    "isolation of integration concerns"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "Why does waku-agent separate gateway integrations from the core agent loop?"
+  },
+  {
+   "id": "wk-why-02",
+   "relevant": "waku/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Cover model request",
+    "tool-call detection",
+    "dispatch",
+    "result messages",
+    "iteration, termination conditions"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How does the agent loop decide whether to execute a tool or return a response?"
+  },
+  {
+   "id": "wk-why-03",
+   "relevant": "waku/; sql/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain persistence across sessions",
+    "local ownership",
+    "structured queries",
+    "tradeoffs against purely in-context memory"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "Why does waku-agent maintain persistent memory in SQLite?"
+  },
+  {
+   "id": "wk-why-04",
+   "relevant": "waku/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain the gate's decision point",
+    "relevance/retention criteria",
+    "storage path",
+    "why not every conversation should be saved"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How does the memory gate decide whether an interaction should be remembered?"
+  },
+  {
+   "id": "wk-why-05",
+   "relevant": "waku/; docs/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain the information each represents",
+    "how it is used during agent execution",
+    "the problems with treating all memory as one category"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "Why distinguish semantic, episodic, and procedural memory?"
+  },
+  {
+   "id": "wk-why-06",
+   "relevant": "waku/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Trace query/context preparation",
+    "retrieval",
+    "selected memories",
+    "prompt/context assembly",
+    "model invocation"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How does memory retrieval influence the next model request?"
+  },
+  {
+   "id": "wk-why-07",
+   "relevant": "waku/; sql/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain deduplication or reconciliation where implemented",
+    "retention",
+    "updating knowledge",
+    "handling conflicting information"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How does memory consolidation differ from simply appending new records?"
+  },
+  {
+   "id": "wk-why-08",
+   "relevant": "waku/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain normalization of messages",
+    "tool-call representation",
+    "model responses",
+    "provider-specific differences",
+    "limitations"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How does the provider adapter let the same agent loop work with different LLM APIs?"
+  },
+  {
+   "id": "wk-why-09",
+   "relevant": "evals/; docs/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain reproducible assertions versus semantic judgments",
+    "where each is appropriate",
+    "the risks of nondeterministic grading"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "Why combine deterministic tests with LLM-as-judge evaluations?"
+  },
+  {
+   "id": "wk-why-10",
+   "relevant": "waku/; evals/",
+   "repo": "waku-agent",
+   "rubric_must": [
+    "Explain captured execution events",
+    "evaluation outcomes",
+    "thresholds or release decisions",
+    "the limits of tracing alone"
+   ],
+   "rubric_partial": "",
+   "rubric_wrong": "",
+   "text": "How do tracing and release gates support debugging and regression prevention?"
+  }
+ ],
+ "questions_json_sha256": "7ac8799c8429b0e4b01d685854b2d91108d6fa827976c20bdd5d101b62bbfae4",
+ "reminder": "Write these from the repo and your own curiosity. Don't look at Honeyguide's map of this repo while writing (the eval compares the map against exploring; questions shaped by the map would favour it).",
+ "repo": "waku-agent",
+ "saved_at": "2026-11-16T17:13:06Z",
+ "schema": 1,
+ "source": "eval/t5/han_why_how_2026-11-16.md (Han's chat message, imported verbatim; rubric sentence split into bullets at its commas)",
+ "url": "https://github.com/ShenSeanChen/waku-agent"
+}
