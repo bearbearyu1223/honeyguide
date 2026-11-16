@@ -209,11 +209,13 @@ def cmd_map_validate(args) -> int:
 
 def _draft_summary(data: dict, files: list[str]) -> dict:
     from .readability import prose_pieces, words
+    from .mapdoc import module_blocks
     doc = data["document"]
     overview = " ".join(t for k, _, _, t in prose_pieces(doc) if k == "overview")
     return {"files": files, "claims": len(data["claims"]),
             "blocks": sum(len(s.get("blocks") or []) for s in doc["sections"] if isinstance(s, dict)),
-            "flows": len(doc["flows"]), "overview_words": len(words(overview))}
+            "flows": len(doc["flows"]), "overview_words": len(words(overview)),
+            "modules": len(module_blocks(doc))}
 
 
 def cmd_map_draft_dir(args) -> int:
@@ -303,7 +305,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--stdin", action="store_true")
     p.add_argument("--input", help="read the claims-save input from this file (implies --stdin)")
     p.add_argument("--strict", action="store_true",
-                   help="the draft rules: Overview topics and module facts required, readability errors are errors")
+                   help="the draft rules: Overview topics, module titles and facts, coverage and the module count "
+                        "required, readability errors are errors")
     p.set_defaults(func=cmd_map_validate)
     p = msub.add_parser("draft-dir", help="print (and create) the directory the Cartographer writes its draft map in")
     p.add_argument("--repo", default=".")

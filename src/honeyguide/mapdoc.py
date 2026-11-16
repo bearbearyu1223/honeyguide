@@ -7,6 +7,13 @@ T7.13: a block's text is one or more *segments* (lists of spans), joined by one 
 ``spans`` (a paragraph, a module's summary, a list's lead-in), then each ``items[]`` entry of a ``list`` block, then
 each ``rows[]`` entry of a ``facts`` block (or each ``facts[]`` row of a ``module`` block). Old blocks have one segment,
 so their plain text, offsets and revisions are unchanged. Overview blocks may carry a ``topic``.
+
+T7.13b: a module block is a *component*: ``files`` (one or more repo paths; ``path`` stays, = ``files[0]``), a role
+``title`` ("train.py and optim.py: the loop and its optimizer"), optional ``related`` (other module block ids) and an
+optional ``design`` paragraph (spans: the why, or the sharp edge met first), which is the segment after the summary.
+The document may carry ``coverage`` (what the map read in full, skimmed and left out, each with a reason); it is not
+plain text. Draft rules add: every module has a title, a summary, at least ``MIN_FACTS`` facts and a design paragraph
+or a debug row, and a repo over ``SMALL_REPO_LINES`` source lines has ``MODULE_RANGE`` modules.
 """
 
 from __future__ import annotations
@@ -35,6 +42,12 @@ TRACE = ("seen", "unseen", "blind_spot")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 MAX_STATUS = 200
 MAX_ROLE = 80   # a module's one-line role, shown in its heading, as its lane's subtitle and in the module graph
+MAX_TITLE = 100  # a module's title: "<files>: <role in a few words>"
+MIN_FACTS = 5    # draft rules: facts rows per module
+MODULE_RANGE = (6, 15)    # draft rules: module blocks in a repo over SMALL_REPO_LINES lines of source
+SMALL_REPO_LINES = 3000   # under this, fewer modules are fine (never more than MODULE_RANGE[1])
+COVERAGE_KINDS = ("deep", "scanned", "skipped")
+COVERAGE_LABELS = {"deep": "Read in full", "scanned": "Skimmed", "skipped": "Left out"}
 
 
 def _str(value: Any) -> bool:
@@ -46,10 +59,13 @@ def spans_text(spans: list[dict]) -> str:
 
 
 def block_segments(block: dict) -> list[list[dict]]:
-    """A block's text pieces in plain-text order: its spans (when any), then list items, then facts rows."""
+    """A block's text pieces in plain-text order: its spans (when any), a module's design paragraph (when any), then
+    list items, then facts rows."""
     segs: list[list[dict]] = []
     if block.get("spans"):
         segs.append(block["spans"])
+    if block.get("type") == "module" and block.get("design"):
+        segs.append(block["design"])
     for item in block.get("items") or []:
         segs.append(item.get("spans", []) if isinstance(item, dict) else [])
     rows = block.get("rows") if block.get("type") == "facts" else block.get("facts")
@@ -232,12 +248,112 @@ def _check_topics(section: dict, where: str, errors: list[str], strict: bool) ->
                       "doesn't have is a block citing a searched_not_found claim)")
 
 
+def module_files(block: dict) -> list[str]:
+    """The repo paths a module block covers: its ``files``, else its ``path`` (a pre-T7.13b block)."""
+    files = block.get("files")
+    if isinstance(files, list) and files:
+        return [f for f in files if isinstance(f, str)]
+    return [block["path"]] if _str(block.get("path")) else []
+
+
+def module_blocks(document: dict | None) -> list[dict]:
+    return [b for s in (document or {}).get("sections") or [] if isinstance(s, dict) and s.get("kind") == "modules"
+            for b in s.get("blocks") or [] if isinstance(b, dict) and b.get("type") == "module"]
+
+
+def normalize_document(document: Any) -> Any:
+    """Fills each module block's ``path`` from ``files[0]`` when it is missing (``path`` is kept for old readers)."""
+    for section in (document or {}).get("sections") or [] if isinstance(document, dict) else []:
+        for block in section.get("blocks") or [] if isinstance(section, dict) else []:
+            if (isinstance(block, dict) and block.get("type") == "module" and "path" not in block
+                    and isinstance(block.get("files"), list) and block["files"] and _str(block["files"][0])):
+                block["path"] = block["files"][0]
+    return document
+
+
+def _check_module(block: dict, at: str, errors: list[str], strict: bool) -> None:
+    """A module block's own fields: path or files, title, related (shape only; ids are checked against the
+    document), design, and under the draft rules the content every module needs."""
+    files = block.get("files")
+    if files is not None:
+        if not isinstance(files, list) or not files:
+            errors.append(f"{at}: files must be a non-empty list of repo paths")
+        else:
+            for i, f in enumerate(files):
+                if not _str(f) or "\n" in f or f.startswith("/") or ".." in f.split("/"):
+                    errors.append(f"{at}.files[{i}]: must be a repo-relative path")
+            if len(set(map(str, files))) != len(files):
+                errors.append(f"{at}: files has a path twice")
+            if block.get("path") is not None and block["path"] != files[0]:
+                errors.append(f"{at}: path must be files[0] ({files[0]!r}) or left out")
+    elif not _str(block.get("path")):
+        errors.append(f"{at}: a module block needs files (or path)")
+    title = block.get("title")
+    if title is not None and (not _str(title) or "\n" in title or len(title) > MAX_TITLE):
+        errors.append(f"{at}: title must be a one-line string (<= {MAX_TITLE} chars)")
+    related = block.get("related")
+    if related is not None and (not isinstance(related, list) or not all(_str(r) for r in related)
+                                or len(set(related)) != len(related)):
+        errors.append(f"{at}: related must be a list of module block ids, each once")
+    if block.get("design") is not None:
+        check_spans(block["design"], f"{at}.design", errors)
+    if strict:
+        keys = [r.get("key") for r in block.get("facts") or [] if isinstance(r, dict)]
+        if not _str(title):
+            errors.append(f"{at}: a module block needs a title: \"<files>: <its role in a few words>\"")
+        if "responsibility" not in keys:
+            errors.append(f"{at}: a module block needs facts, starting with responsibility")
+        elif len(keys) < MIN_FACTS:
+            errors.append(f"{at}: {len(keys)} facts rows; a module needs at least {MIN_FACTS} (the ones that apply: "
+                          f"{', '.join(MODULE_FACTS[1:])})")
+        if not block.get("spans"):
+            errors.append(f"{at}: a module block needs its summary (spans, 2-4 sentences)")
+        if not block.get("design") and "debug" not in keys:
+            errors.append(f"{at}: a module block needs a design paragraph (why it is built this way, or the sharp "
+                          "edge met first) or a debug row")
+
+
+def check_coverage(cov: Any, where: str, errors: list[str]) -> None:
+    """``{deep|scanned|skipped: [{area, why}]}``: what the map read in full, skimmed and left out."""
+    if not isinstance(cov, dict):
+        errors.append(f"{where}: must be an object {{deep, scanned, skipped}}")
+        return
+    total = 0
+    for key, items in cov.items():
+        if key not in COVERAGE_KINDS:
+            errors.append(f"{where}: {key!r} is not one of {', '.join(COVERAGE_KINDS)}")
+            continue
+        if not isinstance(items, list):
+            errors.append(f"{where}.{key}: must be a list of {{area, why}}")
+            continue
+        for i, item in enumerate(items):
+            if not isinstance(item, dict) or not _str(item.get("area")) or not _str(item.get("why")):
+                errors.append(f"{where}.{key}[{i}]: needs area and why")
+            total += 1
+    if not total:
+        errors.append(f"{where}: name at least one area (read in full, skimmed or left out), each with a reason")
+
+
+def check_module_count(document: Any, source_lines: int) -> list[str]:
+    """Draft rules: 6-15 module blocks in a repo over SMALL_REPO_LINES lines of source; never more than 15."""
+    n = len(module_blocks(document if isinstance(document, dict) else None))
+    lo, hi = MODULE_RANGE
+    if n > hi:
+        return [f"modules: {n} module blocks; keep the {hi} most important components and say in coverage what "
+                "you left out"]
+    if source_lines > SMALL_REPO_LINES and n < lo:
+        return [f"modules: {n} module block(s) for {source_lines} lines of source; a repo this size needs {lo}-{hi} "
+                "components (a module may span several files)"]
+    return []
+
+
 def check_document(document: Any, strict: bool = False) -> tuple[list[str], list[str]]:
     """Structural errors and warnings for a map document (claims are checked elsewhere).
 
-    ``strict`` (drafts, ``map check``): the Overview must have every topic group and every module block a facts
-    list starting with its responsibility. Saved maps, including pre-T7.13 ones without topics or facts, are
-    checked without it.
+    ``strict`` (drafts, ``map check``): the Overview must have every topic group, every module block a title, a
+    summary, ``MIN_FACTS`` facts rows starting with its responsibility and a design paragraph or debug row, and the
+    document its coverage. Saved maps, including pre-T7.13 ones without topics or facts, are checked without it.
+    The module count needs the repo's size: ``check_module_count``.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -290,14 +406,17 @@ def check_document(document: Any, strict: bool = False) -> tuple[list[str], list
                 errors.append(f"{at}: type must be one of {', '.join(BLOCK_TYPES)}")
             if block.get("topic") is not None and section.get("kind") != "overview":
                 errors.append(f"{at}: topic is for Overview blocks only")
-            if kind == "module" and not _str(block.get("path")):
-                errors.append(f"{at}: a module block needs path")
             if "role" in block and block["role"] is not None and (
                     kind != "module" or not isinstance(block["role"], str) or "\n" in block["role"]
                     or len(block["role"]) > MAX_ROLE):
                 errors.append(f"{at}: role is a module block's one-line role (a string, <= {MAX_ROLE} chars)")
             if "entry" in block and block["entry"] is not None and (kind != "module" or not isinstance(block["entry"], bool)):
                 errors.append(f"{at}: entry is true or false, on a module block only")
+            for key in ("files", "title", "related", "design"):
+                if key in block and kind != "module":
+                    errors.append(f"{at}: {key} belongs to a module block")
+            if kind == "module":
+                _check_module(block, at, errors, strict)
             if kind == "flow" and block.get("flow") not in flow_ids:
                 errors.append(f"{at}: flow {block.get('flow')!r} is not in document.flows")
             if "items" in block and kind != "list":
@@ -322,17 +441,27 @@ def check_document(document: Any, strict: bool = False) -> tuple[list[str], list
                 _check_rows(block.get("rows"), at, errors, module=False)
             elif kind == "module" and block.get("facts") is not None:
                 _check_rows(block["facts"], at, errors, module=True)
-            if kind == "module" and strict:
-                keys = [r.get("key") for r in block.get("facts") or [] if isinstance(r, dict)]
-                if "responsibility" not in keys:
-                    errors.append(f"{at}: a module block needs facts, starting with responsibility")
-                if not block.get("spans"):
-                    errors.append(f"{at}: a module block needs its summary (spans, 2-4 sentences)")
             # spans: required on text, module (pre-T7.13) and flow blocks; on a list or facts block they are an
             # optional lead-in, and on a module block with facts, its optional summary
             optional = kind in ("list", "facts") or (kind == "module" and block.get("facts") is not None)
             if not optional or block.get("spans") is not None:
                 check_spans(block.get("spans"), at, errors)
+    module_ids = {b.get("id") for s in sections if isinstance(s, dict) for b in s.get("blocks") or []
+                  if isinstance(b, dict) and b.get("type") == "module"}
+    for s, section in enumerate(sections):
+        for b, block in enumerate(section.get("blocks") or [] if isinstance(section, dict) else []):
+            if not isinstance(block, dict) or block.get("type") != "module" or not isinstance(block.get("related"), list):
+                continue
+            for ref in block["related"]:
+                if ref == block.get("id"):
+                    errors.append(f"sections[{s}].blocks[{b}]: related names the module itself")
+                elif ref not in module_ids:
+                    errors.append(f"sections[{s}].blocks[{b}]: related {ref!r} is not a module block id")
+    if "coverage" in document:
+        check_coverage(document["coverage"], "document.coverage", errors)
+    elif strict:
+        errors.append("document: needs coverage (meta.json's \"coverage\": the areas read in full, skimmed and left "
+                      "out, each with a reason)")
     for f, flow in enumerate(flows):
         check_path_record(flow, f"flows[{f}]", errors, warnings)
         if isinstance(flow, dict) and _str(flow.get("id")):

@@ -10,7 +10,9 @@ Variants: ``base`` (a checked map, three discussions with branches, a not-suppor
 a Tracer path answer, notes), ``working`` (base plus agents at work), ``refreshed`` (base, then a new commit and a
 real refresh: claims moved, one re-checked, one still stale, one retired; last visit before the refresh), ``empty``
 (an initialised store, no map), ``v2`` (T7.13: base's discussions and notes on the v2 map, whose Overview has topic
-groups, lists and facts and whose modules have facts; one more question sits on a folded fact).
+groups, lists and facts and whose modules have facts; one more question sits on a folded fact. T7.13b: the modules
+are components with titles, files, design paragraphs and related links, one of them spanning `train.py` and
+`optim.py`, and the map says what it covers; the v2 map passes the draft rules).
 """
 
 from __future__ import annotations
@@ -499,14 +501,57 @@ V2_CLAIMS = [
       "inferred", A("engine.py", "        cache = self._cache or KVCache(cfg, batch=1, max_len=cfg.block_size)")),
     C("d-resp", "Serves `(x, y)` batches of token ids from the `.bin` shards in a directory", "read_in_source",
       A("data.py", "    def next_batch(self):", True)),
-    C("d-order", "two runs with the same shards see them in the same order", "inferred",
-      A("data.py", "        random.Random(self.epoch).shuffle(self.files)")),
     C("o-resp", "Builds the optimizer and computes the learning rate for a step", "docs",
       A("optim.py", '"""AdamW and the learning-rate schedule."""')),
     C("k-resp", "Turns text into token ids and back", "docs", A("tokenizer.py", '"""Encode and decode with tiktoken."""')),
     C("k-once", "The encoder is created once, when the module is first imported", "read_in_source",
       A("tokenizer.py", "_enc = tiktoken.get_encoding(\"gpt2\")")),
+    # T7.13b: the component modules' facts and design paragraphs
+    C("t-files", "`train.py` holds the loop and `optim.py` the optimizer and the schedule it calls", "read_in_source",
+      A("train.py", "from optim import build_optimizer, schedule")),
+    C("t-lr", "`main` computes `schedule(step, cfg)` and writes it into every parameter group at the top of each step",
+      "read_in_source", A("train.py", "        lr = schedule(step, cfg)", end_anchor='            group["lr"] = lr')),
+    C("o-syms", "`build_optimizer(model, cfg)` and `schedule(step, cfg)`", "read_in_source",
+      A("optim.py", "def build_optimizer(model, cfg):"), A("optim.py", "def schedule(step, cfg):")),
+    C("o-emb", "the tied embedding matrix is decayed too, because it is 2-D", "inferred",
+      A("optim.py", "    decay = [p for p in model.parameters() if p.ndim == 2]")),
+    C("m-tie", "`GPT.__init__` points `lm_head.weight` at the embedding matrix", "read_in_source",
+      A("model.py", "        self.lm_head.weight = self.wte.weight  # tied")),
+    C("d-reshuf", "`_next_shard` reshuffles the shard list with a seed taken from the epoch number", "read_in_source",
+      A("data.py", "        random.Random(self.epoch).shuffle(self.files)")),
+    C("d-nonext", "Nothing in the repo calls `_next_shard`", "searched_not_found",
+      searched=["_next_shard(", "self._next_shard"]),
+    C("d-short", "Once `pos` runs past the end of the first shard, the slice comes back short and `view` fails with a "
+      "shape error", "inferred", A("data.py", "        self.pos += self.world * span"),
+      A("data.py", "        return buf[:-1].view(self.B, self.T), buf[1:].view(self.B, self.T)")),
+    C("d-syms", "`ShardLoader`, with `next_batch` and the private `_open` and `_next_shard`", "read_in_source",
+      A("data.py", "class ShardLoader:", True)),
+    C("d-io", "`next_batch()` returns `(x, y)`, two `(B, T)` int64 tensors, with `y` one token ahead of `x`",
+      "read_in_source", A("data.py", "        return buf[:-1].view(self.B, self.T), buf[1:].view(self.B, self.T)")),
+    C("e-syms", "`Engine`, `KVCache` and `sample`", "read_in_source", A("engine.py", "class KVCache:"),
+      A("engine.py", "class Engine:"), A("engine.py", "def sample(logits, temperature):")),
+    C("e-if", "`generate(prompt, max_tokens=256, temperature=0.8)` returns the decoded text", "read_in_source",
+      A("engine.py", "    def generate(self, prompt, max_tokens=256, temperature=0.8):", True)),
+    C("e-rewind", "`generate` rewinds `cache.pos` to 0 before every prefill", "read_in_source",
+      A("engine.py", "        cache.pos = 0")),
+    C("k-syms", "`encode(text)` and `decode(ids)`", "read_in_source", A("tokenizer.py", "def encode(text):"),
+      A("tokenizer.py", "def decode(ids):")),
+    C("k-callers", "`Engine` takes a tokenizer as `tok` and calls its `encode` and `decode`", "read_in_source",
+      A("engine.py", "        self.model, self.tok = model, tok")),
+    C("k-notest", "No test imports `tokenizer.py`", "searched_not_found", searched=["import tokenizer", "from tokenizer"]),
 ]
+
+# the v2 map's claims: base's, less "every epoch reshuffles", which v2 corrects (nothing calls `_next_shard`)
+MAP_CLAIMS_V2 = [c for c in MAP_CLAIMS if c["key"] != "shuffle"] + V2_CLAIMS
+
+# what the v2 map read in full, skimmed and left out (meta.json's coverage, T7.13b)
+COVERAGE_V2 = {
+    "deep": [{"area": "`train.py`, `optim.py`, `model.py`, `data.py`, `engine.py`, `tokenizer.py`",
+              "why": "About 150 lines of source in all, so every module was read in full."}],
+    "scanned": [{"area": "`tests/`", "why": "Read for what each test pins; not run."}],
+    "skipped": [{"area": "checkpoints and data shards",
+                 "why": "Not in the repo: a run writes the `ckpt_*.pt` files, and the user supplies the `.bin` shards."}],
+}
 
 
 def _t(topic, bid, kind, **rest):
@@ -579,26 +624,46 @@ DOCUMENT_V2 = {
                  S(". That is the one surprise in the repo.")])),
         ]},
         {"id": "modules", "kind": "modules", "title": "Modules", "blocks": [
-            {"id": "m-train", "type": "module", "path": "train.py", "role": "the training loop", "entry": True,
+            # a component: one module, two files
+            {"id": "m-train", "type": "module", "files": ["train.py", "optim.py"], "role": "the training loop",
+             "entry": True, "title": "`train.py` and `optim.py`: the loop and its optimizer",
+             "related": ["m-model", "m-data"],
              "spans": [S(MAP_CLAIMS[10]["text"], "accum"), S(", so the effective batch is `grad_accum` times what "
                        "fits in memory. "), S(MAP_CLAIMS[11]["text"], "ckpt"), S(", which means "),
                        S("a run resumed from a checkpoint would restart AdamW's moment estimates from zero",
                          "resume"), S(".")],
+             "design": [S("The learning rate is not a PyTorch scheduler object: "),
+                        S("`main` computes `schedule(step, cfg)` and writes it into every parameter group at the top "
+                          "of each step", "t-lr"), S(", so changing the schedule means editing one function in "
+                          "`optim.py`. "), S("Weight decay is chosen by shape: every 2-D weight gets 0.1 and the "
+                                             "rest get none", "groups"), S(", which means "),
+                        S("the tied embedding matrix is decayed too, because it is 2-D", "o-emb"), S(".")],
              "facts": _rows(
                  ("responsibility", [S("Runs the whole job: seeding, building the parts, the step loop, logging and "
-                                       "checkpoints", "t-resp"), S(".")]),
-                 ("key_symbols", [S("`main(cfg)`", "maincfg"), S(".")]),
+                                       "checkpoints", "t-resp"), S("; "),
+                                     S("`optim.py` builds the optimizer and computes the learning rate for a step",
+                                       "o-resp"), S(".")]),
+                 ("key_files", [S("`train.py` holds the loop and `optim.py` the optimizer and the schedule it "
+                                  "calls", "t-files"), S(".")]),
+                 ("key_symbols", [S("`main(cfg)`", "maincfg"), S(", "),
+                                  S("`build_optimizer(model, cfg)` and `schedule(step, cfg)`", "o-syms"), S(".")]),
                  ("callers", [S("Nothing in the repo calls `main`", "t-nocall"), S("; you call it yourself.")]),
                  ("dependencies", [S("`data.ShardLoader`, `model.GPT`, `optim.build_optimizer` and "
                                      "`optim.schedule`", "t-deps"), S(".")]),
                  ("errors", [S("There is no gradient clipping", "noclip"), S(", so one bad batch can move the "
                              "weights a long way.")]),
-                 ("tests", [S("No test imports `train.py`", "t-notest"), S(".")]),
+                 ("tests", [S("`tests/test_optim.py` checks both ends of the schedule", "sched"), S("; "),
+                            S("no test imports `train.py`", "t-notest"), S(".")]),
                  ("debug", [S("Every 10 steps it prints the step, the loss and the learning rate; the loss shown "
                               "is the last micro-batch's, rescaled, not an average", "t-log"), S(".")]))},
-            {"id": "m-model", "type": "module", "path": "model.py", "role": "GPT, attention blocks",
+            {"id": "m-model", "type": "module", "files": ["model.py"], "role": "GPT, attention blocks",
+             "title": "`model.py`: the GPT and its attention", "related": ["m-train", "m-engine"],
              "spans": [S(MAP_CLAIMS[12]["text"], "sdpa"), S(". "), S(MAP_CLAIMS[13]["text"], "kernel"),
                        S(", so the repo has no attention kernel of its own to read.")],
+             "design": [S("The output head owns no weights of its own: "),
+                        S("`GPT.__init__` points `lm_head.weight` at the embedding matrix", "m-tie"),
+                        S(", so a checkpoint stores that matrix once, and "),
+                        S("a test checks that the head and the embedding still share it", "tied"), S(".")],
              "facts": _rows(
                  ("responsibility", [S("The model: configuration, rotary attention and the GPT stack", "m-resp"),
                                      S(".")]),
@@ -609,39 +674,59 @@ DOCUMENT_V2 = {
                          S(".")]),
                  ("tests", [S("`tests/test_model.py` checks that the head and the embedding share one weight",
                               "tied"), S(".")]))},
-            {"id": "m-data", "type": "module", "path": "data.py", "role": "the sharded token loader",
-             "spans": [S(MAP_CLAIMS[14]["text"], "shuffle"), S(", so "),
-                       S("two runs with the same shards see them in the same order", "d-order"), S(". "),
-                       S("Only the open shard is memory-mapped", "c-data"), S(", and a batch copies just the tokens "
-                         "it needs.")],
+            {"id": "m-data", "type": "module", "files": ["data.py"], "role": "the sharded token loader",
+             "title": "`data.py`: shards read through a memory map", "related": ["m-train"],
+             "spans": [S("`_next_shard` reshuffles the shard list with a seed taken from the epoch number",
+                         "d-reshuf"), S(", but "), S("nothing in the repo calls it", "d-nonext"), S(", so "),
+                       S("a run reads only the first shard and fails once `pos` runs past its end", "d-short"),
+                       S(". "), S("Only the open shard is memory-mapped", "c-data"), S(", and a batch copies just "
+                       "the tokens it needs.")],
              "facts": _rows(
                  ("responsibility", [S("Serves `(x, y)` batches of token ids from the `.bin` shards in a "
-                                       "directory", "d-resp"), S(".")]))},
-            {"id": "m-engine", "type": "module", "path": "engine.py", "role": "sampling with a KV cache",
+                                       "directory", "d-resp"), S(".")]),
+                 ("key_symbols", [S("`ShardLoader`, with `next_batch` and the private `_open` and `_next_shard`",
+                                    "d-syms"), S(".")]),
+                 ("io", [S("`next_batch()` returns `(x, y)`, two `(B, T)` int64 tensors, with `y` one token ahead "
+                           "of `x`", "d-io"), S(".")]),
+                 ("callers", [S("`train.main` pulls each micro-batch from the loader", "h1"), S(".")]),
+                 ("external", [S("Each shard is opened with `np.memmap`, which maps the file instead of reading it",
+                                 "memmap"), S(".")]),
+                 ("debug", [S("A shape error from `view` in `next_batch` means the first shard ran out", "d-short"),
+                            S(", not that the data is malformed.")]))},
+            {"id": "m-engine", "type": "module", "files": ["engine.py"], "role": "sampling with a KV cache",
+             "title": "`engine.py`: sampling with a cache that outlives the call", "related": ["m-model", "m-tok"],
              "spans": [S(MAP_CLAIMS[15]["text"], "kv"), S(". The buffer outlives the call: "),
                        S("the next call rewinds and reuses it", "kept"), S(".")],
              "facts": _rows(
                  ("responsibility", [S("Turns a prompt into text, one sampled token at a time", "e-resp"),
                                      S(".")]),
+                 ("key_symbols", [S("`Engine`, `KVCache` and `sample`", "e-syms"), S(".")]),
+                 ("interfaces", [S("`generate(prompt, max_tokens=256, temperature=0.8)` returns the decoded text",
+                                   "e-if"), S(".")]),
                  ("callers", [S("No script in the repo calls it", "nocaller"), S(".")]),
                  ("errors", [S("The prompt plus `max_tokens` must fit in `block_size`: the cache is allocated "
-                               "once and never grows", "e-fit"), S(".")]))},
-            {"id": "m-optim", "type": "module", "path": "optim.py", "role": "AdamW and the schedule",
-             "spans": [S(MAP_CLAIMS[16]["text"], "groups"), S(". "), S(MAP_CLAIMS[17]["text"], "sched"),
-                       S(", and a test checks both ends of it.")],
-             "facts": _rows(
-                 ("responsibility", [S("Builds the optimizer and computes the learning rate for a step", "o-resp"),
-                                     S(".")]))},
-            {"id": "m-tok", "type": "module", "path": "tokenizer.py", "role": "tiktoken's gpt2 encoding",
+                               "once and never grows", "e-fit"), S(".")]),
+                 ("debug", [S("`generate` rewinds `cache.pos` to 0 before every prefill", "e-rewind"),
+                            S(", so when a second call's text looks wrong, that line is the first to check.")]))},
+            {"id": "m-tok", "type": "module", "files": ["tokenizer.py"], "role": "tiktoken's gpt2 encoding",
+             "title": "`tokenizer.py`: tiktoken's gpt2 encoding", "related": ["m-engine"],
              "spans": [S(MAP_CLAIMS[18]["text"], "tok"), S(". "),
                        S("The encoder is created once, when the module is first imported", "k-once"),
                        S(", and only `encode` and `decode` are exposed.")],
              "facts": _rows(
-                 ("responsibility", [S("Turns text into token ids and back", "k-resp"), S(".")]))},
+                 ("responsibility", [S("Turns text into token ids and back", "k-resp"), S(".")]),
+                 ("key_symbols", [S("`encode(text)` and `decode(ids)`", "k-syms"), S(".")]),
+                 ("callers", [S("`Engine` takes a tokenizer as `tok` and calls its `encode` and `decode`",
+                                "k-callers"), S(".")]),
+                 ("external", [S("tiktoken's `gpt2` encoding", "tok"), S(".")]),
+                 ("tests", [S("No test imports `tokenizer.py`", "k-notest"), S(".")]),
+                 ("debug", [S("The encoder is created when the module is first imported", "k-once"),
+                            S(", so a missing encoding fails at import time rather than on the first call.")]))},
         ]},
         DOCUMENT["sections"][2],
     ],
     "flows": FLOWS,
+    "coverage": COVERAGE_V2,
 }
 
 # -- answers --------------------------------------------------------------------------------------------------------
@@ -835,7 +920,7 @@ def build(out: Path, variant: str) -> dict:
     ids = info["ids"]
     with clock(t0):
         saved = claims_mod.save_claims(st, repo, {"target": "map", "mode": "replace",
-                                                  "claims": MAP_CLAIMS + (V2_CLAIMS if v2 else []),
+                                                  "claims": MAP_CLAIMS_V2 if v2 else MAP_CLAIMS,
                                                   "document": DOCUMENT_V2 if v2 else DOCUMENT})
         check_all(st)
         doc = st.load("map")["document"]

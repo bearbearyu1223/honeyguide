@@ -69,7 +69,7 @@ def s_folded(c, url, ids):
     tall(c, url, 2600)
     c.js("document.getElementById('s-modules').scrollIntoView()")
     settle(c, 200)
-    return column_clip(c, '#s-modules h2', '.mod[data-block="m-optim"]')
+    return column_clip(c, '#s-modules h2', '.mod[data-block="m-data"]')
 
 
 @shot("module-expanded")

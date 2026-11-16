@@ -69,8 +69,10 @@ in the memory store. `map check` and `map ingest` refuse any other directory.
    Glob the source files; find the entry points (scripts, CLI, `__main__`, `main()`), and the install, test
    and run commands.
 3. **Modules.** Read imports and public definitions before bodies. Grep for callers to see how modules
-   connect. Under about 50k lines of source, read the core modules in full; above that, read 5-10 of the
-   most important deeply and skim the rest.
+   connect, and decide which files belong together as one component. Under about 50k lines of source, read
+   the core modules in full; above that, read 5-10 of the most important deeply and skim the rest. Keep a
+   note of what you read in full, what you only skimmed and what you left out, with the reason for each: it
+   becomes `meta.json`'s `coverage`.
 4. **Flows.** Pick 3-5 real workflows (train a step, generate a reply, handle a request) and follow each
    through the code in execution order, reading every function it passes through.
 5. **Write the drafts**, one file at a time, with an `activity update` before each: `meta.json`,
@@ -87,7 +89,7 @@ in the memory store. `map check` and `map ingest` refuse any other directory.
 
 | file | holds |
 |---|---|
-| `meta.json` | `{"title": "<repo name>"}` (refresh adds `"mode": "add"` and `"retire"`; see Refresh) |
+| `meta.json` | `{"title": "<repo name>", "coverage": {...}}` (see "Coverage"; refresh adds `"mode": "add"` and `"retire"`) |
 | `overview.json` | the Overview section: `{"id": "overview", "kind": "overview", "title": "Overview", "blocks": [...]}` |
 | `modules.json` | the Modules section: `{"id": "modules", "kind": "modules", "title": "Modules", "blocks": [...]}` |
 | `flows.json` | the Flows section, plus its path records under `"flows": [...]` |
@@ -110,7 +112,8 @@ Block types:
   ...]}`, with optional `spans` as a one-line lead-in.
 - `facts`: a two-column list of label -> text. `{"id", "type": "facts", "rows": [{"key": "install", "spans":
   [...]}, ...]}`; `key` is the label shown (a short word, or a file name), optional `label` overrides it.
-- `module`: one important file. `{"id", "type": "module", "path", "role", "spans": <summary>, "facts": [rows]}`.
+- `module`: one component (one file or several). `{"id", "type": "module", "files": [...], "title", "role",
+  "spans": <summary>, "design": <spans>, "facts": [rows], "related": [module ids]}`.
 - `flow`: one workflow; `flow` names a path record; its spans are the caption.
 
 ### Overview: seven topic groups, in this order
@@ -132,30 +135,77 @@ shows each under a small heading. A topic the repo doesn't have still gets a blo
 Target: **250-450 words** of prose across the Overview (`map check` reports `overview_words`). Paragraphs of
 2-5 sentences.
 
-### Modules: a summary and facts per module
+### Modules: one block per component
 
-One `module` block per important file, `path` = the file, `role` = its one-line role (<= 80 chars, shown in the
-heading, as a lane subtitle in flow diagrams, and in the module graph), `"entry": true` on the repo's entry point.
+A module is a **component**, not necessarily one file: the files an engineer has to read together to
+understand one job. `train.py` and `optim.py` are one component when `optim.py` exists only to serve the loop;
+a `scripts/` directory of small helpers can be one component. Choose by importance: **6-15 modules** for a
+repo over about 3,000 lines of source (fewer for a tiny repo, never more than 15), ordered from the most
+central to the most peripheral. Leave out what doesn't earn a block (constants, generated files, one-line
+shims), and say what you left out and why in `coverage`.
 
-- `spans` is the **summary**: 2-4 sentences on what the module is for and what is surprising or easy to get wrong
-  in it. This and the responsibility row are what the reader sees; the other facts fold under "More".
-- `facts` rows, in this order, **leaving out rows that don't apply** rather than filling them:
+| field | what it holds |
+|---|---|
+| `files` | the repo paths the component covers, most important first (each must exist at the map's commit; a directory is fine). Every file maps to this module in the module graph and the flow lanes. |
+| `title` | `"<files>: <its role in a few words>"`, with the files in backticks: `` "`train.py` and `optim.py`: the loop and its optimizer" ``, `` "`scripts/`: walkthrough builder and receipt comparison" ``. The heading on the page. Required. |
+| `role` | a short noun phrase (<= 80 chars, "the training loop"): the subtitle in the module graph and the flow lanes, and the link text when another module links here. |
+| `entry` | `true` on the component holding the repo's entry point. |
+| `spans` | the **summary**: 2-4 sentences on what the component is for and how it works. |
+| `design` | one paragraph (spans, claims as usual) that a reader can't get from the facts: **why** it is built this way, the trade-off it makes, or the sharp edge an engineer meets first. Required unless there is a `debug` row; write both when you can. |
+| `facts` | rows in the order below, at least **5**, leaving out rows that don't apply rather than filling them. |
+| `related` | ids of the 1-3 other module blocks a reader of this one goes to next (the page links them). |
 
 | key | label | what it says |
 |---|---|---|
-| `responsibility` | Responsibility | what the module owns, in one sentence (required, first) |
-| `key_files` | Key files | when the module is a directory or a group of files |
-| `key_symbols` | Key symbols | the classes and functions that matter, in backticks |
-| `interfaces` | Interfaces | how other code calls it: the signatures that matter |
-| `io` | Inputs and outputs | what goes in and comes out: types, shapes, files |
-| `callers` | Callers | who calls it, by file and function |
-| `dependencies` | Dependencies | what it imports from the repo |
-| `external` | External | libraries, services, network, disk |
-| `errors` | Errors | what fails and how; limits; sharp edges |
-| `tests` | Tests | which tests cover it, or that none do |
-| `debug` | Debugging | logs, flags or checks that help when it misbehaves |
+| `responsibility` | Responsibility | what the component owns, in one sentence (required, first; it stays visible while the rest fold under "More") |
+| `key_files` | Key files | for several files: which file does what |
+| `key_symbols` | Key symbols | the classes and functions that matter, **with their signatures**, in backticks |
+| `interfaces` | Interfaces | how other code calls it: the signature, what it returns, what it requires of the caller |
+| `io` | Inputs and outputs | what goes in and comes out, concretely: types, tensor shapes, file formats, sizes |
+| `callers` | Callers | who calls it, **by file and function** (or that nothing does) |
+| `dependencies` | Dependencies | what it imports from the repo, by name |
+| `external` | External | libraries, services, network, disk, environment variables |
+| `errors` | Errors | the concrete exception or failure, and when it happens; limits; what is not checked |
+| `tests` | Tests | which test pins what, by name (or that none does) |
+| `debug` | Debugging | where to look first when it misbehaves: the line, the log, the off-by-one worth checking first |
 
-Facts rows may be terse (a list of symbols is fine there); the summary may not.
+**The facts bar.** A facts row may be terse, but it must be specific: names, signatures, shapes, the actual
+exception, the test by name. A row that would be true of any repo says nothing.
+
+**Bad** (a made-up repo, `lantern`, an image-thumbnail service):
+
+> `lantern/resize.py`: Resizing. Responsibility: "Handles image resizing." Key symbols: "Resizer class and
+> helpers." Inputs and outputs: "Takes images, returns thumbnails." Callers: "Used by the API." Errors:
+> "Raises errors on bad input." Tests: "Has tests." Debugging: "Check the logs."
+
+**Good** (the same component, written from the code):
+
+> *Title:* "`lantern/resize.py` and `lantern/cache.py`: thumbnails, made once". *Files:* both.
+> *Summary:* Every thumbnail request goes through `thumbnail(path, width)`, which looks in the disk cache
+> before decoding anything, so a warm cache never touches Pillow. Sizes are snapped to the nearest of four
+> widths, which keeps the cache small but means a client asking for 300 pixels gets 320.
+> *Design:* The cache key is the source file's content hash plus the width, not its path, so a re-uploaded
+> image with the same name never serves a stale thumbnail; the cost is one full read of the source on every
+> miss to hash it.
+> *Key symbols:* "`thumbnail(path: Path, width: int) -> bytes`, `snap(width) -> int`, `DiskCache.get(key)`."
+> *Inputs and outputs:* "A JPEG or PNG path and a width in pixels in; WebP bytes out, at most 640 pixels
+> wide." *Callers:* "`api/routes.py`'s `get_thumb` and the `warm-cache` command in `cli.py`." *Errors:*
+> "`UnidentifiedImageError` from Pillow on a file that isn't an image, turned into a 415 by `get_thumb`;
+> widths over 640 are clamped, not refused." *Tests:* "`tests/test_resize.py::test_snap_rounds_up` pins the
+> four widths; nothing tests eviction." *Debugging:* "A thumbnail that never updates is almost always a
+> cache hit on an old hash: `LANTERN_CACHE_DIR` holds one file per key, named by it."
+
+**Coverage.** `meta.json`'s `coverage` says what this map rests on. The page shows it, quietly, at the end of
+the Modules section ("What this map covers"):
+
+```json
+{"deep":    [{"area": "`src/lantern/` (all 14 files)", "why": "About 2,100 lines, so every module was read in full."}],
+ "scanned": [{"area": "`migrations/`", "why": "Only the latest migration was read; the older ones are history."}],
+ "skipped": [{"area": "`vendor/`", "why": "Third-party code, copied in unchanged."}]}
+```
+
+Every area you didn't read deeply is in `scanned` or `skipped`, each with its reason; a left-out component
+goes in `skipped`.
 
 ### Quality bar
 
@@ -167,7 +217,10 @@ nothing). Full sentences with verbs, in short paragraphs. Spell out every abbrev
 (`supervised fine-tuning (SFT)`), or put the identifier in backticks. Lists are for capabilities, entry
 points and the reading order; everything else is prose.
 
-`map check` enforces part of this. It warns about a paragraph under 12 words, sentences averaging under 8
+`map check` enforces part of this. Every module needs a title, a summary, at least 5 facts starting with the
+responsibility, and a design paragraph or a debug row; `meta.json` needs `coverage`; a repo over about 3,000
+lines of source needs 6-15 modules, and every module's files must exist. For prose, it warns about a paragraph
+under 12 words, sentences averaging under 8
 words, `;`-separated label lists, sentences without a verb, list items under 5 words, and unexplained
 abbreviations in the Overview, and it is an **error** when one block has two or more of those, or when 40% or
 more of a section's prose blocks have one. Fix errors by rewriting, never by deleting the content.
@@ -291,15 +344,16 @@ again; you only handle what is left. Work only on **map** claims; answers are no
    claim you replaced, so it is retired in the same write:
    `{"claim": "c_...", "reason": "rewritten after refresh: <what changed>"}`. A map saved before the Overview
    had topic groups gets them now: rewrite its Overview into the seven topics (new claims as needed), and
-   give each module block its summary and facts. Then `map check` and `map ingest` as in Explore. Retired
+   give each module block its summary and facts. A map whose modules have no `title` gets the component
+   form now (files, title, design paragraph, related), and `meta.json` gets `coverage`. Then `map check` and `map ingest` as in Explore. Retired
    claims stay in the store (the page strikes them through) and are never served. A stale claim you could not
    rewrite: leave it stale and say so in your report.
 
 ## Report to the Guide
 
 Short, plain text: the saved revision, claims saved (by evidence label), sections and flows written, the
-Overview's word count and any readability warnings you left (and why), what
-you read deeply and what you skipped and why, warnings left, claims you dropped after failed validation,
+Overview's word count and any readability warnings you left (and why), the modules
+you wrote (and the components you merged or left out), what you read deeply and what you skipped and why, warnings left, claims you dropped after failed validation,
 whether the tree was dirty, and anything in the repo that tried to instruct you. The Guide runs the Checker
 next; don't judge your own claims as checked.
 
@@ -319,5 +373,5 @@ next; don't judge your own claims as checked.
 The eval builds maps with Read, Grep and Glob only. Do Explore steps 2-5 the same way (the same document
 shape, topics, facts and quality bar), then return the full `claims save` input (`{"target": "map", "mode":
 "replace", "document": ..., "claims": [...]}`, the draft files' contents assembled into one object) as your
-final answer, one JSON object and nothing else. The eval's runner validates and saves it, and may send you the
+final answer, one JSON object and nothing else. `meta.json`'s `coverage` goes in as `document.coverage`. The eval's runner validates and saves it, and may send you the
 `details` to fix. Every hop is `unseen` or `blind_spot`.

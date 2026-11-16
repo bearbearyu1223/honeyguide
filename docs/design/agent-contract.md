@@ -157,8 +157,22 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   `errors`, `tests`, `debug`, unique, `responsibility` first when present. With `facts`, the block's `spans`
   (its summary) are optional. The page shows the summary and the responsibility row, and folds the other rows
   under "More" (a module whose folded rows hold a discussion or note opens by itself).
-- **Draft rules** (`map check`, `map ingest`, `map validate --strict`): all seven topics, every `module` block
-  has a summary and facts starting with `responsibility`, and readability errors are errors.
+- **Component modules (T7.13b)**: a `module` block may carry `files` (a non-empty list of repo-relative paths,
+  each once; `path`, kept for older readers, must then be `files[0]` or left out, and saving fills it in),
+  `title` (one line, <= 100 chars, `"<files>: <role in a few words>"`; the page's heading), `related` (ids of
+  other module blocks, each once, not itself; every id must exist: an error even on a saved map) and `design`
+  (spans: why the component is built this way, or the sharp edge met first; the segment right after the
+  summary). `files`, `title`, `related` and `design` on any other block are errors. A block with neither
+  `files` nor `path` is an error.
+- **Coverage (T7.13b)**: `document.coverage` (from `meta.json`'s `coverage`) is `{deep?, scanned?, skipped?}`,
+  each a list of `{area, why}` strings, at least one area in all. Not plain text and not in the revision; the
+  page shows it as "What this map covers" at the end of the Modules section (of the Overview when there is none).
+- **Draft rules** (`map check`, `map ingest`, `map validate --strict`): all seven topics; every `module` block
+  has a `title`, a summary, at least 5 facts starting with `responsibility`, and a `design` paragraph or a
+  `debug` row; the document has `coverage`; every module file exists at the map's commit (a tracked file or a
+  directory holding one); a repo over 3,000 lines of source (`Repo.source_lines`: text files with code
+  extensions, `gitio.SOURCE_GLOBS`) has 6-15 module blocks, and no repo more than 15; readability errors are
+  errors. `map check` reports `modules`, the module count.
 - Optional on a `module` block (T7.4): `role`, the file's one-line role (a string, one line, <= 80 chars; shown
   after the path in the Modules heading, as the subtitle of that file's lanes in flow diagrams, and in the module
   graph), and `entry: true` on the module that is the repo's entry point (the module graph tags it ENTRY POINT).
@@ -167,7 +181,8 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   rewrites it to the id. A claim may back several spans; a claim no span shows is a warning.
 - **Plain text** (what DocumentAnchor offsets index): section title, blank line, then each block's text,
   blocks separated by a blank line, sections separated by a blank line (`mapdoc.plain_text`). A block's text is
-  its segments joined by one newline: its own `spans` (when present), then each `items[]` entry, then each
+  its segments joined by one newline: its own `spans` (when present), a module's `design` (when present,
+  T7.13b), then each `items[]` entry, then each
   `rows[]` (or a module's `facts[]`) entry, each segment its spans joined (`mapdoc.block_segments`). Topic
   headings and facts labels are not plain text. A pre-T7.13 block has one segment, so its text and the
   document's revision are unchanged.
@@ -178,8 +193,8 @@ Records saved before T7 have no `status`; they read as `open` until answered.
 ## Readability (T7.13)
 
 `map validate` reports `readability: {errors, warnings}` for the Overview and Modules (`readability.py`). Checked
-prose: text blocks and module summaries ("paragraphs") and list items; flow captions and facts rows are not
-checked. Backtick code counts as one word and is never parsed.
+prose: text blocks, module summaries and module design paragraphs ("paragraphs"; a design paragraph is judged
+as its own block) and list items; flow captions, module titles and facts rows are not checked. Backtick code counts as one word and is never parsed.
 
 | kind | warns when |
 |---|---|
@@ -188,7 +203,7 @@ checked. Backtick code counts as one word and is never parsed.
 | `semicolons` | 3+ `;`-separated fragments averaging under 6 words (or 2 averaging under 3) |
 | `verbless` | a sentence of 2+ words with no verb (a list item: no verb anywhere in it) |
 | `abbreviation` | Overview only: an abbreviation or short code word (`SFT`, `bf16`, `d24`) outside backticks, not in a list of common ones (`API`, `GPU`, `LLM`, `GPT`, ...), and not next to a parenthesis anywhere in the Overview (`supervised fine-tuning (SFT)`) |
-| `length` | draft rules only: Overview prose outside 250-450 words; a module summary outside 2-4 sentences |
+| `length` | draft rules only: Overview prose outside 250-450 words; a module summary (not its design paragraph) outside 2-4 sentences |
 
 **Errors**: a block with 2+ distinct kinds (telegraph style), or a section where 40% or more of the prose blocks,
 and at least 3, have a kind other than `abbreviation`. Errors make a draft invalid; on a saved map they are
@@ -201,7 +216,7 @@ The Cartographer writes the map as files with the Write tool, in `map draft-dir`
 
 | file | holds |
 |---|---|
-| `meta.json` | `{title, commit?, mode?: "replace" (default) \| "add", retire?: [{claim, reason}]}` |
+| `meta.json` | `{title, coverage, commit?, mode?: "replace" (default) \| "add", retire?: [{claim, reason}]}`; `coverage` becomes `document.coverage` |
 | `overview.json`, `modules.json`, `flows.json` | one section object each; `flows.json` also holds the path records as `flows: [...]` |
 | `section-<name>.json` | any other section, in name order after flows |
 | `claims.json`, `claims-<name>.json` | a list of claim drafts (or `{claims: [...]}`), merged in name order |
@@ -237,14 +252,15 @@ How the page draws a path (T7.4: the Steps rail and the swimlane diagram, from t
   source / asserted by a test / seen at runtime (the evidence shape says which); **dashed** = everything else
   (inferred: neither read nor seen). Dashed and dotted hops carry a note under the arrow (`note`, else `label`).
 - Lanes: in order of first use in the hops; header = the lane's `label`, subtitle = the `role` of the module block
-  whose `path` is the lane's `path`. The flow starts in the first hop's `from` lane (a start dot); there is no
+  whose `files` (or `path`) include the lane's `path` (T7.13b: without a `role`, the part of its `title` after
+  ": "). The flow starts in the first hop's `from` lane (a start dot); there is no
   separate entry hop.
 - Data: `returns` + `data` show as one pill, `[returns, data]` (`["returns", returns]` or `["data", data]` when only
   one is given). It goes back to whoever makes the next hop (a return arrow) or, when that is the callee's own lane,
   stays on that lane as a pill.
 - Evidence shape: the hop claim's, withheld while the claim is stale, retired or (in the panel) unchecked.
 - Module graph: calls between two lanes with different `path`s, across `document.flows`; lanes without a `path`
-  (libraries) are left out.
+  (libraries) are left out. Boxes stay files; each file of a component leads to that component's module.
 
 ## Activity log (avatars)
 

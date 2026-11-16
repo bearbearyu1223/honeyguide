@@ -5,8 +5,8 @@ Pure functions over plain text; no NLP library. The heuristics are deliberately 
 (tests/test_t7_readability.py): a RepoRabbit overview written in full sentences must pass, the nanochat telegraph
 overview must fail.
 
-What is checked (``prose`` = a text block, a module's summary, or a list item, in the Overview and Modules; flow
-captions and facts rows are terse by design and not checked):
+What is checked (``prose`` = a text block, a module's summary or design paragraph (T7.13b), or a list item, in the
+Overview and Modules; flow captions, module titles and facts rows are terse by design and not checked):
 
 - ``short``: a paragraph (text block or module summary) under ``MIN_WORDS`` words; a list item under
   ``MIN_ITEM_WORDS``.
@@ -203,6 +203,8 @@ def prose_pieces(document: dict) -> list[tuple[str, str, str, str]]:
             at = f"sections[{s}].blocks[{b}] ({block.get('id')})"
             if block.get("type") in ("text", "module") and block.get("spans"):
                 out.append((kind, at, "paragraph", _text(block["spans"])))
+            if block.get("type") == "module" and block.get("design"):
+                out.append((kind, f"{at}.design", "paragraph", _text(block["design"])))
             elif block.get("type") == "list":
                 for i, item in enumerate(block.get("items") or []):
                     if isinstance(item, dict):
@@ -238,7 +240,7 @@ def check_readability(document: dict, strict: bool = True) -> tuple[list[str], l
             by_block.setdefault(block, set()).add(name)
             if name != "abbreviation":   # an unexplained term alone doesn't make a section telegraphic
                 flagged[kind].add(block)
-        if strict and kind == "modules" and piece == "paragraph":
+        if strict and kind == "modules" and piece == "paragraph" and not where.endswith(".design"):
             n = len(sentences(text))
             lo, hi = SUMMARY_SENTENCES
             if not lo <= n <= hi:

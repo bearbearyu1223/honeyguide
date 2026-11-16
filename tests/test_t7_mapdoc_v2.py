@@ -138,11 +138,19 @@ def v2_draft() -> dict:
           items=[{"spans": [S("Read `engine.py` first, because the whole repo is that one class.")]}]),
     ]
     data["document"]["sections"].insert(1, {"id": "modules", "kind": "modules", "title": "Modules", "blocks": [
-        {"id": "m-engine", "type": "module", "path": "engine.py", "role": "the engine",
+        {"id": "m-engine", "type": "module", "files": ["engine.py"], "role": "the engine",
+         "title": "engine.py: the generator behind sample",
          "spans": [S("The engine holds the model and nothing else. Its one method "),
                    S("yields three outputs", "gen"), S(", one per call to the model, so callers must consume it.")],
+         "design": [S("Because "), S("generators are lazy", "gk"), S(", nothing runs until a caller iterates, which is "
+                    "why `sample` wraps the call in `list` instead of returning the generator itself.")],
          "facts": [{"key": "responsibility", "spans": [S("Turning a prompt into outputs.")]},
-                   {"key": "callers", "spans": [S("sample calls Engine.generate", "call")]}]}]})
+                   {"key": "key_symbols", "spans": [S("`Engine.generate(tokens)` and `sample(prompt)`.")]},
+                   {"key": "interfaces", "spans": [S("`Engine.generate(tokens)` returns a generator.")]},
+                   {"key": "callers", "spans": [S("sample calls Engine.generate", "call")]},
+                   {"key": "tests", "spans": [S("None in this repo.")]}]}]})
+    data["document"]["coverage"] = {"deep": [{"area": "engine.py, cli.py", "why": "Two short files, read in full."}],
+                                    "skipped": [{"area": "README.md", "why": "It repeats the docstrings."}]}
     return data
 
 
@@ -156,7 +164,8 @@ def test_v2_document_is_valid_strict_and_its_plain_text_has_every_segment(tmp_pa
     assert out["readability"]["errors"] == []
     # every segment of a block is in the plain text, one newline apart; span ranges cover list and facts spans
     module = draft["document"]["sections"][1]["blocks"][0]
-    assert block_text(module).count("\n") == 2 and block_text(module).endswith("sample calls Engine.generate")
+    assert block_text(module).count("\n") == 6 and "\nsample calls Engine.generate\n" in block_text(module)
+    assert block_text(module).split("\n")[1].startswith("Because generators are lazy")   # design follows the summary
     text = plain_text(draft["document"])
     claimed = [(s, e, c) for s, e, c in span_ranges(draft["document"]) if c]
     assert {c for *_, c in claimed} == {"gen", "gk", "call", "nocli", "entry"}
@@ -237,7 +246,7 @@ def test_map_validate_takes_input_without_stdin(tmp_path, monkeypatch):
 def write_drafts(d, draft: dict) -> None:
     doc = draft["document"]
     by_kind = {s["kind"]: s for s in doc["sections"]}
-    (d / "meta.json").write_text(json.dumps({"title": doc["title"]}))
+    (d / "meta.json").write_text(json.dumps({"title": doc["title"], "coverage": doc["coverage"]}))
     (d / "overview.json").write_text(json.dumps(by_kind["overview"]))
     (d / "modules.json").write_text(json.dumps(by_kind["modules"]))
     (d / "flows.json").write_text(json.dumps({**by_kind["flows"], "flows": doc["flows"]}))
@@ -313,3 +322,107 @@ def test_guard_refuses_drafts_from_anywhere_else(tmp_path, monkeypatch, where):
         code, out = w.call("map", action, str(target))
         assert code == 1 and out["error"]["code"] == "forbidden", (action, out)
     assert w.store.load("map")["document"] is None
+
+
+# -- T7.13b: component modules (files, title, related, design), coverage, the module count -------------------------
+
+from honeyguide.gitio import sum_grep_counts  # noqa: E402
+from honeyguide.mapdoc import check_module_count, normalize_document  # noqa: E402
+
+
+def test_component_module_fields_are_checked():
+    doc = v2_draft()["document"]
+    mod = doc["sections"][1]["blocks"][0]
+    bad = copy.deepcopy(doc)
+    m = bad["sections"][1]["blocks"][0]
+    m.update(files=["engine.py", "engine.py", "/etc/x"], path="cli.py", title="a\ntitle", related=["nowhere", "m-engine"])
+    m["design"] = []
+    bad["sections"][0]["blocks"][0]["files"] = ["x.py"]
+    errors = "\n".join(check_document(bad)[0])
+    for want in ("files has a path twice", "files[2]: must be a repo-relative path", "path must be files[0]",
+                 "title must be a one-line string", "design: spans must be a non-empty list",
+                 "related 'nowhere' is not a module block id", "related names the module itself",
+                 "files belongs to a module block"):
+        assert want in errors, want
+    # path alone (a pre-T7.13b block) or files alone are both fine; saving fills path from files
+    assert mod["files"] == ["engine.py"] and "path" not in mod
+    assert normalize_document(copy.deepcopy(doc))["sections"][1]["blocks"][0]["path"] == "engine.py"
+    mod["path"] = "engine.py"
+    del mod["files"]
+    assert check_document(doc)[0] == []
+    del mod["path"]
+    assert "needs files (or path)" in "\n".join(check_document(doc)[0])
+
+
+def test_draft_rules_for_modules_and_coverage():
+    doc = v2_draft()["document"]
+    m = doc["sections"][1]["blocks"][0]
+    del m["title"], m["design"]
+    m["facts"] = m["facts"][:3]
+    del doc["coverage"]
+    errors = "\n".join(check_document(doc, strict=True)[0])
+    assert "needs a title" in errors and "3 facts rows; a module needs at least 5" in errors
+    assert "needs a design paragraph" in errors and "document: needs coverage" in errors
+    assert check_document(doc)[0] == []    # none of it applies to a saved map
+    # a debug row stands in for the design paragraph
+    m["facts"].append({"key": "debug", "spans": [S("Print the generator to see that nothing ran yet.")]})
+    m["facts"].append({"key": "errors", "spans": [S("None raised.")]})
+    m["title"] = "engine.py: the generator"
+    doc["coverage"] = {"deep": [{"area": "everything", "why": "tiny"}]}
+    assert check_document(doc, strict=True)[0] == []
+    for cov, want in (({}, "name at least one area"), ({"read": []}, "'read' is not one of"),
+                      ({"skipped": [{"area": "x"}]}, "skipped[0]: needs area and why"), ([], "must be an object")):
+        doc["coverage"] = cov
+        assert want in "\n".join(check_document(doc)[0]), want
+
+
+def test_module_count_suits_the_repo_size():
+    doc = {"sections": [{"kind": "modules", "blocks": [{"type": "module", "id": f"m{i}"} for i in range(3)]}]}
+    assert check_module_count(doc, 2999) == []
+    assert "3 module block(s) for 3001 lines" in check_module_count(doc, 3001)[0]
+    doc["sections"][0]["blocks"] *= 6   # 18
+    assert "18 module blocks" in check_module_count(doc, 100)[0]
+    doc["sections"][0]["blocks"] = doc["sections"][0]["blocks"][:6]
+    assert check_module_count(doc, 50_000) == []
+    assert sum_grep_counts("HEAD:a.py\x0012\nHEAD:b:c.py\x0030\n\n") == 42
+
+
+def test_draft_module_files_must_exist_and_design_is_plain_text_and_readable(tmp_path, monkeypatch):
+    w = World(tmp_path, monkeypatch)
+    draft = v2_draft()
+    draft["document"]["sections"][1]["blocks"][0]["files"] = ["engine.py", "gone.py"]
+    code, out = w.call("map", "validate", "--stdin", "--strict", data=draft)
+    assert not out["valid"] and any("file 'gone.py' is not in the repo" in e for e in out["errors"]), out
+    draft = v2_draft()
+    draft["document"]["sections"][1]["blocks"][0]["design"] = [S("No DDP. Lazy."), S(" x", "gk")]
+    code, out = w.call("map", "validate", "--stdin", "--strict", data=draft)
+    assert not out["valid"] and any("(m-engine).design: telegraph style" in e for e in out["errors"]), out
+    # saved, the design paragraph is in the plain text right after the summary, and path is filled in
+    code, out = w.call("claims", "save", data=v2_draft())
+    assert code == 0, out
+    doc = w.store.load("map")["document"]
+    assert doc["sections"][1]["blocks"][0]["path"] == "engine.py" and doc["coverage"]["deep"][0]["area"]
+    assert "the call.\nBecause generators are lazy" in plain_text(doc).replace("consume it.", "the call.")
+
+
+def test_the_page_fixtures_v2_map_passes_the_draft_rules(tmp_path):
+    from t7_page_fixture import DOCUMENT_V2, MAP_CLAIMS_V2, build
+
+    import honeyguide.claims as claims_mod
+    from honeyguide.gitio import Repo
+    info = build(tmp_path, "v2")
+    out = claims_mod.validate_draft(Repo.open(info["repo"]), {"target": "map", "claims": MAP_CLAIMS_V2,
+                                                              "document": DOCUMENT_V2}, strict=True)
+    assert out["valid"] and out["warnings"] == [] and out["readability"]["warnings"] == [], out
+    comp = DOCUMENT_V2["sections"][1]["blocks"][0]
+    assert comp["files"] == ["train.py", "optim.py"] and comp["design"] and comp["related"]
+
+
+def test_the_cartographer_brief_teaches_components():
+    from pathlib import Path
+    brief = (Path(__file__).resolve().parent.parent / "agents" / "cartographer.md").read_text()
+    section = brief.split("### Modules: one block per component")[1].split("### Quality bar")[0]
+    for want in ("**6-15 modules**", "`title`", "`design`", "`related`", "`files`", "**Bad**", "**Good**",
+                 '"coverage"' if '"coverage"' in section else "`coverage`", '"deep"', '"skipped"'):
+        assert want in section, want
+    assert "important file" not in brief and "tinyvlm" not in section

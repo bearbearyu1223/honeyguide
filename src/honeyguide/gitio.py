@@ -25,6 +25,23 @@ def run_git(repo: Path | str, *args: str, check: bool = True) -> str:
     return proc.stdout
 
 
+# What counts as source for the map's module-count rule (T7.13b): code, not docs, data or lockfiles.
+SOURCE_GLOBS = tuple(f"*.{ext}" for ext in (
+    "py", "pyx", "js", "mjs", "cjs", "ts", "tsx", "jsx", "go", "rs", "c", "cc", "cpp", "cxx", "h", "hh", "hpp", "cu",
+    "cuh", "java", "kt", "kts", "scala", "swift", "m", "mm", "rb", "php", "cs", "fs", "lua", "jl", "r", "R", "zig",
+    "sh", "bash", "ex", "exs", "erl", "hs", "ml", "dart", "vue", "svelte", "sql"))
+
+
+def sum_grep_counts(out: str) -> int:
+    """The total of ``git grep -z -c`` output, one ``<rev>:<path>\\0<count>`` per line."""
+    total = 0
+    for line in out.split("\n"):
+        _, sep, count = line.rpartition("\0")
+        if sep and count.strip().isdigit():
+            total += int(count)
+    return total
+
+
 def split_lines(text: str) -> list[str]:
     """Lines as GitHub and editors number them: split on newline only.
 
@@ -77,6 +94,12 @@ class Repo:
     def ls_files(self, commit: str) -> list[str]:
         out = self.git("ls-tree", "-r", "-z", "--name-only", commit)
         return [p for p in out.split("\0") if p]
+
+    def source_lines(self, commit: str) -> int:
+        """Lines of source code (``SOURCE_GLOBS``, text files only) at ``commit``: the repo's size for the map's
+        module-count rule."""
+        out = self.git("grep", "-I", "-z", "-c", "", commit, "--", *SOURCE_GLOBS, check=False)
+        return sum_grep_counts(out)
 
     def diff_name_status(self, a: str, b: str) -> list[tuple[str, str, str | None]]:
         """``(status letter, old path, new path or None)`` for each changed file, renames followed."""

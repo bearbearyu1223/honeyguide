@@ -99,11 +99,12 @@ function claimState(c) {
 }
 
 /* ---------------------------------------------------------------- plain text and leaves */
-/* a block's text pieces, as mapdoc.block_segments: its spans (if any), then list items, then facts rows (T7.13);
-   joined by one newline in the plain text */
+/* a block's text pieces, as mapdoc.block_segments: its spans (if any), a module's design paragraph (T7.13b), then
+   list items, then facts rows (T7.13); joined by one newline in the plain text */
 function segsOf(block) {
   const segs = [];
   if (block.spans && block.spans.length) segs.push(block.spans);
+  if (block.type === "module" && block.design && block.design.length) segs.push(block.design);
   for (const it of block.items || []) segs.push(it.spans || []);
   for (const r of (block.type === "facts" ? block.rows : block.facts) || []) segs.push(r.spans || []);
   return segs.length ? segs : [[]];
@@ -248,6 +249,10 @@ function renderMap() {
   buildFigures(doc, byId);
   let html = `<header><h1>${esc(doc.title || "Map")}</h1><p class="sub" id="sub"></p><div class="mem" id="mem"></div><div id="refresh"></div><div id="mapnew"></div><p class="hint">Select any text to ask about it or annotate it.</p></header>`;
   let bi = 0, graphShown = false;
+  const mods = new Map((doc.sections || []).flatMap(x => x.blocks || []).filter(x => x.type === "module").map(x => [x.id, x]));
+  /* the coverage note closes the Modules section (the Overview when there is none) */
+  const covAt = (doc.sections || []).some(x => x.kind === "modules") ? "modules" : "overview";
+  let covShown = false;
   for (const sec of doc.sections || []) {
     html += `<section id="s-${esc(sec.id)}" data-sec="${esc(sec.id)}"><h2>${esc(sec.title)}</h2>`;
     const blocks = sec.blocks || [];
@@ -267,13 +272,24 @@ function renderMap() {
       const claimed = segsOf(block).flat().filter(x => x.claim);
       const allGone = claimed.length > 0 && claimed.every(x => byId.get(x.claim)?.freshness === "retired");
       if (block.type === "module") {
+        const design = block.design && block.design.length ? nextSeg(block.design) : null;
         const rows = (block.facts || []).map(r => [r, nextSeg(r.spans || [])]);
         const shown = rows.filter(([r]) => r.key === "responsibility"), more = rows.filter(([r]) => r.key !== "responsibility");
         const open = UI.openMods.has(block.id);
-        html += `<div class="mod${open ? " open" : ""}" data-block="${esc(block.id)}" data-path="${esc(block.path)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div>`
+        const files = modFiles(block);
+        const goneTip = ` data-tip="Every claim about ${files.length > 1 ? "these files" : "this file"} is retired"`;
+        /* T7.13b: a component's heading is its title, its files as chips under it; an older block keeps path + role */
+        const head = block.title
+          ? `<div class="mod-h"><h3 class="mod-t${allGone ? " gone" : ""}"${allGone ? goneTip : ""}>${inlineCode(block.title)}</h3></div><div class="mod-files">${files.map(f => `<code>${esc(f)}</code>`).join("")}${block.entry ? `<span class="mtag">entry point</span>` : ""}</div>`
+          : `<div class="mod-h"><code${allGone ? ` class="gone"${goneTip}` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div>`;
+        const rel = (block.related || []).map(id => mods.get(id)).filter(Boolean);
+        const relHTML = rel.length ? `<span class="rel">Related: ${rel.map(m => `<a href="#" data-gomod="${esc(m.id)}" data-tip="${esc(m.title || modLabel(m))}">${esc(modName(m))}</a>`).join(`<span class="sep">·</span>`)}</span>` : "";
+        const moreHTML = more.length ? `<button class="more" data-more="${esc(block.id)}" aria-expanded="${open}"><span class="mt">${open ? "Less" : "More"}</span><span class="mn">${plural(more.length, "fact")}</span></button>` : "";
+        html += `<div class="mod${open ? " open" : ""}${block.title ? " comp" : ""}" data-block="${esc(block.id)}" data-path="${esc(files[0] || "")}">${head}`
           + (own !== null ? `<p class="blk">${own}</p>` : "")
+          + (design !== null ? `<p class="blk design">${design}</p>` : "")
           + (rows.length ? `<dl class="facts mfacts">${shown.map(([r, h]) => factHTML(r, h)).join("")}${more.map(([r, h]) => factHTML(r, h, "fx")).join("")}</dl>` : "")
-          + (more.length ? `<button class="more" data-more="${esc(block.id)}" aria-expanded="${open}"><span class="mt">${open ? "Less" : "More"}</span><span class="mn">${plural(more.length, "fact")}</span></button>` : "")
+          + (moreHTML || relHTML ? `<div class="mod-foot">${moreHTML}${relHTML}</div>` : "")
           + `</div>`;
       } else if (block.type === "list") {
         const tag = block.ordered ? "ol" : "ul";
@@ -295,6 +311,7 @@ function renderMap() {
         html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure><p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
       }
     });
+    if (doc.coverage && !covShown && sec.kind === covAt) { covShown = true; html += coverageHTML(doc.coverage); }
     html += `</section>`;
   }
   COL.innerHTML = html;
@@ -305,6 +322,28 @@ function renderMap() {
   renderHeader();
   applyOverlays();
   renderFigs();
+}
+/* T7.13b: a module block's files (a component may span several; an older block has its path), its short name for
+   "Related" links (its role without a leading "the", capitalised: "the training loop" -> "Training loop"; else its
+   title), and its label in the panel ("train.py + optim.py") */
+function modFiles(b) { return b.files && b.files.length ? b.files : b.path ? [b.path] : []; }
+function modName(b) {
+  const r = (b.role || "").replace(/^the\s+/i, "");
+  return r ? r[0].toUpperCase() + r.slice(1) : b.title || b.path || b.id;
+}
+function modLabel(b) { const f = modFiles(b); return f.length > 1 ? f.join(" + ") : f[0] || b.title || ""; }
+/* the quiet note at the end of the Modules section: what the Cartographer read in full, skimmed and left out, each
+   with its reason (meta.json's coverage; not plain text, so not part of what can be asked about) */
+const COVERAGE = [["deep", "Read in full"], ["scanned", "Skimmed"], ["skipped", "Left out"]];
+function coverageHTML(cov) {
+  const rows = COVERAGE.filter(([k]) => (cov[k] || []).length).map(([k, label]) => `<dt>${label}</dt><dd>${cov[k].map(x => `<div class="cv"><span class="ca">${inlineCode(x.area || "")}</span><span class="csep">: </span><span class="cw">${inlineCode(x.why || "")}</span></div>`).join("")}</dd>`);
+  return rows.length ? `<aside class="cov" aria-label="What this map covers"><h3 class="topic">What this map covers</h3><dl class="facts covl">${rows.join("")}</dl></aside>` : "";
+}
+function goModuleId(id) {
+  const m = $(`.mod[data-block="${CSS.escape(id)}"]`, COL);
+  if (!m) return;
+  scrollMapTo(m, 80);
+  flash(m);
 }
 function setModOpen(mod, open) {
   if (!mod) return;
@@ -390,10 +429,15 @@ function pathHTML(p, byId, panel) {
    ("resp:<response id>") and the module graph ("graph"). Re-rendered only when the width they get changes. */
 const FIGS = new Map();
 const EVNAMES = Object.fromEntries(Object.entries(EV).map(([k, [n]]) => [k, n.toLowerCase()]));
-/* the Modules section: path -> {role, entry, block} */
+/* the Modules section: file -> {role, entry, block} */
 function moduleIndex(doc) {
   const m = new Map();
-  for (const sec of doc?.sections || []) for (const b of sec.blocks || []) if (b.type === "module" && !m.has(b.path)) m.set(b.path, { role: b.role || "", entry: !!b.entry, block: b.id });
+  for (const sec of doc?.sections || []) for (const b of sec.blocks || []) {
+    if (b.type !== "module") continue;
+    /* a component's files each map to it (T7.13b); a title "files: role" lends its role when there is no role */
+    const role = b.role || (b.title && b.title.includes(": ") ? b.title.slice(b.title.indexOf(": ") + 2) : "");
+    for (const f of modFiles(b)) if (!m.has(f)) m.set(f, { role, entry: !!b.entry, block: b.id });
+  }
   return m;
 }
 function diagramModel(p, byId, panel, key) {
@@ -535,10 +579,8 @@ function showCalls(from, to) {
   }
 }
 function goModule(file) {
-  const m = $$(".mod[data-path]", COL).find(x => x.dataset.path === file);
-  if (!m) return;
-  scrollMapTo(m, 80);
-  flash(m);
+  const x = moduleIndex(D.map?.document).get(file);
+  if (x) goModuleId(x.block);
 }
 /* the line a diagram's preview gains: "Hop 6 of 7 · loss.backward() · seen at runtime", its description, its note */
 function hopCtxHTML(g) {
@@ -577,7 +619,7 @@ function index() {
     } else key = "general";
     if (!groups.has(key)) {
       const b = range ? blockAt(range[0]) : null;
-      groups.set(key, { key, anchor: a && a.doc === "map" ? a : null, range, sec: b?.sec || null, mod: b?.block.type === "module" ? b.block.path : null, roots: [] });
+      groups.set(key, { key, anchor: a && a.doc === "map" ? a : null, range, sec: b?.sec || null, mod: b?.block.type === "module" ? modLabel(b.block) : null, roots: [] });
     }
     groups.get(key).roots.push(q.id);
   }
@@ -893,7 +935,7 @@ function renderThread() {
   const c = UI.compose;
   if (c && c.mode === "root" && !UI.cur) {
     const b = blockAt(c.start);
-    const g = b ? { key: "", sec: b.sec, mod: b.block.type === "module" ? b.block.path : null, range: null } : null;
+    const g = b ? { key: "", sec: b.sec, mod: b.block.type === "module" ? modLabel(b.block) : null, range: null } : null;
     return anchorHead(g, c.quote) + `<div class="empty">Ask anything about this passage. The ${agHTML("guide")} sends it to the ${agHTML("investigator")}, or to the ${agHTML("tracer")} when it asks what happens when something runs.</div>`;
   }
   const g = UI.cur && IDX.groups.get(UI.cur);
@@ -940,7 +982,7 @@ function renderNotes() {
     let src;
     if (n.from_response) src = `Saved answer · ${agHTML(r?.agent)}`;
     else if (n.anchor && n.anchor.doc.startsWith("answer:")) src = `On an answer · ${agHTML(r?.agent)}`;
-    else if (n.anchor) { const rg = resolveMapAnchor(n.anchor); const b = rg && blockAt(rg[0]); src = `On the map${b ? " · " + esc(b.sec.title) + (b.block.type === "module" ? " · " + esc(b.block.path) : "") : " · not found in the current map"}`; }
+    else if (n.anchor) { const rg = resolveMapAnchor(n.anchor); const b = rg && blockAt(rg[0]); src = `On the map${b ? " · " + esc(b.sec.title) + (b.block.type === "module" ? " · " + esc(modLabel(b.block)) : "") : " · not found in the current map"}`; }
     else src = "Note";
     const quote = n.from_response ? IDX.Q.get(r?.parent)?.text : n.anchor?.quote;
     const body = n.from_response ? `<div class="saved">${inlineCode(n.text.replace(/\n{2,}/g, "\n"))}</div><div class="sby">written by ${agHTML(r?.agent)}</div>` : `<div class="nb">${esc(n.text)}</div>`;
@@ -1288,6 +1330,8 @@ document.addEventListener("click", e => {
   if (el.closest("[data-cancel]")) { UI.compose = null; applyOverlays(); render(true); return; }
   const qp = el.closest("#qp button");
   if (qp) { submit(qp.textContent); return; }
+  const gm = el.closest("[data-gomod]");
+  if (gm) { e.preventDefault(); goModuleId(gm.dataset.gomod); return; }
   const mo = el.closest("[data-more]");
   if (mo) { const m = mo.closest(".mod"); setModOpen(m, !m.classList.contains("open")); layout(); return; }
   const fh = el.closest(".flow-h");

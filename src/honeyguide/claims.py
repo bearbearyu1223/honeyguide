@@ -14,7 +14,8 @@ from .contract import ContractError, need
 from .gitio import GitError, Repo
 from .guard import check_secret
 from .links import editor_links, github_link
-from .mapdoc import check_document, check_path_record, claim_refs, revision, rewrite_refs
+from .mapdoc import (check_document, check_module_count, check_path_record, claim_refs, module_blocks,
+                     module_files, normalize_document, revision, rewrite_refs)
 from .outline import line_hash
 from .readability import check_readability
 from .store import EVIDENCE, Store, all_claims, make_claim, now_iso, validate_claim
@@ -189,7 +190,8 @@ def save_claims(store: Store, repo: Repo, data: Any) -> dict:
                     claim.update(freshness="retired", freshness_reason=retiring[claim["id"]], retired_at=stamp)
                     claim.pop("candidates", None)
         known = {c["id"] for c in existing} | {c["id"] for c in claims}
-        doc = layer.get("document") if document is None else rewrite_refs(copy.deepcopy(document), keys)
+        doc = layer.get("document") if document is None else normalize_document(
+            rewrite_refs(copy.deepcopy(document), keys))
         errors: list[str] = []
         warnings: list[str] = []
         if doc is not None:
@@ -258,8 +260,9 @@ def validate_map(repo: Repo, layer: dict, strict: bool = False) -> dict:
     """``map validate``: structure, every claim anchored or labelled, hashes, secrets, references; plus the
     readability report (T7.13).
 
-    ``strict`` (drafts: ``map check``, ``map ingest``, ``map validate --strict``): the Overview's topic groups and
-    the module facts are required, and readability errors are errors. Without it (a saved map, which may predate
+    ``strict`` (drafts: ``map check``, ``map ingest``, ``map validate --strict``): the Overview's topic groups, the
+    module titles and facts and the coverage are required, every module's files must exist and the module count
+    must suit the repo's size (T7.13b), and readability errors are errors. Without it (a saved map, which may predate
     T7.13), readability is reported in ``readability`` only and never makes the map invalid.
     """
     errors: list[str] = []
@@ -293,7 +296,25 @@ def validate_map(repo: Repo, layer: dict, strict: bool = False) -> dict:
         readable = {"errors": re_, "warnings": rw}
         if strict:
             errors += re_
+            errors += check_repo_modules(repo, doc, layer.get("commit"))
     return {"valid": not errors, "errors": errors, "warnings": warnings, "readability": readable}
+
+
+def check_repo_modules(repo: Repo, doc: dict, rev: Any) -> list[str]:
+    """Draft rules that need the repo (T7.13b): every module's files exist at the map's commit (a file, or a
+    directory holding files), and the module count suits the repo's size."""
+    try:
+        commit = commit_of(repo, rev)
+    except ContractError as exc:
+        return [f"modules: {exc}"]
+    tracked = set(repo.ls_files(commit))
+    dirs = {"/".join(p.split("/")[:k]) for p in tracked for k in range(1, p.count("/") + 1)}
+    errors = []
+    for block in module_blocks(doc):
+        for f in module_files(block):
+            if f.rstrip("/") not in tracked and f.rstrip("/") not in dirs:
+                errors.append(f"module {block.get('id')!r}: file {f!r} is not in the repo at {commit[:12]}")
+    return errors + check_module_count(doc, repo.source_lines(commit))
 
 
 def validate_draft(repo: Repo, data: Any, store: Store | None = None, strict: bool = False) -> dict:
@@ -311,9 +332,11 @@ def validate_draft(repo: Repo, data: Any, store: Store | None = None, strict: bo
         return {"valid": False, "errors": exc.details, "warnings": [], "readability": {"errors": [], "warnings": []}}
     doc = rewrite_refs(copy.deepcopy(data.get("document")), keys) if data.get("document") is not None else None
     if doc is not None:
+        doc = normalize_document(doc)
         doc["revision"] = revision(doc)
     saved = store.load("map")["claims"] if store is not None and data.get("mode") == "add" else []
-    result = validate_map(repo, {"claims": saved + claims, "document": doc}, strict=strict)
+    result = validate_map(repo, {"claims": saved + claims, "document": doc, "commit": data.get("commit")},
+                          strict=strict)
     if saved:   # the saved claims were checked when they were saved; only new ones can be unshown by this draft
         new = {c["id"] for c in claims}
         result["warnings"] = [w for w in result["warnings"] if not w.startswith("claim ")

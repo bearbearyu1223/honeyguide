@@ -115,6 +115,33 @@ h2{font-size:20px;line-height:1.3;letter-spacing:-.02em;color:var(--ink);font-we
 .mod-h .role{font-size:13.5px;color:var(--muted)}
 .mod-h code.gone{text-decoration:line-through;color:var(--faint)}
 .mod p{margin-bottom:8px}
+/* T7.13b: a component module. Its title is the heading, its files small code chips under it; the design paragraph
+   (why it is built this way, or the sharp edge met first) sits under a quiet label; related modules are small links
+   beside "More". The coverage note closes the section in the same quiet register as the topic headings. */
+.mod.comp{padding-top:28px}
+.mod.comp:first-of-type{padding-top:4px}
+h3.mod-t{font-size:16.5px;line-height:1.4;font-weight:620;letter-spacing:-.01em;color:var(--ink);margin:0}
+h3.mod-t code{font-size:.86em}
+h3.mod-t.gone{text-decoration:line-through;color:var(--faint)}
+.mod-files{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;margin:4px 0 10px}
+.mod-files code{font-size:11.5px;color:var(--muted);background:var(--sunken);padding:1px 6px;border-radius:5px}
+.mtag{font-size:9.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:0 5px;margin-left:4px}
+.mod p.design{position:relative;padding-left:14px;border-left:2px solid var(--line2);color:var(--soft)}
+.mod p.design::before{content:"Design";display:block;font-size:10.5px;line-height:1.5;text-transform:uppercase;letter-spacing:.09em;font-weight:650;color:var(--faint);margin-bottom:2px;user-select:none}
+.mod-foot{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px;margin:0 0 8px}
+.mod-foot .more{margin:0}
+.rel{font-size:12.5px;color:var(--faint)}
+.rel a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line2);margin-left:6px}
+.rel a:hover{color:var(--brand);border-color:var(--brand)}
+.rel .sep{margin-left:6px}
+.cov{margin:36px 0 8px;padding-top:4px;border-top:1px solid var(--line)}
+.cov h3.topic{margin-top:16px}
+.covl{font-size:13.5px;line-height:1.55;color:var(--muted);grid-template-columns:96px 1fr;row-gap:10px}
+.covl dt{font-size:12px}
+.covl .cv{margin:0 0 4px}
+.covl .cv:last-child{margin-bottom:0}
+.covl .ca{color:var(--soft);font-weight:500}
+.covl code{font-size:.9em}
 /* T7.13: the Overview's topic groups, lists, and facts (a compact two-column definition list; in a module, every
    row but the responsibility is folded until "More") */
 h3.topic{font-size:11.5px;line-height:1.4;text-transform:uppercase;letter-spacing:.09em;font-weight:650;color:var(--faint);margin:28px 0 8px}

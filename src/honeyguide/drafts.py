@@ -4,7 +4,8 @@ saves them. Nothing passes through a shell command line, so the map's size has n
 
 Files in the drafts directory (``honeyguide map draft-dir`` prints and creates it):
 
-- ``meta.json``: ``{"title": ..., "commit"?: rev, "mode"?: "replace" | "add", "retire"?: [{claim, reason}]}``
+- ``meta.json``: ``{"title": ..., "coverage": {deep|scanned|skipped: [{area, why}]}, "commit"?: rev,
+  "mode"?: "replace" | "add", "retire"?: [{claim, reason}]}``; ``coverage`` becomes ``document.coverage`` (T7.13b)
 - ``overview.json``, ``modules.json``, ``flows.json``: one section object each (``{id, kind, title, blocks}``);
   ``flows.json`` also holds the path records as ``"flows": [...]``. Other sections: ``section-<name>.json``.
 - ``claims.json``, or several ``claims-<name>.json``: a list of claim drafts (or ``{"claims": [...]}``).
@@ -107,6 +108,8 @@ def assemble(store: Store, path: str | Path) -> tuple[dict, list[str]]:
         raise ContractError("validation_failed", f"{len(errors)} problem(s) in the draft files; nothing was checked",
                             errors)
     document = {"title": meta.get("title"), "sections": sections, "flows": flows}
+    if "coverage" in meta:
+        document["coverage"] = meta["coverage"]
     data = {"target": "map", "mode": meta.get("mode", "replace"), "document": document, "claims": claims}
     for key in ("commit", "retire"):
         if key in meta:
