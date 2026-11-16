@@ -109,7 +109,13 @@ def test_rejects_bad_specs(kw):
 
 def test_leak_scan_counts_only_hits():
     text = "path /Users/someone/x and CANARY-CLAUDEMD-7Q4X twice CANARY-CLAUDEMD-7Q4X"
-    assert isolate.leak_scan(text) == {"someone": 1, "CANARY-CLAUDEMD-7Q4X": 2}
+    assert isolate.leak_scan(text, ("someone",)) == {"someone": 1, "CANARY-CLAUDEMD-7Q4X": 2}
+
+
+def test_personal_strings_come_from_the_environment(monkeypatch):
+    monkeypatch.setenv("HONEYGUIDE_LEAK_STRINGS", "octo-handle, private-repo")
+    monkeypatch.setattr("getpass.getuser", lambda: "someone")
+    assert isolate._personal_strings() == ("someone", "octo-handle", "private-repo")
     assert isolate.leak_scan("ok") == {}
     assert isolate.leak_scan("ZEBRA-41", ("ZEBRA-41",)) == {"ZEBRA-41": 1}
 

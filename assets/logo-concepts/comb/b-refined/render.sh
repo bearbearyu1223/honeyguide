@@ -1,6 +1,6 @@
 #!/bin/bash
 # Regenerate the refined B SVGs and re-shoot this folder's sheets. Headless Chrome always runs under a 60 s alarm.
-D=/Users/someone/Documents/GitHub/honeyguide/assets/logo-concepts/comb/b-refined
+D="$(cd "$(dirname "$0")" && pwd)"
 C="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 P=${TMPDIR:-/tmp}/hg-logo-chrome-profile
 python3 "$D/gen.py" "$@" || exit 1

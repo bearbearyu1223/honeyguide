@@ -38,7 +38,19 @@ FIXED_ENV = {
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "DISABLE_AUTOUPDATER": "1",
 }
-LEAK_STRINGS = ("someone", "MEMORY", "CLAUDE.md", "AGENTS.md", "bearbearyu", "git status", "gitStatus",
+def _personal_strings() -> tuple[str, ...]:
+    """Strings that identify the person running the pilot: the login name, plus anything listed (comma-separated)
+    in HONEYGUIDE_LEAK_STRINGS, e.g. a GitHub handle or a private repo name. Nothing personal is hard-coded."""
+    import getpass
+    extra = tuple(x.strip() for x in os.environ.get("HONEYGUIDE_LEAK_STRINGS", "").split(",") if x.strip())
+    try:
+        user = (getpass.getuser(),)
+    except Exception:  # noqa: BLE001 - no login name available: scan without it
+        user = ()
+    return tuple(dict.fromkeys(user + extra))
+
+
+LEAK_STRINGS = (*_personal_strings(), "MEMORY", "CLAUDE.md", "AGENTS.md", "git status", "gitStatus",
                 "Documents/GitHub", "research-content-assistant", "honeyguide")
 CANARIES = {
     "CLAUDE.md": "CANARY-CLAUDEMD-7Q4X",
