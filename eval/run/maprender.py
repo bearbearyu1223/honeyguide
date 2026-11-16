@@ -3,10 +3,10 @@
 The Cartographer in eval mode returns the full `claims save` input ({"target", "mode", "document", "claims"}).
 Validation uses Honeyguide's own code (honeyguide.claims, honeyguide.mapdoc) against the pinned clone, at the
 pinned commit. A map is usable only if it passes the check: no structure error (check_document, strict) and no
-draft error (validate_draft, strict) other than an anchor that did not resolve. Those are `blocking_errors`; the
-runner sends them back to the Cartographer in up to `map_fix_rounds` fix rounds (evalrun.py). Unresolved anchors
-alone never refuse a map: they are counted and listed (a measurement, never fixed by the runner), and the rendered
-text marks each as "[path: quote not found]".
+draft error (validate_draft, strict) other than a quote that did not resolve (not_found or ambiguous; a malformed,
+missing-file or secret anchor blocks). Those are `blocking_errors`; the runner sends them back to the Cartographer
+in up to `map_fix_rounds` fix rounds (evalrun.py). Unresolved quotes alone never refuse a map: they are counted and
+listed (a measurement, never fixed by the runner), and the rendered text marks each as "[path: quote not found]".
 
 The rendered text is what a map-condition run reads (appended to its prompt): every section, block and flow hop,
 each claim followed by its citation ([path:start-end] per resolved anchor, or its evidence label when it cites no
@@ -26,8 +26,11 @@ from honeyguide.gitio import Repo
 from honeyguide.mapdoc import TOPIC_TITLES, check_document, normalize_document
 
 FENCE = re.compile(r"^```(?:json)?\s*\n(.*)\n```\s*$", re.S)
-# A draft error about one anchor that did not resolve: "claims[3] (key).anchors[0]: not_found: ..."
-ANCHOR_ERROR = re.compile(r"^claims\[\d+\](?: \(.*?\))?\.anchors\[\d+\]: ")
+# A draft error about one quote that did not resolve (honeyguide.claims.build_claims wording): "claims[3] (key)
+# .anchors[0]: not_found: ..." or "...: ambiguous: ...". Only these are waived; a malformed anchor (bad_input: no
+# quote, a path that is not repo-relative, a bad extent), a file not in the commit (no_file) and a secret block.
+UNRESOLVED = ("not_found", "ambiguous")
+ANCHOR_ERROR = re.compile(r"^claims\[\d+\](?: \(.*?\))?\.anchors\[\d+\]: (?:" + "|".join(UNRESOLVED) + r"): ")
 
 
 def extract_json(result: dict) -> tuple[Any, str]:
@@ -101,7 +104,10 @@ def _draft(repo: Repo, commit: str, data: dict) -> tuple[bool, list[str]]:
 
 def validate_map(clone, commit: str, data: Any) -> dict:
     """Everything the scorer prints about one map: structure, anchors, Honeyguide's own draft validation, and the
-    check the runner applies (`usable` is True only when `blocking_errors` is empty)."""
+    check the runner applies (`usable` is True only when `blocking_errors` is empty). When a quote did not resolve,
+    Honeyguide's check stops at the claims, so the rest is checked on the waive_unresolved copy; blocking is the
+    structure errors, then the first pass's errors other than unresolved quotes, then the re-check's, de-duplicated.
+    """
     if not isinstance(data, dict) or not isinstance(data.get("document"), dict):
         return {"usable": False, "reason": "no document object", "anchors_total": 0, "anchors_resolved": 0,
                 "unresolved": [], "structure_errors": [], "draft_valid": False, "draft_errors": [],
@@ -113,8 +119,8 @@ def validate_map(clone, commit: str, data: Any) -> dict:
     draft_valid, draft_errors = _draft(repo, commit, data)
     rest = [e for e in draft_errors if not ANCHOR_ERROR.match(e)]
     if len(rest) < len(draft_errors):    # anchors failed, so the draft check stopped at the claims: run the rest
-        rest = [e for e in _draft(repo, commit, waive_unresolved(repo, commit, data))[1]
-                if not ANCHOR_ERROR.match(e)]
+        rest += [e for e in _draft(repo, commit, waive_unresolved(repo, commit, data))[1]
+                 if not ANCHOR_ERROR.match(e)]
     blocking = list(dict.fromkeys(s_err + rest))
     claims = [c for c in data.get("claims") or [] if isinstance(c, dict)]
     labels: dict[str, int] = {}

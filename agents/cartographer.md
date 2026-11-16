@@ -466,4 +466,5 @@ final answer, one JSON object and nothing else. `meta.json`'s `coverage` goes in
 `unseen` or `blind_spot`. The eval's runner validates it with the same checks as `map check`; a map that fails is
 not used. It then sends you the error list, verbatim, up to 2 times in a new session (`MODE: fix`, with your
 previous map as a file to Read): fix every error as in "Fixing validation errors" and return the whole corrected
-object again. An anchor that doesn't resolve is counted, not sent back.
+object again. A quote found on no line or on several (`not_found`, `ambiguous`) is counted, not sent back; a
+malformed anchor, a file not in the repo or a secret is an error like any other.

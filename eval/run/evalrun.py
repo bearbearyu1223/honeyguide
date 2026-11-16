@@ -9,7 +9,9 @@ goes to the run archive, outside the repo: <archive>/<run-id>/
   log.jsonl                 append-only events: start, done, restart after interruption, retry, stop
   runs/<id>/                prompt.txt, command.txt (token hidden), transcript.jsonl (stream-json), stderr.txt,
                             result.json (the result event), meta.json (status, answer, tokens, cost, model, wall)
-  runs/map-s<k>/            also map.json and validation.json (the build's own map and its check), and
+  runs/map-s<k>/            also map.json and validation.json (the build's own map and its check), cost_so_far.json
+                            (what the build and the finished fix rounds billed, rewritten after each; read only
+                            while the run has no meta.json), and
     fix/<n>/                one folder per fix round, the same files plus that round's map.json and validation.json
   attempts/<id>/<n>/        earlier attempts of a run re-run with --retry-failed or after a usage-limit stop
   maps/seed<k>/             the last round's map.json and validation.json; map.md (what map runs read) only when
@@ -17,8 +19,8 @@ goes to the run archive, outside the repo: <archive>/<run-id>/
   outline/                  outline.md (what outline runs read), outline.json (its size and the maps' sizes)
 
 The eval map: the Cartographer (eval mode, Read/Grep/Glob) returns the claims save input; maprender.validate_map
-checks it. It is used only if it passes: no structure error and no draft error other than unresolved anchors
-(those are counted, never fixed). A map that fails gets up to config map_fix_rounds fix rounds: each a new
+checks it. It is used only if it passes: no structure error and no draft error other than quotes that did not
+resolve (not_found or ambiguous: counted, never fixed). A map that fails gets up to config map_fix_rounds fix rounds: each a new
 isolated run (same isolation, model, effort, tools and map schema, a fresh repo copy) whose prompt holds the
 blocking errors verbatim and the fix instructions, with the previous map as a file outside the working dir
 (--add-dir). caps.map_usd covers the build and its fix rounds; each round's --max-budget-usd is what is left. The
@@ -29,7 +31,8 @@ and every map and outline run waits for a usable map (blocked).
 Resuming: run the same command with the same --run-id. Finished runs are skipped. A run that was interrupted
 (started, no result) or stopped by the usage limit is run again, and the log says so. A failed run (status error)
 is never re-run unless --retry-failed is given (which also re-runs a map build that returned no usable map); the
-earlier attempt is kept. Capped runs and invalid answers are final (they count as wrong). The runner stops starting runs at --max-cost (list price, everything spent in this
+earlier attempt is kept. A map run interrupted after its build or a fix round keeps what those billed (its
+cost_so_far.json): `spent` counts it, in runs/ or attempts/, and a runner-side failure records it as the run's usage. Capped runs and invalid answers are final (they count as wrong). The runner stops starting runs at --max-cost (list price, everything spent in this
 run archive, so in-flight runs can overshoot by up to concurrency x the per-run cap), at --max-runs (runs started
 by this invocation), or at the first usage-limit error, and prints the command that resumes.
 
@@ -70,6 +73,7 @@ import workdirs as W  # noqa: E402
 from repo import in_scope  # noqa: E402
 
 PLACEHOLDER_TOKEN = "DRY-RUN-NO-TOKEN"
+COST_SO_FAR = "cost_so_far.json"     # a map run's billed usage so far (build + finished fix rounds)
 
 
 def status(msg: str) -> None:
@@ -137,9 +141,13 @@ class Archive:
         return n
 
     def spent(self) -> float:
+        """List price billed in this archive: each run folder (runs/<id>/, attempts/<id>/<n>/) counted once, from
+        its meta.json, or, for a map run interrupted before it wrote one, from its cost_so_far.json."""
         total = 0.0
-        for p in list((self.root / "runs").glob("*/meta.json")) + list((self.root / "attempts").glob("*/*/meta.json")):
-            total += float(json.loads(p.read_text()).get("usage", {}).get("cost_usd") or 0.0)
+        for d in list((self.root / "runs").glob("*")) + list((self.root / "attempts").glob("*/*")):
+            p = d / "meta.json" if (d / "meta.json").exists() else d / COST_SO_FAR
+            if p.exists():
+                total += float(json.loads(p.read_text()).get("usage", {}).get("cost_usd") or 0.0)
         return total
 
 
@@ -203,9 +211,13 @@ class Runner:
         except Exception as exc:  # noqa: BLE001 - a runner-side failure is recorded as this run's error
             d = self.archive.run_dir(item.id)
             d.mkdir(parents=True, exist_ok=True)
+            so_far = json.loads((d / COST_SO_FAR).read_text()) if (d / COST_SO_FAR).exists() else {}
             meta = {"id": item.id, "item": asdict(item), "status": "error",
-                    "reason": f"runner: {type(exc).__name__}: {self._hide(str(exc))}", "usage": RR.usage_summary(None),
-                    "ended": now()}
+                    "reason": f"runner: {type(exc).__name__}: {self._hide(str(exc))}",
+                    "usage": so_far.get("usage") or RR.usage_summary(None), "ended": now()}
+            for k in ("build_usage", "build_wall_s", "fix_rounds", "wall_s"):
+                if k in so_far:
+                    meta[k] = so_far[k]
             (d / "meta.json").write_text(json.dumps(meta, indent=1, sort_keys=True) + "\n")
             return meta
 
@@ -295,6 +307,8 @@ class Runner:
                     "tool_names": c["parsed"]["tool_names"], "answer": answer, "answer_read_from": how,
                     "workdir": str(work), "workdir_files": wd["files"], "agent_files_removed": wd["removed"],
                     "prompt_chars": len(prompt), "leak_scan": P.isolate.leak_scan(c["out"] + c["err"])}
+            if item.kind == "map":
+                self._cost_so_far(d, [usage], [meta["wall_s"]], [])
         finally:
             shutil.rmtree(root, ignore_errors=True)
         if item.kind == "map" and st == "ok":
@@ -308,6 +322,14 @@ class Runner:
         v = M.validate_map(self.clone, self.commit, obj)
         v["read_from"] = how
         return v
+
+    @staticmethod
+    def _cost_so_far(d: Path, usages: list[dict], walls: list[float], rows: list[dict]) -> None:
+        """runs/map-s<k>/cost_so_far.json: the build's and the finished fix rounds' usage, so an interruption or a
+        runner-side failure before meta.json keeps what was billed."""
+        rec = {"usage": RR.sum_usage(usages), "build_usage": usages[0], "build_wall_s": walls[0],
+               "wall_s": round(sum(walls), 1), "fix_rounds": rows, "updated": now()}
+        (d / COST_SO_FAR).write_text(json.dumps(rec, indent=1, sort_keys=True) + "\n")
 
     @staticmethod
     def _write_round(d: Path, obj: dict, v: dict) -> None:
@@ -341,6 +363,7 @@ class Runner:
             fm = self._fix_round(item, fd, obj, errors_in, n, rounds, budget)
             usages.append(fm["usage"])
             walls.append(fm["wall_s"])
+            self._cost_so_far(d, usages, walls, rows)
             row = {"round": n, "errors_in": len(errors_in), "errors_out": None, "cost": fm["usage"]["cost_usd"],
                    "wall_s": fm["wall_s"], "status": fm["status"], "reason": fm["reason"]}
             if fm["status"] == "ok":
@@ -349,6 +372,7 @@ class Runner:
                 self._write_round(fd, obj, v)
                 row["errors_out"] = len(v["blocking_errors"])
             rows.append(row)
+            self._cost_so_far(d, usages, walls, rows)
             self.archive.log("map_fix", id=item.id, **row)
             if fm["status"] != "ok":
                 stop = f"fix round {n}: {fm['status']}" + (f" ({fm['reason']})" if fm["reason"] else "")

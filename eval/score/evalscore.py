@@ -258,6 +258,12 @@ def money(x: float) -> str:
     return f"${x:,.2f}"
 
 
+def build_label(meta: dict) -> str:
+    """What a map run's usage and wall_s cover: "build", or "build + N fix round(s)" when fix rounds ran."""
+    n = len(meta.get("fix_rounds") or [])
+    return f"build + {n} fix round{'s' if n != 1 else ''}" if n else "build"
+
+
 def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, grades: dict[str, float],
             grade_problems: list[str]) -> str:
     plan, metas = arch["plan"], arch["metas"]
@@ -307,11 +313,15 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
         L += [f"  map seed {s}  {v.get('claims', 0)} claims; anchors {v['anchors_resolved']}/{v['anchors_total']}"
               f" resolved; draft valid {'yes' if v['draft_valid'] else 'no'}"
               f" ({len(v.get('draft_errors', []))} errors)",
-              f"              {v.get('tokens_est', 0):,} tokens (est., chars/4) as given to map runs",
-              f"              build {mm.get('wall_s', 0) / 60:.1f} min, {money(u['cost_usd'])} list; tokens "
-              f"in {t['input_tokens']:,}",
-              f"              cache read {t['cache_read_input_tokens']:,}, cache write "
+              f"              {v.get('tokens_est', 0):,} tokens (est., chars/4) as given to map runs"]
+        L += wrap(f"{build_label(mm)} {mm.get('wall_s', 0) / 60:.1f} min, {money(u['cost_usd'])} list; tokens in "
+                  f"{t['input_tokens']:,}", 14, 14)
+        L += [f"              cache read {t['cache_read_input_tokens']:,}, cache write "
               f"{t['cache_creation_input_tokens']:,}, out {t['output_tokens']:,}"]
+        if mm.get("fix_rounds"):
+            b = mm.get("build_usage") or RR.usage_summary(None)
+            L.append(f"              build alone {mm.get('build_wall_s', 0) / 60:.1f} min, "
+                     f"{money(b['cost_usd'])} list")
         ev = ", ".join(f"{k} {n}" for k, n in sorted(v.get("evidence", {}).items(), key=lambda kv: -kv[1]))
         if ev:
             L += wrap("evidence: " + ev, 14, 14)
