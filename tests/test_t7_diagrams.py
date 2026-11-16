@@ -457,7 +457,8 @@ def test_nothing_is_fetched_but_the_page_and_its_api(site, chrome):
     for u in urls:
         assert u.startswith(base + "/"), u
         path = u[len(base):].split("?")[0]
-        assert path in ("/page.css", "/page.js", "/boot.js", "/diagrams.js", "/favicon.svg") or path.startswith("/api/"), u
+        assert path in ("/page.css", "/page.js", "/boot.js", "/diagrams.js", "/favicon.svg", "/avatars.css",
+                        "/hg-avatars.js") or path.startswith("/api/"), u
     assert any(u.endswith("/diagrams.js") for u in urls)
 
 
@@ -476,6 +477,10 @@ def test_header_uses_memory_state(tmp_path_factory, chrome):
         assert f"{n} claim{'s' if n != 1 else ''} re-checked since your last visit" in mem
         live = m["freshness"]["current"] + m["freshness"]["stale"]
         assert f"{live} claims" in mem and f"{m['freshness']['stale']} stale" in mem
+        # the refresh row: the Checker re-checking, its avatar at 22 and at work (T7.12)
+        rf = c.js("(() => { const s = document.querySelector('.rf-w .av.working > svg'); "
+                  "return s && [s.getAttribute('width'), s.getAttribute('class'), s.getAnimations({subtree: true}).length]; })()")
+        assert rf and rf[0] == "22" and "hg-av-checker hg-av-working hg-av-22" in rf[1] and rf[2] > 0, rf
     finally:
         info["server"].shutdown()
         info["server"].server_close()

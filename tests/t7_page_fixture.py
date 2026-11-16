@@ -732,6 +732,20 @@ def build(out: Path, variant: str) -> dict:
     return info
 
 
+def waiting_and_failed(info: dict) -> dict:
+    """Two more questions on a built variant (T7.12): one open that nobody has picked up (the page shows it waiting
+    for the Guide) and one that failed. Adds their ids to ``info["ids"]`` as ``qwait`` and ``qfail``."""
+    st = Store(Path(info["store"]).name, root=Path(info["home"]))
+    doc = st.load("map")["document"]
+    rev = doc["revision"]
+    q = ask(st, "Why is the learning rate warmed up?", map_anchor(doc, rev, "Positions are rotary, not learned"))
+    f = ask(st, "Where are the checkpoints written?", map_anchor(doc, rev, "saves the weights and the step"))
+    inbox.claim(st, {"id": f["id"], "agent": "investigator"})
+    inbox.fail(st, {"id": f["id"], "reason": "the session ended before the answer was saved"})
+    info["ids"].update(qwait=q["id"], qfail=f["id"])
+    return info
+
+
 def load_session(st: Store) -> dict:
     return load_session_side(st, "session")
 

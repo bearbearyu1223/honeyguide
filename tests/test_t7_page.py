@@ -1,4 +1,4 @@
-"""The map page (T7.3) against a real server and the sample store, driven by headless Chrome with real mouse events.
+"""The map page (T7.3, and T7.12's logo, favicon and agent avatars) against a real server and the sample store, driven by headless Chrome with real mouse events.
 
 Every leaf of rendered text shows exactly its slice of the server's plain text; a selection asked about lands in
 /api/threads with the right anchor; a follow-up and a note from an answer land too; the panel's width survives a
@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
 import threading
+from pathlib import Path
 
 import pytest
 from cdp import Chrome, chrome_path
-from t7_page_fixture import build
+from t7_page_fixture import A, C, answer, ask, build, map_anchor, waiting_and_failed
 
 from honeyguide import inbox
 from honeyguide.gitio import Repo
@@ -25,7 +27,6 @@ from honeyguide.store import Store
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
     info = build(tmp_path_factory.mktemp("page"), "base")
-    from pathlib import Path
     store = Store(Path(info["store"]).name, root=Path(info["home"]))
     server = make_server(Repo.open(info["repo"]), store, port=0)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -93,7 +94,7 @@ def test_page_and_assets_are_served_with_a_strict_policy(site):
     assert headers["Content-Security-Policy"] == PAGE_CSP and "script-src 'self'" in PAGE_CSP
     assert "<script>" not in page and " style=" not in page          # nothing inline for the policy to block
     for path, kind in (("/page.js", "javascript"), ("/page.css", "css"), ("/boot.js", "javascript"), ("/diagrams.js", "javascript"),
-                       ("/favicon.svg", "svg")):
+                       ("/favicon.svg", "svg"), ("/hg-avatars.js", "javascript"), ("/avatars.css", "css")):
         status, headers, _ = get(site, path, token=False)
         assert status == 200 and kind in headers["Content-Type"], path
     assert get(site, "/../server.py", token=False)[0] == 404
@@ -203,3 +204,173 @@ def test_api_needs_the_token_even_from_the_page(site, chrome):
                 "body: JSON.stringify({text: 'sneaky'})}).then(r => r.status)")
     assert (status, bad, good, post) == (403, 403, 200, 403)
     assert not any(q["text"] == "sneaky" for q in threads(site)["questions"])
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# T7.12: the logo, the favicon and the agent avatars (assets/avatars/INTEGRATION.md)
+
+ROOT = Path(__file__).resolve().parents[1]
+PAGE = ROOT / "src/honeyguide/page"
+AGENTS = ("guide", "cartographer", "investigator", "tracer", "checker")
+# every avatar on the page: [where, agent, size attribute, rendered width, classes, animations running]
+AVATARS = """[...document.querySelectorAll('svg.hg-av')].map(s => [
+  s.closest('.agn') ? 'text' : s.closest('.by') ? 'by' : s.closest('.wait') ? 'wait' : s.closest('.failed') ? 'failed' : s.closest('#pelse') ? 'else'
+    : s.closest('.work') ? 'work' : s.closest('#top') ? 'top' : s.closest('.nv-m .av') ? 'nav-busy' : s.closest('.nv-m') ? 'nav'
+    : s.closest('.flow-h') ? 'flow' : 'other',
+  [...s.classList].find(c => /^hg-av-(guide|cartographer|investigator|tracer|checker)$/.test(c)).slice(6),
+  s.getAttribute('width'), Math.round(s.getBoundingClientRect().width), s.getAttribute('class'),
+  s.getAnimations({subtree: true}).filter(a => a.playState === 'running').length])"""
+
+
+def avatars(c):
+    return [dict(zip(("where", "agent", "size", "shown", "cls", "running"), a, strict=True)) for a in c.js(AVATARS)]
+
+
+def wait_ms(c, ms):
+    c.js(f"new Promise(r => setTimeout(r, {ms}))")
+
+
+@pytest.fixture(scope="module")
+def busy(tmp_path_factory):
+    """The ``working`` variant (four agents at work) plus a question waiting for the Guide and one that failed."""
+    info = waiting_and_failed(build(tmp_path_factory.mktemp("busy"), "working"))
+    store = Store(Path(info["store"]).name, root=Path(info["home"]))
+    server = make_server(Repo.open(info["repo"]), store, port=0)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    info.update(store=store, url=f"http://127.0.0.1:{server.server_address[1]}/")
+    yield info
+    server.shutdown()
+    server.server_close()
+
+
+def test_page_owns_copies_of_the_logo_favicon_and_avatars():
+    assets = ROOT / "assets"
+    for page, source in (("hg-avatars.js", "avatars/hg-avatars.js"), ("avatars.css", "avatars/avatars.css"),
+                         ("favicon.svg", "favicon.svg")):
+        assert (PAGE / page).read_bytes() == (assets / source).read_bytes(), f"{page} differs from assets/{source}"
+    # the sidebar logo is page-logo.svg, its inline styles moved to classes (the CSP allows no style attribute)
+    shapes = re.compile(r'\sd="([^"]+)"|<circle[^>]*\scx="([^"]+)"')
+    logo = (assets / "logo-concepts/comb/b-refined/page-logo.svg").read_text()
+    index = (PAGE / "index.html").read_text()
+    side = index[index.index('<svg class="logo"'):index.index("</svg>", index.index('<svg class="logo"'))]
+    assert shapes.findall(side) == shapes.findall(logo) and len(shapes.findall(side)) == 4
+    assert "style=" not in index and "<script>" not in index and "http" not in side
+    assert index.index('src="/hg-avatars.js"') < index.index('src="/page.js"')
+    js = (PAGE / "hg-avatars.js").read_text()
+    assert set(re.findall(r'https?://[^"\\ ]+', js)) == {"http://www.w3.org/2000/svg"}   # a namespace, never fetched
+    assert "style=" not in js and "<script" not in js
+    page = (PAGE / "page.js").read_text()
+    assert not re.search("[\U0001F5FA\U0001F9ED\U0001F526\U0001F9F5]", page)   # 🗺 🧭 🔦 🧵 are gone
+    assert page.count("✅") == 1 and '<span class="em">✅</span>${sup} of ${tot} supported' in page   # the result mark stays
+
+
+def test_every_agent_call_site_draws_its_avatar_at_its_size(busy, chrome):
+    c = chrome
+    c.goto(busy["url"] + f"#q={busy['ids']['q5']}")
+    for q in ("q1a", "q1b", "q1c", "q4"):
+        c.click_el(f'[data-tog="{busy["ids"][q]}"]')   # closed nodes show their meta line: agent, then counts
+    seen = avatars(c)
+    for a in seen:   # the size attribute, its tuning class and the drawn box agree (0: on a line not shown)
+        assert a["agent"] in AGENTS and f"hg-av-{a['size']}" in a["cls"] and a["shown"] in (0, int(a["size"])), a
+    assert sum(a["shown"] > 0 for a in seen) >= 10
+    want = {"by": ("28", "hg-av-done"), "work": ("40", "hg-av-working"), "else": ("22", "hg-av-working"),
+            "top": ("24", "hg-av-working"), "text": ("20", "hg-av-static")}
+    for where, (size, state) in want.items():
+        found = [a for a in seen if a["where"] == where]
+        assert found and all(a["size"] == size and state in a["cls"] for a in found), (where, found)
+    working = [a for a in seen if "hg-av-working" in a["cls"]]
+    assert {a["agent"] for a in working} >= {"investigator", "checker", "tracer", "cartographer"}
+    assert all("hg-av-static" not in a["cls"] for a in working)
+    assert all(a["running"] for a in working if a["shown"])               # working: animated (when it is shown)
+    assert all(not a["running"] for a in seen if "hg-av-static" in a["cls"])                 # prose: never moves
+    assert c.js("[...document.querySelectorAll('.av')].every(a => getComputedStyle(a).animationName === 'none' "
+                "&& getComputedStyle(a).boxShadow === 'none')")                                # no halo
+    assert not re.search("[\U0001F5FA\U0001F9ED\U0001F526\U0001F9F5]", c.js("document.body.innerText"))
+    # the discussions: busy rows at 24 (working), the rest a still row of 20s
+    c.click_el('[data-tab="nav"]')
+    nav = avatars(c)
+    assert any(a["where"] == "nav-busy" and a["size"] == "24" and a["running"] for a in nav)
+    assert any(a["where"] == "nav" and a["size"] == "20" and "hg-av-static" in a["cls"] for a in nav)
+    # notes name the answer's agent with a still 20px avatar
+    c.click_el('[data-tab="notes"]')
+    assert any(a["where"] == "text" and a["size"] == "20" for a in avatars(c))
+    # waiting for the Guide: Honey dozing at 28, "Honey, the Guide" on hover, and the name alone in the sentence
+    c.goto(busy["url"] + f"#q={busy['ids']['qwait']}")
+    w = [a for a in avatars(c) if a["where"] == "wait"]
+    assert len(w) == 1 and w[0]["agent"] == "guide" and w[0]["size"] == "28" and "hg-av-waiting" in w[0]["cls"]
+    assert c.js("document.querySelector('.wait .av').dataset.tip") == "Honey, the Guide"
+    assert "Waiting for the Guide. Your Claude Code session" in c.js("document.querySelector('.wait').innerText")
+    # a failed question: the agent that tried, greyed at 20
+    c.goto(busy["url"] + f"#q={busy['ids']['qfail']}")
+    f = [a for a in avatars(c) if a["where"] == "failed"]
+    assert len(f) == 1 and f[0]["agent"] == "investigator" and f[0]["size"] == "20" and "hg-av-failed" in f[0]["cls"]
+    assert c.console_errors() == []
+
+
+def test_reduced_motion_stops_every_avatar_and_keeps_the_badge(busy, chrome):
+    c = chrome
+    try:
+        c.media(reduced_motion=True)
+        c.goto(busy["url"] + f"#q={busy['ids']['q5']}")
+        wait_ms(c, 300)
+        seen = avatars(c)
+        assert seen and not any(a["running"] for a in seen)
+        assert c.js("document.documentElement.classList.contains('rm')")
+        badge = "getComputedStyle(document.querySelector('#pbody .av.working'), '::after')"
+        assert c.js(f"{badge}.content") != "none" and c.js(f"{badge}.width") == "10px"   # the still "…" badge
+        # the still pose: the Investigator's lens held over an eye
+        assert c.js("getComputedStyle(document.querySelector('#pbody .av.working .hg-av-lens')).transform") != "none"
+    finally:
+        c.media()
+
+
+def test_the_done_hop_plays_once_per_answer(busy, chrome):
+    c = chrome
+    by = "document.querySelector('.nd[data-id=\"%s\"] > .nd-b > .by .av > svg')"
+    q2 = by % busy["ids"]["q2"]
+    c.goto(busy["url"] + f"#q={busy['ids']['q2']}")
+    assert c.js(f"{q2}.classList.contains('hg-av-done') && !{q2}.classList.contains('hg-av-static')")
+    assert c.js(f"{q2}.getAnimations({{subtree: true}}).length") > 0                 # the hop
+    c.js(f"window.__hop = {q2}")
+    c.js("render()")                                    # a poll with nothing new: the same nodes, nothing replays
+    assert c.js(f"window.__hop === {q2}")
+    c.js("render(true)")                                # a forced rebuild: the done pose, still
+    assert c.js(f"window.__hop !== {q2} && {q2}.classList.contains('hg-av-static') && {q2}.classList.contains('hg-av-done')")
+    assert c.js(f"{q2}.getAnimations({{subtree: true}}).length") == 0
+    # an answer that arrives while the page is open hops once, when it first shows; the thread it joins (q1's
+    # passage) is rebuilt around it, and the answers already there, which hopped when it opened, stay still
+    st = busy["store"]
+    doc = st.load("map")["document"]
+    q = ask(st, "Is the KV cache allocated once?", map_anchor(doc, doc["revision"], "caches keys and values per layer"))
+    c.goto(busy["url"] + f"#q={q['id']}")
+    assert c.js("document.querySelector('.nd.cur .wait') !== null")
+    before = c.js("[...UI.hopped]")
+    assert len(before) >= 4 and c.js("document.querySelectorAll('#pbody .by .av > svg:not(.hg-av-static)').length") == len(before)
+    answer(st, Repo.open(busy["repo"]), q, "investigator", [
+        C("t1", "Yes: `generate` builds it once with `max_len=cfg.block_size`", "read_in_source",
+          A("engine.py", "        cache = self._cache or KVCache(cfg, batch=1, max_len=cfg.block_size)"))])
+    new = by % q["id"]
+    c.wait(f"{new} !== null", 8)
+    assert c.js(f"!{new}.classList.contains('hg-av-static') && {new}.getAnimations({{subtree: true}}).length > 0")
+    rid = c.js(f"{new}.parentElement.dataset.hop")
+    assert c.js("[...UI.hopped]") == before + [rid]
+    assert c.js("[...document.querySelectorAll('#pbody .by .av > svg:not(.hg-av-static)')].map(s => s.parentElement.dataset.hop)") == [rid]
+
+
+def test_nothing_inline_runs_and_nothing_is_fetched_with_the_avatars(busy, chrome):
+    c = chrome
+    c.call("Page.addScriptToEvaluateOnNewDocument", source=(
+        "window.__csp = []; document.addEventListener('securitypolicyviolation', "
+        "e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI));"))
+    c.goto(busy["url"] + f"#q={busy['ids']['q5']}")
+    for tab in ("nav", "notes", "thread"):
+        c.click_el(f'[data-tab="{tab}"]')
+    c.hover_el("#pbody .av.working")
+    wait_ms(c, 300)
+    assert c.js("window.__csp") == []                  # no inline script or style was blocked (nor needed)
+    base = busy["url"].rstrip("/")
+    for u in c.js("performance.getEntriesByType('resource').map(e => e.name)"):
+        path = u[len(base):].split("?")[0] if u.startswith(base + "/") else u
+        assert path in ("/page.css", "/page.js", "/boot.js", "/diagrams.js", "/favicon.svg", "/avatars.css",
+                        "/hg-avatars.js") or path.startswith("/api/"), u
+    assert c.js("[...document.querySelectorAll('svg.hg-av')].every(s => !/(href|src)=|url\\(/.test(s.outerHTML))")

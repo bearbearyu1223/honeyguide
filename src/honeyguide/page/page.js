@@ -56,9 +56,13 @@ const EV = {
   searched_not_found: ["Searched, not found", "looked for it and found no match"],
   general_knowledge: ["General knowledge", "not from this repo; the Checker skips it"],
 };
-const AG = { guide: ["🧭", "Guide"], cartographer: ["🗺️", "Cartographer"], investigator: ["🔦", "Investigator"], tracer: ["🧵", "Tracer"], checker: ["✅", "Checker"] };
-const agName = a => (AG[a] || ["", a || "an agent"])[1];
-const agFull = a => (AG[a] ? AG[a][0] + " " + AG[a][1] : a || "an agent");
+/* agents: their names, and their avatars from hg-avatars.js (hgAv). The Guide is drawn as Honey, the mascot; its name
+   stays "Guide" everywhere but the avatar's tip. */
+const AG = { guide: "Guide", cartographer: "Cartographer", investigator: "Investigator", tracer: "Tracer", checker: "Checker" };
+const HONEY = "Honey, the Guide";
+const agName = a => AG[a] || a || "an agent";
+/* an agent named in running HTML: its still 20px avatar, then its name (plain text and attributes use agName) */
+const agHTML = a => AG[a] ? `<span class="agn"${a === "guide" ? ` data-tip="${HONEY}"` : ""}>${hgAv(a, "idle static", 20)}${AG[a]}</span>` : esc(agName(a));
 const ICON = {
   ext: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg>`,
   ed: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5 2.5 8l3 3M10.5 5l3 3-3 3"/></svg>`,
@@ -68,11 +72,11 @@ const ICON = {
   dg: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5v11M12 2.5v11M4 6h6.5M10.5 4.5 12 6l-1.5 1.5M12 10H5.5M5.5 8.5 4 10l1.5 1.5"/></svg>`,
   msg: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>`,
 };
-const LOGO = $(".brand .logo").outerHTML.replace('id="logo-eye"', 'id="logo-eye2"').replace("url(#logo-eye)", "url(#logo-eye2)");
+const LOGO = $(".brand .logo").outerHTML;
 
 /* ---------------------------------------------------------------- data */
 const D = { state: null, map: null, threads: { questions: [], responses: [] }, notes: { notes: [] }, activity: { working: [], recent: [] } };
-const UI = { open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "" };
+const UI = { hopped: new Set(), open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "" };
 let IDX = null;   // derived indexes, rebuilt by index()
 
 function claimsById() {
@@ -219,7 +223,7 @@ function renderMap() {
         html += `<div class="mod" data-block="${esc(block.id)}" data-path="${esc(block.path)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div><p class="blk">${body}</p></div>`;
       } else if (block.type === "flow") {
         const f = flows.get(block.flow);
-        html += `<div class="flow" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta"><span class="em">🧵</span>Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
+        html += `<div class="flow" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta">${hgAv("tracer", "idle static", 20)}Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
           + `<p class="cap blk">${body}</p><div class="fbody">`
           + (f ? `<div class="fbar"><span class="fhint">Hover or click an arrow for its code</span><span class="fviews" role="group" aria-label="View"><button data-fview="dg" class="on" aria-pressed="true">Diagram</button><button data-fview="list" aria-pressed="false">Steps</button></span></div>`
             + `<div class="fnarrow">Shown as steps while the panel is open: the diagram would be too small to read beside it. <button data-fview="dg">Show the diagram</button></div>`
@@ -247,7 +251,7 @@ function renderNoMap() {
   COL.innerHTML = `<div class="nomap">${LOGO}<h1>No map yet</h1>
     <p>Honeyguide has no map of <b>${esc(REPO_NAME)}</b> yet.</p>
     <ol><li>Open Claude Code in this repository, with the Honeyguide plugin installed.</li>
-    <li>Ask it to map the repo. The 🗺️ Cartographer reads the code and saves a map in which every claim cites its lines.</li>
+    <li>Ask it to map the repo. The ${agHTML("cartographer")} reads the code and saves a map in which every claim cites its lines.</li>
     <li>This page shows the map as soon as it is saved; you don't need to reload.</li></ol>
     ${carto.map(workHTML).join("")}
     <p class="quiet">Memory for this repo lives outside the checkout, in <code>~/.honeyguide/</code> (or <code>$HONEYGUIDE_HOME</code>).</p></div>`;
@@ -427,7 +431,7 @@ function viewDiagram(key) {
   fig.dataset.key = key;
   fig.dataset.w = "";
   $("#dgovt").textContent = m.title;
-  $("#dgovs").textContent = "🧵 Tracer answer, as a diagram · not part of the map";
+  $("#dgovs").textContent = "Tracer answer, as a diagram · not part of the map";
   ov.classList.add("on");
   ov.dataset.from = key;
   renderFigs();
@@ -647,7 +651,7 @@ function renderHeader() {
   const doc = D.map.document;
   const mapClaims = D.map.claims || [];
   const files = new Set(mapClaims.flatMap(c => (c.anchors || []).map(a => a.path)));
-  $("#sub").textContent = `Mapped by the 🗺️ Cartographer · ${plural((doc.sections || []).length, "section")} · cites ${plural(files.size, "file")}`;
+  $("#sub").textContent = `Mapped by the Cartographer · ${plural((doc.sections || []).length, "section")} · cites ${plural(files.size, "file")}`;
   /* the header is memory.memory_state, as /api/state returns it ("memory"): never "Up to date" while refreshing or behind */
   const m = s.memory || {};
   const fr = m.freshness || {};
@@ -692,16 +696,36 @@ function refreshHTML(e, stale) {
     return `<button${go} data-tip="${esc(L[2])}">${L[0].startsWith("<") ? L[0] : `<span class="g">${L[0]}</span>`}${n} ${L[1]}</button>`;
   }).join("");
   const checker = D.activity.working.filter(w => w.agent === "checker" && !w.question && !w.stale);
-  const work = stale ? (checker.length ? `<div class="rf-w">${avHTML("checker", true)}<span><b>Checker</b> ${inlineCode(checker[0].status)}; not shown as fact until it finishes</span></div>`
-    : `<div class="rf-w"><span>${plural(stale, "stale claim")} waiting for the ✅ Checker; not shown as fact until re-checked</span></div>`) : "";
+  const work = stale ? (checker.length ? `<div class="rf-w">${avHTML("checker", true, "", 22)}<span><b>Checker</b> ${inlineCode(checker[0].status)}; not shown as fact until it finishes</span></div>`
+    : `<div class="rf-w"><span>${plural(stale, "stale claim")} waiting for the ${agHTML("checker")}; not shown as fact until re-checked</span></div>`) : "";
   return `<div class="refresh" role="status"><div class="rf-h"><span class="i">${ICON.rf}</span><b>Refreshed since your last visit</b><span>· updated from <code>${esc(short(e.base))}</code> to <code>${esc(short(e.target))}</code></span><button class="x" data-rfx="${esc(e.at)}" aria-label="Dismiss">×</button></div>`
     + (btns ? `<div class="rf-c">${btns}</div>` : "") + (e.note ? `<div class="rf-n">${inlineCode(e.note)}</div>` : "") + work + `</div>`;
 }
 
 /* ---------------------------------------------------------------- agents */
-const avHTML = (ag, working, tip) => `<span class="av a-${esc(ag)}${working ? " working" : ""}"${tip ? ` data-tip="${esc(tip)}"` : ""} aria-hidden="true"><span class="face">${(AG[ag] || ["•"])[0]}</span></span>`;
-function workHTML(w, ctx) {
-  return `<div class="work">${avHTML(w.agent, true)}<div><b>${esc(agName(w.agent))}</b>${inlineCode(w.status)}${ctx ? `<span class="wctx">· ${esc(ctx)}</span>` : ""}</div></div>`;
+/* The .av wrapper keeps data-tip, the .working hook and the reduced-motion badge; hgAv draws the creature. state
+   defaults to working or idle; "… static" never moves. extra: more attributes for the wrapper (the answer header's
+   data-hop). */
+const AV_STATE = { true: "working", false: "idle" };
+const avHTML = (ag, working, tip, size = 28, state, extra = "") => {
+  tip = tip === null ? "" : tip || (ag === "guide" ? HONEY : "");   /* null: no tip of its own (the top bar has one) */
+  return `<span class="av a-${esc(ag)}${working ? " working" : ""}"${tip ? ` data-tip="${esc(tip)}"` : ""}${extra} aria-hidden="true">`
+    + hgAv(AG[ag] ? ag : "guide", state || AV_STATE[!!working], size) + `</span>`;
+};
+/* The answer header shows its agent "done". The hop plays once per answer per page load: the HTML always says
+   "done static" (so a poll's re-render is byte-identical and never rebuilds it), and the first time an answer's
+   header is put in the DOM its avatar loses "static", hops once and holds the done pose. Any later rebuild renders
+   it still. */
+const byAvHTML = r => avHTML(r.agent, false, "", 28, "done static", ` data-hop="${esc(r.id)}"`);
+function playHops(root) {
+  for (const el of $$(".av[data-hop]", root)) {
+    if (UI.hopped.has(el.dataset.hop)) continue;
+    UI.hopped.add(el.dataset.hop);
+    el.firstElementChild?.classList.remove("hg-av-static");
+  }
+}
+function workHTML(w, ctx, size = 40) {
+  return `<div class="work">${avHTML(w.agent, true, "", size)}<div><b>${esc(agName(w.agent))}</b>${inlineCode(w.status)}${ctx ? `<span class="wctx">· ${esc(ctx)}</span>` : ""}</div></div>`;
 }
 function renderTop() {
   const top = $("#top");
@@ -712,7 +736,7 @@ function renderTop() {
   if (w.length) {
     const ags = [...new Set(w.map(x => x.agent))];
     top.classList.add("busy");
-    top.innerHTML = `<span class="mini">${ags.map(a => avHTML(a, true)).join("")}</span><span>${ags.length} at work</span>`;
+    top.innerHTML = `<span class="mini">${ags.map(a => avHTML(a, true, null, 24)).join("")}</span><span>${ags.length} at work</span>`;
     top.dataset.tip = w.map(x => `<b>${esc(agName(x.agent))}</b> ${inlineCode(x.status)}`).join("<br>");
   } else {
     top.classList.remove("busy");
@@ -743,7 +767,7 @@ function checkHTML(q, r) {
   const sup = cs.filter(c => c.check === "supported").length, ns = cs.filter(c => c.check === "not_supported").length;
   const un = cs.filter(c => c.evidence !== "general_knowledge" && (!c.check || c.check === "unchecked")).length;
   if (!tot) return gk ? `<div class="chk">${plural(gk, "general-knowledge claim")}; nothing in the repo to check</div>` : "";
-  if (un === tot) return `<div class="chk" data-tip="Answers show at once; each claim gains its evidence mark when the Checker has re-read its lines">Not checked yet · ${plural(tot, r.path ? "hop" : "claim")} waiting for the ✅ Checker</div>`;
+  if (un === tot) return `<div class="chk" data-tip="Answers show at once; each claim gains its evidence mark when the Checker has re-read its lines">Not checked yet · ${plural(tot, r.path ? "hop" : "claim")} waiting for the ${agHTML("checker")}</div>`;
   return `<div class="chk" data-tip="${plural(tot, r.path ? "hop" : "claim")} checked against their cited lines${gk ? `; ${plural(gk, "general-knowledge claim")} skipped` : ""}"><span class="em">✅</span>${sup} of ${tot} supported${un ? ` · ${un} not checked yet` : ""}${gk ? ` · ${gk} general, not checked` : ""}</div>`;
 }
 function nodeHTML(id, byId) {
@@ -756,26 +780,26 @@ function nodeHTML(id, byId) {
   let body = "";
   const work = workingFor(id).filter(w => w.agent !== "checker" || q.status !== "answered");
   if (q.status === "answered" && r) {
-    const via = r.agent === "tracer" ? "· routed by 🧭 Guide as a flow question" : "· answer";
+    const via = r.agent === "tracer" ? `· routed by ${agHTML("guide")} as a flow question` : "· answer";
     const saved = D.notes.notes.some(n => n.from_response === r.id);
-    body = `<div class="by">${avHTML(r.agent, false)}<span class="who">${esc(agName(r.agent))}</span><span class="via">${via}</span></div>`
+    body = `<div class="by">${byAvHTML(r)}<span class="who">${esc(agName(r.agent))}</span><span class="via">${via}</span></div>`
       + answerHTML(q, r, byId) + checkHTML(q, r)
       + `<div class="acts"><button data-save="${esc(r.id)}" class="${saved ? "done" : ""}">${saved ? "Saved to notes ✓" : "Save as note"}</button><button data-copyans="${esc(r.id)}">Copy</button></div>`;
   } else if (q.status === "failed") {
-    body = `<div class="failed">Couldn't answer: ${esc(q.error || "the agent stopped")}<button data-retry="${esc(id)}">Retry</button></div>`;
+    body = `<div class="failed">${avHTML(q.agent || "investigator", false, "", 20, "failed")}Couldn't answer: ${esc(q.error || "the agent stopped")}<button data-retry="${esc(id)}">Retry</button></div>`;
   } else if (work.length) {
     body = work.map(w => workHTML(w)).join("") + `<div class="shim w1"></div><div class="shim w2"></div>`;
   } else if (q.status === "investigating") {
-    body = `<div class="work">${avHTML(q.agent || "investigator", true)}<div><b>${esc(agName(q.agent || "investigator"))}</b>is working on it</div></div><div class="shim w1"></div><div class="shim w2"></div>`;
+    body = `<div class="work">${avHTML(q.agent || "investigator", true, "", 40)}<div><b>${esc(agName(q.agent || "investigator"))}</b>is working on it</div></div><div class="shim w1"></div><div class="shim w2"></div>`;
   } else {
-    body = `<div class="wait">${avHTML("guide", false)} Waiting for the 🧭 Guide. Your Claude Code session picks questions up while it runs <code>honeyguide watch</code>.</div>`;
+    body = `<div class="wait">${avHTML("guide", false, "", 28, "waiting")} Waiting for the Guide. Your Claude Code session picks questions up while it runs <code>honeyguide watch</code>.</div>`;
   }
   const busy = q.status !== "answered" && q.status !== "failed";
-  const meta = `${r ? agFull(r.agent) : "🧭 Guide"} · ${busy ? "working" : r ? plural((r.claims || []).length, r.path ? "hop" : "claim") : "failed"}${kids ? ` · ${plural((IDX.kids.get(id) || []).length, "follow-up")}` : ""}`;
+  const meta = `${agHTML(r ? r.agent : "guide")} · ${busy ? "working" : r ? plural((r.claims || []).length, r.path ? "hop" : "claim") : "failed"}${kids ? ` · ${plural((IDX.kids.get(id) || []).length, "follow-up")}` : ""}`;
   const onp = UI.curNode && id !== UI.curNode && pathTo(UI.curNode).includes(id);
   const closed = UI.closed.has(id);
   return `<div class="nd${closed ? " closed" : ""}${onp ? " onpath" : ""}${id === UI.curNode ? " cur" : ""}" data-id="${esc(id)}">
-    <div class="nd-q"><button class="car" data-tog="${esc(id)}" aria-label="${closed ? "Expand" : "Collapse"}" aria-expanded="${!closed}">▼</button><div><button class="qt" data-node="${esc(id)}">${on}${esc(q.text)}</button><span class="meta1">${esc(meta)}</span></div></div>
+    <div class="nd-q"><button class="car" data-tog="${esc(id)}" aria-label="${closed ? "Expand" : "Collapse"}" aria-expanded="${!closed}">▼</button><div><button class="qt" data-node="${esc(id)}">${on}${esc(q.text)}</button><span class="meta1">${meta}</span></div></div>
     <div class="nd-b">${body}</div>${kids ? `<div class="kids">${kids}</div>` : ""}</div>`;
 }
 function crumbsHTML(g) {
@@ -800,7 +824,7 @@ function renderThread() {
   if (c && c.mode === "root" && !UI.cur) {
     const b = blockAt(c.start);
     const g = b ? { key: "", sec: b.sec, mod: b.block.type === "module" ? b.block.path : null, range: null } : null;
-    return anchorHead(g, c.quote) + `<div class="empty">Ask anything about this passage. The 🧭 Guide sends it to the 🔦 Investigator, or to the 🧵 Tracer when it asks what happens when something runs.</div>`;
+    return anchorHead(g, c.quote) + `<div class="empty">Ask anything about this passage. The ${agHTML("guide")} sends it to the ${agHTML("investigator")}, or to the ${agHTML("tracer")} when it asks what happens when something runs.</div>`;
   }
   const g = UI.cur && IDX.groups.get(UI.cur);
   if (!g) return `<div class="empty">Select any text in the map and choose <b>Ask</b>. Every answer can be selected and asked about in turn; follow-ups branch from the words you select.</div>`;
@@ -830,8 +854,8 @@ function renderNav() {
       const flags = ids.reduce((n, id) => n + ((IDX.respOf.get(id)?.claims || []).filter(c => c.check === "not_supported").length), 0);
       const ags = [...new Set(ids.map(id => IDX.respOf.get(id)?.agent).filter(Boolean))];
       const meta = busy.length
-        ? busy.map(b => avHTML(b.agent, true)).join("") + `<span>${busy.length > 1 ? busy.length + " at work" : esc(agName(busy[0].agent)) + " at work"}</span>`
-        : `<span class="em">${ags.map(a => (AG[a] || [""])[0]).join(" ")}</span><span>${plural(ids.length, "question")}</span>${flags ? `<span class="flagn">· ${flags} not supported</span>` : ""}`;
+        ? busy.map(b => avHTML(b.agent, true, "", 24)).join("") + `<span>${busy.length > 1 ? busy.length + " at work" : esc(agName(busy[0].agent)) + " at work"}</span>`
+        : `<span class="ags">${ags.map(a => hgAv(a, "idle static", 20)).join("")}</span><span>${plural(ids.length, "question")}</span>${flags ? `<span class="flagn">· ${flags} not supported</span>` : ""}`;
       return `<button class="nv" data-open="${esc(g.key)}">${g.anchor ? `<div class="nv-q"><q>${esc(clip(qt(g.anchor.quote), 70))}</q>${g.mod ? ` · ${esc(g.mod)}` : ""}</div>` : ""}<div class="nv-t">${esc(first.text)}</div><div class="nv-m">${meta}</div></button>`;
     }).join("") + `</div>`;
   }
@@ -844,12 +868,12 @@ function renderNotes() {
   return h + notes.map(n => {
     const r = n.from_response ? IDX.R.get(n.from_response) : n.anchor && n.anchor.doc.startsWith("answer:") ? IDX.R.get(n.anchor.doc.slice(7)) : null;
     let src;
-    if (n.from_response) src = `Saved answer · ${esc(agFull(r?.agent))}`;
-    else if (n.anchor && n.anchor.doc.startsWith("answer:")) src = `On an answer · ${esc(agFull(r?.agent))}`;
+    if (n.from_response) src = `Saved answer · ${agHTML(r?.agent)}`;
+    else if (n.anchor && n.anchor.doc.startsWith("answer:")) src = `On an answer · ${agHTML(r?.agent)}`;
     else if (n.anchor) { const rg = resolveMapAnchor(n.anchor); const b = rg && blockAt(rg[0]); src = `On the map${b ? " · " + esc(b.sec.title) + (b.block.type === "module" ? " · " + esc(b.block.path) : "") : " · not found in the current map"}`; }
     else src = "Note";
     const quote = n.from_response ? IDX.Q.get(r?.parent)?.text : n.anchor?.quote;
-    const body = n.from_response ? `<div class="saved">${inlineCode(n.text.replace(/\n{2,}/g, "\n"))}</div><div class="sby">written by ${esc(agFull(r?.agent))}</div>` : `<div class="nb">${esc(n.text)}</div>`;
+    const body = n.from_response ? `<div class="saved">${inlineCode(n.text.replace(/\n{2,}/g, "\n"))}</div><div class="sby">written by ${agHTML(r?.agent)}</div>` : `<div class="nb">${esc(n.text)}</div>`;
     return `<div class="note" data-note="${esc(n.id)}"><div class="src"><span>${src}</span><button data-gonote="${esc(n.id)}">Show</button></div>${quote ? `<div class="nq">“${esc(clip(qt(quote), 110))}”</div>` : ""}${body}${n.share_with_agents ? `<div class="shr">Shared with agents</div>` : ""}</div>`;
   }).join("");
 }
@@ -869,12 +893,13 @@ function renderPanel(force) {
     PBODY.innerHTML = html;
     PBODY.scrollTop = keep;
     lastPanel = html;
+    playHops(PBODY);
     if (UI.tab === "thread") answerOverlays();
   }
   const others = UI.tab === "thread" && UI.cur ? D.activity.working.filter(w => !w.stale && (!w.question || IDX.groupOf.get(w.question) !== UI.cur)) : [];
   $("#pelse").innerHTML = others.length ? `<div class="lh2">Also at work</div>${others.map(w => {
     const g = w.question && IDX.groups.get(IDX.groupOf.get(w.question));
-    return workHTML(w, g ? groupLabel(g) : "the map");
+    return workHTML(w, g ? groupLabel(g) : "the map", 22);
   }).join("")}` : "";
   renderComposer();
   renderTop();
@@ -903,7 +928,7 @@ function renderComposer() {
   send.disabled = !c && !resp;
   if (!$("#cfoot .cerr")) $("#cfoot").innerHTML = mode === "note"
     ? `<label><input type="checkbox" id="share"> Share with agents</label><span>A note starts no agent and never changes the map.</span>`
-    : `<span>“What happens when …” questions go to the 🧵 Tracer.</span>`;
+    : `<span>“What happens when …” questions go to the ${agHTML("tracer")}.</span>`;
 }
 function composerError(msg) { $("#cfoot").innerHTML = `<span class="cerr">${esc(msg)}</span>`; setTimeout(() => { $("#cfoot .cerr")?.remove(); renderComposer(); }, 5000); }
 async function submit(text) {

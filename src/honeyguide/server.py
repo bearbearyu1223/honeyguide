@@ -33,7 +33,9 @@ PAGE_DIR = Path(__file__).parent / "page"
 # The map page's own files (T7.3), served by name only: nothing else on disk is reachable.
 PAGE_FILES = {"/page.css": "text/css; charset=utf-8", "/page.js": "text/javascript; charset=utf-8",
               "/boot.js": "text/javascript; charset=utf-8",
-              "/diagrams.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml"}
+              "/diagrams.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml",
+              # the agent avatars (T7.12): copies of assets/avatars/hg-avatars.js and avatars.css
+              "/hg-avatars.js": "text/javascript; charset=utf-8", "/avatars.css": "text/css; charset=utf-8"}
 # Scripts, styles and fetches from this server only; no frames, no forms posting elsewhere.
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
             "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
