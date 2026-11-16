@@ -248,13 +248,16 @@ def test_page_owns_copies_of_the_logo_favicon_and_avatars():
     for page, source in (("hg-avatars.js", "avatars/hg-avatars.js"), ("avatars.css", "avatars/avatars.css"),
                          ("favicon.svg", "favicon.svg")):
         assert (PAGE / page).read_bytes() == (assets / source).read_bytes(), f"{page} differs from assets/{source}"
-    # the sidebar logo is page-logo.svg, its inline styles moved to classes (the CSP allows no style attribute)
-    shapes = re.compile(r'\sd="([^"]+)"|<circle[^>]*\scx="([^"]+)"')
-    logo = (assets / "logo-concepts/comb/b-refined/page-logo.svg").read_text()
+    # the sidebar logo is Honey: exactly hgAv("guide", "idle", 24) from assets/avatars/hg-avatars.js, inline (no
+    # style attribute: the CSP allows none; avatars.css colours and animates it)
+    src = json.loads(re.search(r"const HG_AV = (\{.*?\});\n", (assets / "avatars/hg-avatars.js").read_text(), re.S)[1])
+    honey24 = src["guide"].replace("hg-av-idle", "hg-av-idle hg-av-24", 1).replace("<svg ", '<svg width="24" height="24" ', 1)
     index = (PAGE / "index.html").read_text()
-    side = index[index.index('<svg class="logo"'):index.index("</svg>", index.index('<svg class="logo"'))]
-    assert shapes.findall(side) == shapes.findall(logo) and len(shapes.findall(side)) == 4
-    assert "style=" not in index and "<script>" not in index and "http" not in side
+    start = index.index('<span class="logo">') + len('<span class="logo">')
+    side = index[start:index.index("</svg>", start) + len("</svg>")]
+    assert side == honey24 and index[start + len(side):].startswith('</span><span class="brand-t">Honeyguide</span>')
+    assert "style=" not in index and "<script>" not in index
+    assert set(re.findall(r'https?://[^"\\ ]+', side)) == {"http://www.w3.org/2000/svg"}   # a namespace, never fetched
     assert index.index('src="/hg-avatars.js"') < index.index('src="/page.js"')
     js = (PAGE / "hg-avatars.js").read_text()
     assert set(re.findall(r'https?://[^"\\ ]+', js)) == {"http://www.w3.org/2000/svg"}   # a namespace, never fetched
@@ -322,6 +325,19 @@ def test_reduced_motion_stops_every_avatar_and_keeps_the_badge(busy, chrome):
         assert c.js("getComputedStyle(document.querySelector('#pbody .av.working .hg-av-lens')).transform") != "none"
     finally:
         c.media()
+
+
+def test_the_sidebar_logo_is_honey_at_24_beside_the_name(busy, chrome):
+    c = chrome
+    c.goto(busy["url"])
+    logo = "document.querySelector('.brand .logo > svg')"
+    assert c.js(f"[...{logo}.classList].join(' ')") == "hg-av hg-av-guide hg-av-idle hg-av-24"
+    r = c.js(f"(() => {{ const a = {logo}.getBoundingClientRect(), b = document.querySelector('.brand-t').getBoundingClientRect(),"
+             " p = document.querySelector('#repo').getBoundingClientRect();"
+             " return [a.width, a.height, a.top + a.height / 2 - (b.top + b.height / 2), b.left - p.left]; })()")
+    assert r[:2] == [24, 24] and abs(r[2]) <= 1 and abs(r[3]) <= 1, r   # centred on the name; the repo lines up under it
+    assert c.js(f"{logo}.getAnimations({{subtree: true}}).filter(a => a.playState === 'running').length") > 0  # idle
+    assert c.js("document.querySelector('link[rel=icon]').getAttribute('href')") == "/favicon.svg"
 
 
 def test_the_done_hop_plays_once_per_answer(busy, chrome):

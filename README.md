@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" alt="Honeyguide" width="420" height="96">
+  </picture>
+</p>
+
 # Honeyguide
 
 Claude Code subagents that learn a codebase into a source-cited map you read in the browser, and answer the

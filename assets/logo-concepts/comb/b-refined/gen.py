@@ -162,7 +162,9 @@ def main(install=False):
     page = small("", "var(--amber)", **SMALL, brand_attr=False)
     (HERE / "page-logo.svg").write_text(
         f'<svg class="logo" viewBox="0 0 96 96" aria-hidden="true">\n  {page}\n</svg>\n')
-    if install:
+    if install:   # B was installed in assets/ until Honey became the logo; its installed copies are in ../b-installed/
+        sys.exit("B is no longer the installed logo: assets/*.svg are Honey, written by "
+                 "assets/avatars/tools/build_avatars.py. Not installing.")
         for n in INSTALLED:
             shutil.copyfile(HERE / n, ASSETS / n)
     print("ok", HERE, "(installed to " + str(ASSETS) + ")" if install else "")

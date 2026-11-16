@@ -57,12 +57,12 @@ svg.i{width:16px;height:16px;flex:none}
 .side{position:fixed;top:0;left:0;bottom:0;width:var(--side);padding:28px 16px 20px 24px;display:flex;flex-direction:column;border-right:1px solid var(--line);transition:width 180ms var(--ease),padding 180ms var(--ease);overflow:hidden;z-index:40;background:var(--bg)}
 .side-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .brand{font-weight:700;font-size:16px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;white-space:nowrap}
-.logo{width:18px;height:18px;fill:var(--brand);flex:none}
-/* the comb logo's amber cell and trail (classes, not style attributes: the page's CSP allows no inline style) */
-.logo .lg-a{fill:var(--amber)} .logo .lg-t{fill:none;stroke:var(--amber)}
+/* the logo is Honey, the Guide's avatar (hgAv("guide", "idle", 24) inline; avatars.css colours it, breathes and blinks
+   it, and stops it under reduced motion). 24px: at 18 the face is too small to read. */
+.logo{display:inline-flex;flex:none}
 .railbtn{color:var(--faint);padding:4px;border-radius:6px;display:inline-flex;transition:color var(--t),background var(--t)}
 .railbtn:hover{color:var(--ink);background:var(--sunken)}
-.repo{font:12px var(--mono);color:var(--muted);margin:2px 0 28px 26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repo{font:12px var(--mono);color:var(--muted);margin:2px 0 28px 32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toc{list-style:none;margin:0;padding:0;font-size:13px;font-weight:500}
 .toc a{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);text-decoration:none;padding:6px 8px 6px 12px;border-radius:6px;margin:0 0 2px;transition:background var(--t),color var(--t)}
 .toc a .tt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -583,7 +583,7 @@ body.resizing .main,body.resizing .panel{transition:none}
 /* ---------- empty state: no map yet ---------- */
 .nomap-on .layer,.nomap-on .legend{visibility:hidden}
 .nomap{margin-top:12vh;max-width:520px}
-.nomap .logo{width:40px;height:40px;margin-bottom:20px}
+.nomap .logo{display:flex;margin-bottom:20px}
 .nomap h1{font-size:26px}
 .nomap p{color:var(--soft);margin:12px 0 0}
 .nomap ol{color:var(--soft);padding-left:20px;margin:16px 0 0}

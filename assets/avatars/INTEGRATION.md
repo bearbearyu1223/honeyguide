@@ -155,3 +155,14 @@ holds an inline copy of the logo at 28px. To use Honey instead:
    reads as Honey bobbing along, and the page's own reduced-motion rule already slows it.
 
 That is a change in the research plugin, not in Honeyguide, so it belongs to whoever edits the review page.
+
+## 9. Honey is the logo
+
+Honeyguide's logo set in `assets/` (`logo.svg` / `logo-dark.svg` lockup, `icon*.svg`, `favicon.svg`) is Honey, written
+by `build_avatars.py` (`logo_files()`) from the same parts as the avatar, so a change to Honey changes the logo on the
+next build. `icon` is the static idle pose; `icon-small` is the 18-32px tuning (outline 2.6, no glints or shine, as
+`hg-av-20/22/24`); `favicon` is the 16px drawing (silhouette, eyes, satchel; no blush, mouth or shine) and switches with
+`prefers-color-scheme`. The dark files use this file's dark Guide colours (`DARK` in the script; a test keeps them in
+step with `avatars.css`). The page's sidebar logo is `hgAv("guide", "idle", 24)` inline in `index.html`, and the
+empty page uses `hgAv("guide", "idle", 40)`. The comb logo B it replaced is kept in `logo-concepts/comb/b-installed/`.
+Sheets: `logo-concepts/honey-logo/` (`render.sh` rebuilds and re-shoots them).

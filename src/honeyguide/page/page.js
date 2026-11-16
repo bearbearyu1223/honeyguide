@@ -72,7 +72,7 @@ const ICON = {
   dg: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5v11M12 2.5v11M4 6h6.5M10.5 4.5 12 6l-1.5 1.5M12 10H5.5M5.5 8.5 4 10l1.5 1.5"/></svg>`,
   msg: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>`,
 };
-const LOGO = $(".brand .logo").outerHTML;
+const LOGO = `<span class="logo">${hgAv("guide", "idle", 40)}</span>`;   // Honey, the logo, on the empty page
 
 /* ---------------------------------------------------------------- data */
 const D = { state: null, map: null, threads: { questions: [], responses: [] }, notes: { notes: [] }, activity: { working: [], recent: [] } };

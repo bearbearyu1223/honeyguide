@@ -4,7 +4,8 @@ Run: python3 assets/avatars/tools/build_avatars.py
 Every avatar shares the honey-drop body, face and state parts; each agent adds ONE prop and a soft body tint.
 The Guide is Honey, the Honeyguide mascot: the same drop with its tip swept back into a tuft, plus a beak, one wing
 and an amber honeycomb satchel (its prop). It also writes honey.svg (the mascot, idle, self-contained) and
-honey-badge.svg (a static 44px crop for a round job avatar).
+honey-badge.svg (a static 44px crop for a round job avatar), and Honeyguide's logo set in assets/ (logo_files: the
+lockup, icon, icon-small and favicon, light and dark), all drawn from the same parts so logo and avatar stay in sync.
 Fill/stroke attributes are light-theme fallbacks (used when the SVG is shown as <img>); avatars.css overrides
 them through CSS variables for dark mode and animates the named groups. No ids, so copies can sit inline together.
 """
@@ -197,6 +198,93 @@ def honey_files():
     (OUT / "honey-badge.svg").write_text(ET.tostring(root, encoding="unicode") + "\n")
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# The logo: Honey, static, idle pose. Written to assets/ (logo.svg, logo-dark.svg, icon*.svg, favicon.svg).
+# Dark colours are avatars.css's dark values for the Guide; keep the two in step (tests/test_logo_assets.py checks).
+DARK = {LINE: "#C98348", INK: "#1E1610", "#EE9C8C": "#D98A7C", SKIN["guide"]: "#DCC4A2", WING: "#C9A57C"}
+DARK_SHINE_OPACITY = ".45"
+WORD_INK = {"light": "#24272B", "dark": "#F0F1F3"}   # the lockup's wordmark, as before
+FONT = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif"
+CROP = "2.5 3 44 44"    # icons: Honey's drawing (x 3.6-45.4, y 4.2-45.5) with about a unit of margin
+FAV_CROP = "2.8 3.6 43.6 43.6"
+SVGNS = "http://www.w3.org/2000/svg"
+
+
+def honey_static(small=False, dark=False):
+    """Honey's idle pose as a static tree: hidden parts (other states, trail, sparkles) and every class removed.
+    small: the 18-32px tuning the page uses below 28px (avatars.css hg-av-20/22/24): outline 2.6, no glints or shine."""
+    ET.register_namespace("", SVGNS)
+    root = ET.fromstring(svg("guide", standalone=False))
+    for parent in list(root.iter()):
+        for child in list(parent):
+            cls = child.get("class", "")
+            if child.get("opacity") == "0" or (small and ("hg-av-glint" in cls or "hg-av-shine" in cls)):
+                parent.remove(child)
+    for el in root.iter():
+        cls = el.attrib.pop("class", "")
+        if small and "hg-av-skin" in cls:
+            el.set("stroke-width", "2.6")
+        if dark:
+            for k in ("fill", "stroke"):
+                if el.get(k) in DARK:
+                    el.set(k, DARK[el.get(k)])
+            if "hg-av-shine" in cls:
+                el.set("opacity", DARK_SHINE_OPACITY)
+    for k in ("aria-hidden", "focusable"):
+        root.attrib.pop(k, None)
+    return root
+
+
+def honey_inner(**kw):
+    """Honey's drawing (the children of the svg), as markup."""
+    return "".join(ET.tostring(c, encoding="unicode") for c in honey_static(**kw)).replace(f' xmlns="{SVGNS}"', "")
+
+
+def icon_svg(small=False, dark=False):
+    n = 96
+    return (f'<svg xmlns="{SVGNS}" viewBox="{CROP}" width="{n}" height="{n}" role="img" aria-label="Honeyguide">'
+            f'{honey_inner(small=small, dark=dark)}</svg>\n')
+
+
+def lockup_svg(dark=False):
+    """420x96: Honey in the 96px square, the wordmark where the comb logo's was (x 112, baseline 66, 54px, 650)."""
+    ink = WORD_INK["dark" if dark else "light"]
+    return (f'<svg xmlns="{SVGNS}" viewBox="0 0 420 96" width="420" height="96" role="img" aria-label="Honeyguide">\n'
+            f'  <svg x="0" y="0" width="96" height="96" viewBox="{CROP}">{honey_inner(dark=dark)}</svg>\n'
+            f'  <text x="112" y="66" fill="{ink}" font-family="{FONT}" font-size="54" font-weight="650" '
+            'letter-spacing="-1.08">honeyguide</text>\n</svg>\n')
+
+
+def favicon_svg():
+    """Honey for 16px: the silhouette (tuft, wing, beak), the eyes and the satchel as a solid amber hexagon. No blush,
+    mouth, glints or shine: at 16px they smear into a grey patch (compare.html's "full face at 16" row). The outline
+    is thicker and the beak bigger than the avatar's so both survive at 16; the crop (2.725 units a pixel) puts each
+    eye on a solid 2x3-pixel block at 16 and 32px. Classes, because it switches with prefers-color-scheme."""
+    body = ('<path class="hg-fav-w" d="M10.8 29.8C6.2 29.2 3.6 33 4.4 36.6 6.8 35.6 9.4 37.4 11.6 35.4Z" '
+            'stroke-width="2" stroke-linejoin="round"/>'
+            f'<path class="hg-fav-s" d="{HONEY_BODY}" stroke-width="3.6" stroke-linejoin="round"/>'
+            '<path class="hg-fav-b" d="M38.8 25 45.2 28.6 39 32Z" stroke-width="1.8" stroke-linejoin="round"/>'
+            '<ellipse class="hg-fav-e" cx="19.15" cy="29.5" rx="2.7" ry="4.05"/>'
+            '<ellipse class="hg-fav-e" cx="30.05" cy="29.5" rx="2.7" ry="4.05"/>'
+            f'<path class="hg-fav-b" d="{hexagon(37.6, 38.6, 5.6)}" stroke-width="2" stroke-linejoin="round"/>')
+
+    def pal(skin, wing, line, ink):
+        return (f".hg-fav-s{{fill:{skin};stroke:{line}}}.hg-fav-w{{fill:{wing};stroke:{line}}}"
+                f".hg-fav-b{{fill:{GOLD};stroke:{line}}}.hg-fav-e{{fill:{ink}}}")
+    light = pal(SKIN["guide"], WING, LINE, INK)
+    dark = pal(DARK[SKIN["guide"]], DARK[WING], DARK[LINE], DARK[INK])
+    return (f'<svg xmlns="{SVGNS}" viewBox="{FAV_CROP}" width="96" height="96">'
+            f'<style>{light}@media (prefers-color-scheme:dark){{{dark}}}</style>{body}</svg>\n')
+
+
+def logo_files():
+    """name -> text for Honeyguide's logo set in assets/."""
+    return {"logo.svg": lockup_svg(), "logo-dark.svg": lockup_svg(dark=True),
+            "icon.svg": icon_svg(), "icon-dark.svg": icon_svg(dark=True),
+            "icon-small.svg": icon_svg(small=True), "icon-small-dark.svg": icon_svg(small=True, dark=True),
+            "favicon.svg": favicon_svg()}
+
+
 def main():
     js = {}
     for a in SKIN:
@@ -210,7 +298,10 @@ def main():
         "  .replace(\"hg-av-idle\", state.split(\" \").map(s => `hg-av-${s}`).join(\" \") + ` hg-av-${size}`)\n"
         "  .replace(\"<svg \", `<svg width=\"${size}\" height=\"${size}\" `);\n")
     honey_files()
-    print("wrote", ", ".join(f"{a}.svg" for a in SKIN), "honey.svg, honey-badge.svg and hg-avatars.js")
+    for name, text in logo_files().items():
+        (OUT.parent / name).write_text(text)
+    print("wrote", ", ".join(f"{a}.svg" for a in SKIN), "honey.svg, honey-badge.svg and hg-avatars.js;",
+          "and the logo set in assets/:", ", ".join(logo_files()))
 
 
 if __name__ == "__main__":
