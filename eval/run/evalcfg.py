@@ -38,11 +38,13 @@ def validate_config(cfg: dict) -> None:
         raise ValueError("config: model must be a full model id (claude-...)")
     for c in CONDITIONS:
         n = cfg["passes"].get(c)
-        if not isinstance(n, int) or n < 1:
-            raise ValueError(f"config: passes.{c} must be a positive integer")
+        if not isinstance(n, int) or n < 0:
+            raise ValueError(f"config: passes.{c} must be a count (0 skips the condition, e.g. a smoke test)")
     for name, size in cfg["sizes"].items():
-        if not isinstance(size.get("map_seeds"), int) or size["map_seeds"] < 1:
-            raise ValueError(f"config: sizes.{name}.map_seeds must be a positive integer")
+        need = 1 if (cfg["passes"].get("map", 0) or cfg["passes"].get("outline", 0)) else 0
+        if not isinstance(size.get("map_seeds"), int) or size["map_seeds"] < need:
+            raise ValueError(f"config: sizes.{name}.map_seeds must be at least {need} (the map and outline "
+                             "conditions need a map)")
         for t in TYPES:
             v = size.get(t)
             if v != "all" and not (isinstance(v, int) and v >= 0):

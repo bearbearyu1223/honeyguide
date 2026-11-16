@@ -1,0 +1,82 @@
+# Honeyguide eval (T12): the settings every run of the four-way test reads.
+# eval/run/evalrun.py snapshots this file into the run archive's plan.json; a resumed run refuses a changed
+# config (start a new --run-id instead).
+#
+# SMOKE-TEST copy of config.toml (only passes and [sizes.smoke] differ).
+# Han's decisions (2026-11-16): model claude-opus-5-5, effort medium, caps as below.
+
+model = "claude-opus-5-5"          # full model id, never an alias; no --fallback-model
+effort = "medium"                   # --effort for every run (map builds and answers)
+claude_bin = "claude"              # resolved on PATH when the run starts
+# The run archive, outside the repo: one folder per --run-id (plan, log, results, transcripts, maps, outline).
+archive = "~/Documents/GitHub/honeyguide-targets/_eval"
+# Each run's throwaway root (config dir, HOME, working dir); a path without the user name, removed after the run.
+scratch = "/private/tmp"
+# The subscription token (`claude setup-token`, saved once in the keychain). Read once per invocation and passed
+# only into each child's environment as CLAUDE_CODE_OAUTH_TOKEN; never printed or written.
+token_command = ["security", "find-generic-password", "-s", "honeyguide-oauth", "-w"]
+seed = 0                           # run order shuffle, bootstrap, blind-sheet shuffle
+concurrency = 1                    # runs at once (1 = sequential)
+timeout_answer_s = 1200           # wall-clock kill per answering run (a killed run is logged as an error)
+timeout_map_s = 5400              # per eval map build (the T7.9 Cartographer runs took 31-39 min)
+answers_dir = "eval/human/answers" # Han's T5/T6 answers (read only)
+
+[caps]
+answer_usd = 1.5                   # --max-budget-usd per answering run (a capped run counts as wrong)
+map_usd = 20.0                     # --max-budget-usd per eval map build
+max_cost_usd = 150.0               # stop starting runs once this much (list price) is spent in the run archive
+
+[passes]                           # smoke test: one no-access and one explore run, no map build
+no-access = 1
+explore = 1
+outline = 0
+map = 0                            # map pass k uses map seed ((k - 1) mod map_seeds) + 1
+
+[sizes.smoke]                      # 2-run smoke test before the pilot: confirms structured output and the result parsing
+map_seeds = 0
+locate = 1
+callers = 0
+flow = 0
+whyhow = 0
+
+
+# List prices per million tokens, used for the notional cost without cache (with cache, the CLI's own
+# total_cost_usd is used). Fitted to the 8 T2 pilot results (outputs/pilot_isolation.txt): input 4, cache read
+# 0.2, 1-hour cache write 8, output 20 reproduce every total_cost_usd there. The 5-minute write rate never
+# occurred there: 1.25 x input is assumed. The scorer prints how well these rebuild each run's reported cost.
+[prices.claude-opus-5-5]
+input = 4.0
+cache_read = 0.2
+cache_write_1h = 8.0
+cache_write_5m = 5.0
+output = 20.0
+
+# Planning ranges for --dry-run only (labelled estimates, never results). Sources: map build from
+# outputs/runs.txt (Cartographer run 1 $14.14 / 39 min, run 2 $13.42 / 31 min, both with Bash and the Checker);
+# answers from the T2 pilot ($0.004-0.045 per one-shot run) and the live demo question in demo/README.md
+# ($2.35 / 5.3 min for Guide + Investigator + Checker + repair, an upper bound for one answer).
+[estimate]
+map_build_usd = [8.0, 15.0]
+map_build_min = [20.0, 45.0]
+no-access_usd = [0.02, 0.10]
+no-access_min = [0.2, 1.0]
+explore_usd = [0.15, 1.0]
+explore_min = [1.0, 5.0]
+outline_usd = [0.30, 1.2]
+outline_min = [1.0, 5.0]
+map_usd = [0.30, 1.2]
+map_min = [1.0, 5.0]
+
+[repos.nanochat]
+clone = "~/Documents/GitHub/honeyguide-targets/nanochat"
+questions = "eval/questions/nanochat.json"
+trace = "outputs/trace_nanochat.json"
+remove = [".claude"]               # the repo's own agent files, removed from every working dir
+code_dirs = []                     # empty: key scope = every .py outside tests/, test/, examples/, docs/
+
+[repos.waku-agent]
+clone = "~/Documents/GitHub/honeyguide-targets/waku-agent"
+questions = "eval/questions/waku-agent.json"
+trace = "outputs/trace_waku-agent.json"
+remove = ["AGENTS.md", "CLAUDE.md", ".claude"]
+code_dirs = ["waku"]

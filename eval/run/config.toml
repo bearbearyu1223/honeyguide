@@ -2,10 +2,10 @@
 # eval/run/evalrun.py snapshots this file into the run archive's plan.json; a resumed run refuses a changed
 # config (start a new --run-id instead).
 #
-# Needs Han's decision before the pilot (T9): model, effort, the per-run caps and max_cost_usd.
+# Han's decisions (2026-11-16): model claude-opus-5-5, effort medium, caps as below.
 
 model = "claude-opus-5-5"          # full model id, never an alias; no --fallback-model
-effort = "low"                     # --effort for every run (map builds and answers)
+effort = "medium"                   # --effort for every run (map builds and answers)
 claude_bin = "claude"              # resolved on PATH when the run starts
 # The run archive, outside the repo: one folder per --run-id (plan, log, results, transcripts, maps, outline).
 archive = "~/Documents/GitHub/honeyguide-targets/_eval"
