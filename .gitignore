@@ -7,3 +7,4 @@ runs/
 eval/pilot/configs/
 *.err
 .DS_Store
+!eval/runs/
