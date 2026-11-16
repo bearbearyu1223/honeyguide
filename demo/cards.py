@@ -2,8 +2,8 @@
 
     uv run --project .. python cards.py OUT_DIR
 
-The run-clock numbers come from the explore and repair runs' own files (start, end, result.json) passed in
---runs; nothing on a card is typed from memory.
+The run-clock numbers are quoted from outputs/runs.txt (run 2, the repair pass and the re-check of the nanochat map);
+nothing on a card is typed from memory.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
-from datetime import datetime
+import re
 from pathlib import Path
 
 from rec import Chrome
@@ -33,7 +33,7 @@ pre{font-family:Menlo,monospace;font-size:24px;line-height:1.6;text-align:left;b
 pre .p{color:#7F8590} pre .a{color:#E2C25C} pre .c2{color:#7F8590}
 .row{display:flex;gap:36px;align-items:stretch}
 .clock{display:flex;gap:28px}
-.ck{background:#1F232A;border:1px solid #323741;border-radius:16px;padding:26px 40px;min-width:380px}
+.ck{background:#1F232A;border:1px solid #323741;border-radius:16px;padding:24px 32px;min-width:340px}
 .ck .n{font-size:68px;font-weight:700;color:#E2C25C;font-variant-numeric:tabular-nums}
 .ck .l{font-size:22px;color:#D2D5DB;margin-top:6px}
 .ck .s{font-size:18px;color:#A5AAB5;margin-top:10px}
@@ -47,17 +47,22 @@ def page(body: str) -> str:
     return f"<!doctype html><html><head><meta charset=utf-8><style>{CSS}</style></head><body><div class=c>{body}</div></body></html>"
 
 
-def minutes(run: Path) -> float:
-    a = datetime.fromisoformat((run / "start").read_text().strip().replace("Z", "+00:00"))
-    b = datetime.fromisoformat((run / "end").read_text().strip().replace("Z", "+00:00"))
-    return (b - a).total_seconds() / 60
+def runs_txt(path: Path) -> dict:
+    """nanochat's run 2, repair and re-check rows (wall minutes, cost at API list price) and its map's Checker
+    verdicts after the re-check, quoted from outputs/runs.txt (the deterministic capture of the run records)."""
+    t = path.read_text()
+    run2 = re.search(r"nanochat\s+run 2\s+([\d.]+)\s+\S+\s+\$([\d.]+)", t)
+    rep = re.search(r"nanochat\s+repair\s+([\d.]+)\s+\S+\s+\$([\d.]+)", t)
+    rck = re.search(r"\nrecheck\n.*?nanochat\s+([\d.]+)\s+\d+\s+\$([\d.]+)", t, re.S)
+    after = re.search(r"nanochat, run 2 after re-check.*?claims\s+(\d+)\s+Checker verdicts\s+supported (\d+), not supported (\d+)",
+                      t, re.S)
+    return {"ex": (float(run2[1]), float(run2[2])), "rp": (float(rep[1]), float(rep[2])), "rc": (float(rck[1]), float(rck[2])),
+            "claims": int(after[1]), "ok": int(after[2]), "bad": int(after[3])}
 
 
 def cards(runs: Path) -> dict[str, str]:
-    ex, rp = runs / "run2-nanochat", runs / "repair-nanochat"
-    ex_min, rp_min = minutes(ex), minutes(rp)
-    ex_cost = json.loads((ex / "result.json").read_text())["total_cost_usd"]
-    rp_cost = json.loads((rp / "result.json").read_text())["total_cost_usd"]
+    r = runs_txt(runs)
+    (ex_min, ex_cost), (rp_min, rp_cost), (rc_min, rc_cost) = r["ex"], r["rp"], r["rc"]
     return {
         "title": page(f"""<div class=logo>{LOGO}</div>
           <div class=prom>Learn a repo as a map. Ask it questions.</div>
@@ -81,9 +86,12 @@ def cards(runs: Path) -> dict[str, str]:
               <div class=s>${ex_cost:.2f} at API list price</div></div>
             <div class=ck><div class=n>+{rp_min:.0f} min</div><div class=l>repair pass</div>
               <div class=s>${rp_cost:.2f} at API list price</div></div>
+            <div class=ck><div class=n>+{rc_min:.0f} min</div><div class=l>re-check: compute, don't quote</div>
+              <div class=s>${rc_cost:.2f} at API list price</div></div>
           </div>
-          <div class=sub>260 claims. The Checker passed 158 at first; after the repair pass, all 260.</div>
-          <div class=foot>A batch run of the same skill, on a Claude subscription. Not replayed here.</div>"""),
+          <div class=sub>{r["claims"]} claims about the code. After the re-check, the Checker passes {r["ok"]};
+          {r["bad"]} are flagged "Needs a look".</div>
+          <div class=foot>Batch runs of the same skill, on a Claude subscription. Not replayed here. Source: outputs/runs.txt</div>"""),
         "close": page(f"""<div class=logo>{LOGO}</div>
           <pre style="font-size:22px"><span class=p>$</span> uv tool install --editable ~/honeyguide
 <span class=p>&gt;</span> /plugin install honeyguide@honeyguide
@@ -95,7 +103,7 @@ def cards(runs: Path) -> dict[str, str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
-    ap.add_argument("--runs", required=True, help="the folder holding run2-nanochat/ and repair-nanochat/")
+    ap.add_argument("--runs", default=str(HG / "outputs/runs.txt"), help="outputs/runs.txt (the run receipts)")
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

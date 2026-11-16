@@ -183,10 +183,11 @@ def take(w: Writer, tk: Takes, t0: float, t1: float, speed: float = 1.0, caption
             img.paste(ti, (pip["x"], pip["y"]), ti)
         if speed > 1 and i < n:
             badge(img, badge_text or f"x{speed:g}")
-        for (a, b, text) in captions:
+        for cap in captions:                       # (from, to, text) or (from, to, text, y)
+            a, b, text = cap[:3]
             if a <= u < b:
                 al = min(1.0, (u - a) / 0.25, (b - u) / 0.25)
-                pill(img, text, W / 2, cap_y, alpha=al)
+                pill(img, text, W / 2, cap[3] if len(cap) > 3 else cap_y, alpha=al)
         if fin or fout:
             img = Image.blend(black, img, fade(i, n + nh, fin, fout))
         w.put(img)

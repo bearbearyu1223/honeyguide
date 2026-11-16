@@ -10,7 +10,7 @@ export PATH=$W/.venv/bin:$PATH
 cd ~/Documents/GitHub/honeyguide-targets/nanochat
 claude -p "/honeyguide:honeyguide watch
 
-This is a batch run for a demo recording, in place of the Monitor watcher: answer every open question in the inbox now (SKILL.md section 4: claim, show, route, activity start, dispatch, close), then run the Checker on the new answers in the foreground so it finishes before you stop. Do NOT start a server, the Monitor or honeyguide watch --follow. The CLI is on PATH as \`honeyguide\`. Use flags or --input files only, never pipes or heredocs. Then report in two or three lines." \
+This is a batch run for a demo recording, in place of the Monitor watcher: answer every open question in the inbox now (SKILL.md section 4, steps 1-7: claim, show, route, activity start, dispatch, close, check, and the repair pass on the answer of section 8 if the Checker flags claims), running the Checker and the repair in the foreground so everything finishes before you stop. Do NOT start a server, the Monitor or honeyguide watch --follow. The CLI is on PATH as \`honeyguide\`. Use flags or --input files only, never pipes or heredocs. Then report in two or three lines." \
   --plugin-dir $W --permission-mode acceptEdits \
   --allowedTools "Bash(honeyguide:*)" "Bash(git:*)" "Bash(ls:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(wc:*)" "Bash(find:*)" "Read" "Grep" "Glob" "Agent" "Skill" "Write(~/.honeyguide/**)" "Edit(~/.honeyguide/**)" \
   --max-budget-usd 8 --output-format stream-json --verbose 2> ${OUT%.jsonl}.stderr.txt \
