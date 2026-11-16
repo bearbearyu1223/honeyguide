@@ -1,14 +1,17 @@
 {
  "frozen_manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "chore": "T6b callers: in-key callers and the disputed call sites decided",
  "repos": {
   "nanochat": {
+   "url": "https://github.com/karpathy/nanochat",
    "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
    "questions": [
     {
      "id": "nc-cal-01",
      "text": "What calls `GPT.estimate_decode_flops` directly? List every caller in the repo (tests and examples excluded).",
      "target": "GPT.estimate_decode_flops",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L351",
      "in_key": [],
      "disputes": [
       {
@@ -18,6 +21,7 @@
         173,
         221
        ],
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/scripts/infer_bench.py#L173",
        "kinds": [
         "attr"
        ],
@@ -30,6 +34,7 @@
      "id": "nc-cal-02",
      "text": "What calls `get_peak_bandwidth` directly? List every caller in the repo (tests and examples excluded).",
      "target": "get_peak_bandwidth",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/common.py#L281",
      "in_key": [
       {
        "qual": "main",
@@ -52,6 +57,7 @@
      "id": "nc-cal-03",
      "text": "What calls `load_hub_dataset` directly? List every caller in the repo (tests and examples excluded).",
      "target": "load_hub_dataset",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/tasks/common.py#L45",
      "in_key": [
       {
        "qual": "ARC.__init__",
@@ -130,6 +136,7 @@
      "id": "nc-cal-04",
      "text": "What calls `KVCache.prefill` directly? List every caller in the repo (tests and examples excluded).",
      "target": "KVCache.prefill",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L123",
      "in_key": [
       {
        "qual": "Engine.generate",
@@ -150,6 +157,7 @@
      "id": "nc-cal-05",
      "text": "What calls `sample_next_token` directly? List every caller in the repo (tests and examples excluded).",
      "target": "sample_next_token",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L140",
      "in_key": [
       {
        "qual": "Engine.generate",
@@ -172,6 +180,7 @@
      "id": "nc-cal-06",
      "text": "What calls `norm` directly? List every caller in the repo (tests and examples excluded).",
      "target": "norm",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L42",
      "in_key": [
       {
        "qual": "Block.forward",
@@ -228,6 +237,7 @@
         144,
         160
        ],
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L139",
        "kinds": [
         "attr"
        ],
@@ -240,6 +250,7 @@
      "id": "nc-cal-07",
      "text": "What calls `flash_attn_with_kvcache` directly? List every caller in the repo (tests and examples excluded).",
      "target": "flash_attn_with_kvcache",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L139",
      "in_key": [
       {
        "qual": "CausalSelfAttention.forward",
@@ -261,6 +272,7 @@
        "lines": [
         194
        ],
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L194",
        "kinds": [
         "reference"
        ],
@@ -273,6 +285,7 @@
        "lines": [
         158
        ],
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L158",
        "kinds": [
         "attr"
        ],
@@ -285,6 +298,7 @@
      "id": "nc-cal-08",
      "text": "What calls `GPT._precompute_rotary_embeddings` directly? List every caller in the repo (tests and examples excluded).",
      "target": "GPT._precompute_rotary_embeddings",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L270",
      "in_key": [
       {
        "qual": "GPT.__init__",
@@ -321,6 +335,7 @@
      "id": "nc-cal-09",
      "text": "What calls `compute_init` directly? List every caller in the repo (tests and examples excluded).",
      "target": "compute_init",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/common.py#L174",
      "in_key": [
       {
        "qual": "<module>",
@@ -441,6 +456,7 @@
      "id": "nc-cal-10",
      "text": "What calls `use_calculator` directly? List every caller in the repo (tests and examples excluded).",
      "target": "use_calculator",
+     "target_link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L46",
      "in_key": [
       {
        "qual": "Engine.generate",
@@ -462,12 +478,14 @@
    ]
   },
   "waku-agent": {
+   "url": "https://github.com/ShenSeanChen/waku-agent",
    "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
    "questions": [
     {
      "id": "wk-cal-01",
      "text": "What calls `Memory.gated_retrieve` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "Memory.gated_retrieve",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L118",
      "in_key": [
       {
        "qual": "Session.build_system",
@@ -488,6 +506,7 @@
      "id": "wk-cal-02",
      "text": "What calls `run_loop` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "run_loop",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/agent.py#L91",
      "in_key": [
       {
        "qual": "Waku._run_full_turn",
@@ -524,6 +543,7 @@
      "id": "wk-cal-03",
      "text": "What calls `Waku.respond` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "Waku.respond",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L136",
      "in_key": [],
      "disputes": [
       {
@@ -532,6 +552,7 @@
        "lines": [
         91
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/cli.py#L91",
        "kinds": [
         "attr"
        ],
@@ -544,6 +565,7 @@
        "lines": [
         71
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/runner.py#L71",
        "kinds": [
         "attr"
        ],
@@ -556,6 +578,7 @@
        "lines": [
         120
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/runner.py#L120",
        "kinds": [
         "attr"
        ],
@@ -568,6 +591,7 @@
        "lines": [
         353
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/voice.py#L353",
        "kinds": [
         "attr"
        ],
@@ -580,6 +604,7 @@
        "lines": [
         298
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/voice.py#L298",
        "kinds": [
         "attr"
        ],
@@ -592,6 +617,7 @@
        "lines": [
         225
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/gateway/whatsapp.py#L225",
        "kinds": [
         "attr"
        ],
@@ -604,6 +630,7 @@
        "lines": [
         117
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/arena.py#L117",
        "kinds": [
         "attr"
        ],
@@ -616,6 +643,7 @@
        "lines": [
         27
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/brief.py#L27",
        "kinds": [
         "attr"
        ],
@@ -628,6 +656,7 @@
        "lines": [
         117
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/dashboard.py#L117",
        "kinds": [
         "attr"
        ],
@@ -641,6 +670,7 @@
         484,
         554
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/memory_arena.py#L484",
        "kinds": [
         "attr"
        ],
@@ -653,6 +683,7 @@
      "id": "wk-cal-04",
      "text": "What calls `shrink_seen` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "shrink_seen",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/trim.py#L40",
      "in_key": [
       {
        "qual": "chain.<locals>.run",
@@ -674,6 +705,7 @@
        "lines": [
         429
        ],
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L429",
        "kinds": [
         "reference"
        ],
@@ -686,6 +718,7 @@
      "id": "wk-cal-05",
      "text": "What calls `kept_if_due` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "kept_if_due",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/consolidation.py#L161",
      "in_key": [
       {
        "qual": "Memory.maybe_consolidate",
@@ -722,6 +755,7 @@
      "id": "wk-cal-06",
      "text": "What calls `ToolRegistry.schemas` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "ToolRegistry.schemas",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L47",
      "in_key": [
       {
        "qual": "_final_answer",
@@ -754,6 +788,7 @@
      "id": "wk-cal-07",
      "text": "What calls `run_graph` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "run_graph",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L106",
      "in_key": [
       {
        "qual": "Waku._respond_via_graph",
@@ -790,6 +825,7 @@
      "id": "wk-cal-08",
      "text": "What calls `clip` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "clip",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/tool_note.py#L62",
      "in_key": [
       {
        "qual": "kept_if_due",
@@ -826,6 +862,7 @@
      "id": "wk-cal-09",
      "text": "What calls `resolve_home` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "resolve_home",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/config.py#L64",
      "in_key": [
       {
        "qual": "<module>",
@@ -934,6 +971,7 @@
      "id": "wk-cal-10",
      "text": "What calls `Memory.maybe_consolidate` directly? List every caller in the package source (tests, evals and hosted/ excluded).",
      "target": "Memory.maybe_consolidate",
+     "target_link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L271",
      "in_key": [
       {
        "qual": "Waku.respond",

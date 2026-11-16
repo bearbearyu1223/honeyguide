@@ -950,8 +950,9 @@
   }
  },
  "questions_json_sha256": "7ac8799c8429b0e4b01d685854b2d91108d6fa827976c20bdd5d101b62bbfae4",
+ "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "repo": "waku-agent",
- "saved_at": "2026-11-16T17:25:06Z",
+ "saved_at": "2026-11-16T17:41:47Z",
  "schema": 1,
  "url": "https://github.com/ShenSeanChen/waku-agent"
 }

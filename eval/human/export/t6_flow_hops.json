@@ -1,8 +1,15 @@
 {
  "frozen_manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
- "chore": "T6a flow hops: required or optional for a complete answer",
+ "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
+ "chore": "T6a flow hops: required, optional or excluded for a complete answer",
+ "marks": {
+  "required": "an answer that misses it is incomplete",
+  "optional": "fine to mention, fine to skip",
+  "excluded": "outside the question's scope: neither credited nor penalised by the scorer"
+ },
  "repos": {
   "nanochat": {
+   "url": "https://github.com/karpathy/nanochat",
    "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
    "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by Han 2026-11-16 without changes.",
    "questions": [
@@ -16,6 +23,7 @@
        "file": "nanochat/gpt.py",
        "line": 157,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L157",
        "mark": "required",
        "why": "Builds the model: embeddings, blocks, lm_head, scalars, buffers (on meta)."
       },
@@ -25,6 +33,7 @@
        "file": "nanochat/gpt.py",
        "line": 287,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L287",
        "mark": "optional",
        "why": "Small helper inside GPT.__init__ turning 'SSSL' into per-layer windows."
       },
@@ -33,7 +42,8 @@
        "function": "Block.__init__",
        "file": "nanochat/gpt.py",
        "line": 145,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L145",
        "mark": "required",
        "why": "Builds each transformer block (attention + MLP)."
       },
@@ -42,7 +52,8 @@
        "function": "CausalSelfAttention.__init__",
        "file": "nanochat/gpt.py",
        "line": 68,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L68",
        "mark": "required",
        "why": "Builds each layer's q/k/v/proj projections and value-embedding gate."
       },
@@ -51,7 +62,8 @@
        "function": "MLP.__init__",
        "file": "nanochat/gpt.py",
        "line": 132,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L132",
        "mark": "required",
        "why": "Builds each layer's MLP projections."
       },
@@ -60,7 +72,8 @@
        "function": "GPT._precompute_rotary_embeddings",
        "file": "nanochat/gpt.py",
        "line": 270,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L270",
        "mark": "optional",
        "why": "Rotary cos/sin buffer helper, detail of __init__ and init_weights."
       },
@@ -70,6 +83,7 @@
        "file": "nanochat/gpt.py",
        "line": 203,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L203",
        "mark": "required",
        "why": "The step that actually initializes every parameter after to_empty."
       }
@@ -85,6 +99,7 @@
        "file": "nanochat/gpt.py",
        "line": 459,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L459",
        "mark": "required",
        "why": "Entry point: embeds, runs blocks, computes logits and the loss."
       },
@@ -93,7 +108,8 @@
        "function": "norm",
        "file": "nanochat/gpt.py",
        "line": 42,
-       "count": 1,
+       "count": 10,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L42",
        "mark": "optional",
        "why": "RMSNorm helper called many times inside required steps."
       },
@@ -102,7 +118,8 @@
        "function": "Linear.forward",
        "file": "nanochat/gpt.py",
        "line": 49,
-       "count": 1,
+       "count": 15,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L49",
        "mark": "optional",
        "why": "Linear wrapper (dtype cast) called many times inside required steps."
       },
@@ -111,7 +128,8 @@
        "function": "Block.forward",
        "file": "nanochat/gpt.py",
        "line": 150,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L150",
        "mark": "required",
        "why": "Each transformer layer of the forward pass."
       },
@@ -120,7 +138,8 @@
        "function": "CausalSelfAttention.forward",
        "file": "nanochat/gpt.py",
        "line": 84,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L84",
        "mark": "required",
        "why": "Attention block named by the flow."
       },
@@ -129,7 +148,8 @@
        "function": "apply_rotary_emb",
        "file": "nanochat/gpt.py",
        "line": 57,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L57",
        "mark": "optional",
        "why": "Rotary helper inside attention."
       },
@@ -138,7 +158,8 @@
        "function": "flash_attn_func",
        "file": "nanochat/flash_attention.py",
        "line": 115,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L115",
        "mark": "required",
        "why": "First call into the attention kernel module (training path, no cache)."
       },
@@ -147,7 +168,8 @@
        "function": "_sdpa_attention",
        "file": "nanochat/flash_attention.py",
        "line": 77,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L77",
        "mark": "optional",
        "why": "CPU SDPA fallback inside flash_attn_func; detail of its parent."
       },
@@ -156,7 +178,8 @@
        "function": "MLP.forward",
        "file": "nanochat/gpt.py",
        "line": 137,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L137",
        "mark": "required",
        "why": "MLP block named by the flow."
       }
@@ -172,6 +195,7 @@
        "file": "nanochat/optim.py",
        "line": 428,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L428",
        "mark": "required",
        "why": "Entry point; runs the reduce, compute, gather phases."
       },
@@ -180,7 +204,8 @@
        "function": "MuonAdamW._reduce_adamw",
        "file": "nanochat/optim.py",
        "line": 274,
-       "count": 1,
+       "count": 6,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L274",
        "mark": "optional",
        "why": "World size 1: no communication, only wraps grads per param."
       },
@@ -189,7 +214,8 @@
        "function": "MuonAdamW._reduce_muon",
        "file": "nanochat/optim.py",
        "line": 295,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L295",
        "mark": "optional",
        "why": "World size 1: no communication, only stacks grads."
       },
@@ -198,7 +224,8 @@
        "function": "MuonAdamW._compute_adamw",
        "file": "nanochat/optim.py",
        "line": 320,
-       "count": 1,
+       "count": 6,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L320",
        "mark": "required",
        "why": "AdamW compute step: state init and per-param update."
       },
@@ -207,7 +234,8 @@
        "function": "adamw_step_fused",
        "file": "nanochat/optim.py",
        "line": 23,
-       "count": 1,
+       "count": 8,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L23",
        "mark": "required",
        "why": "The AdamW update math itself."
       },
@@ -216,7 +244,8 @@
        "function": "MuonAdamW._compute_muon",
        "file": "nanochat/optim.py",
        "line": 362,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L362",
        "mark": "required",
        "why": "Muon compute step: momentum buffers and stacked update."
       },
@@ -225,7 +254,8 @@
        "function": "muon_step_fused",
        "file": "nanochat/optim.py",
        "line": 111,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L111",
        "mark": "required",
        "why": "The Muon update math (momentum, orthogonalization) itself."
       },
@@ -235,6 +265,7 @@
        "file": "nanochat/optim.py",
        "line": 419,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/optim.py#L419",
        "mark": "required",
        "why": "Copies updated Muon stack back into params; without it Muon params unchanged."
       }
@@ -250,8 +281,9 @@
        "file": "nanochat/engine.py",
        "line": 171,
        "count": 1,
-       "mark": "optional",
-       "why": "Constructor only stores model and tokenizer; not called by generate."
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L171",
+       "mark": "excluded",
+       "why": "Runs in Engine(model, tokenizer) before generate; outside 'what Engine.generate calls'"
       },
       {
        "index": 1,
@@ -259,6 +291,7 @@
        "file": "nanochat/engine.py",
        "line": 175,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L175",
        "mark": "required",
        "why": "Entry point: prefill, cache replication, sampling loop."
       },
@@ -267,7 +300,8 @@
        "function": "RustBPETokenizer.encode_special",
        "file": "nanochat/tokenizer.py",
        "line": 89,
-       "count": 1,
+       "count": 5,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/tokenizer.py#L89",
        "mark": "optional",
        "why": "Cached special-token id lookups for the tool-use state machine."
       },
@@ -276,7 +310,8 @@
        "function": "KVCache.__init__",
        "file": "nanochat/engine.py",
        "line": 92,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L92",
        "mark": "required",
        "why": "Allocates the prefill and decode KV caches."
       },
@@ -285,7 +320,8 @@
        "function": "GPT.forward",
        "file": "nanochat/gpt.py",
        "line": 459,
-       "count": 1,
+       "count": 5,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L459",
        "mark": "required",
        "why": "Each model pass (prefill and per-token decode)."
       },
@@ -295,6 +331,7 @@
        "file": "nanochat/engine.py",
        "line": 123,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L123",
        "mark": "required",
        "why": "Copies the prompt's KV into the decode cache."
       },
@@ -304,6 +341,7 @@
        "file": "nanochat/engine.py",
        "line": 162,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L162",
        "mark": "optional",
        "why": "Per-row bookkeeping object, plain state holder."
       },
@@ -312,7 +350,8 @@
        "function": "sample_next_token",
        "file": "nanochat/engine.py",
        "line": 140,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L140",
        "mark": "required",
        "why": "Samples each new token (temperature, top-k)."
       }
@@ -328,6 +367,7 @@
        "file": "nanochat/gpt.py",
        "line": 459,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L459",
        "mark": "required",
        "why": "Entry point: embeds, runs blocks, returns logits."
       },
@@ -336,7 +376,8 @@
        "function": "norm",
        "file": "nanochat/gpt.py",
        "line": 42,
-       "count": 1,
+       "count": 10,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L42",
        "mark": "optional",
        "why": "RMSNorm helper called many times inside required steps."
       },
@@ -345,7 +386,8 @@
        "function": "Linear.forward",
        "file": "nanochat/gpt.py",
        "line": 49,
-       "count": 1,
+       "count": 15,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L49",
        "mark": "optional",
        "why": "Linear wrapper (dtype cast) called many times inside required steps."
       },
@@ -354,7 +396,8 @@
        "function": "Block.forward",
        "file": "nanochat/gpt.py",
        "line": 150,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L150",
        "mark": "required",
        "why": "Each transformer layer of the forward pass."
       },
@@ -363,7 +406,8 @@
        "function": "CausalSelfAttention.forward",
        "file": "nanochat/gpt.py",
        "line": 84,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L84",
        "mark": "required",
        "why": "Attention block; uses the KV cache path here."
       },
@@ -372,7 +416,8 @@
        "function": "apply_rotary_emb",
        "file": "nanochat/gpt.py",
        "line": 57,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L57",
        "mark": "optional",
        "why": "Rotary helper inside attention."
       },
@@ -381,7 +426,8 @@
        "function": "flash_attn_with_kvcache",
        "file": "nanochat/flash_attention.py",
        "line": 139,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L139",
        "mark": "required",
        "why": "First call into the attention module on the cached path; writes the cache."
       },
@@ -390,7 +436,8 @@
        "function": "_sdpa_attention",
        "file": "nanochat/flash_attention.py",
        "line": 77,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/flash_attention.py#L77",
        "mark": "optional",
        "why": "CPU SDPA fallback inside flash_attn_with_kvcache; detail of its parent."
       },
@@ -399,7 +446,8 @@
        "function": "MLP.forward",
        "file": "nanochat/gpt.py",
        "line": 137,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/gpt.py#L137",
        "mark": "required",
        "why": "MLP block of each layer."
       },
@@ -409,6 +457,7 @@
        "file": "nanochat/engine.py",
        "line": 119,
        "count": 1,
+       "link": "https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L119",
        "mark": "required",
        "why": "Moves the cache position after the last layer; the cache-specific step."
       }
@@ -417,6 +466,7 @@
    ]
   },
   "waku-agent": {
+   "url": "https://github.com/ShenSeanChen/waku-agent",
    "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
    "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by Han 2026-11-16 without changes.",
    "questions": [
@@ -430,6 +480,7 @@
        "file": "waku/app.py",
        "line": 69,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L69",
        "mark": "required",
        "why": "Entry point that builds the agent."
       },
@@ -439,6 +490,7 @@
        "file": "waku/config.py",
        "line": 314,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/config.py#L314",
        "mark": "optional",
        "why": "Creates home folders; setup plumbing."
       },
@@ -448,6 +500,7 @@
        "file": "waku/db.py",
        "line": 111,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/db.py#L111",
        "mark": "required",
        "why": "Opens state.db and creates the schema."
       },
@@ -457,6 +510,7 @@
        "file": "waku/db.py",
        "line": 83,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/db.py#L83",
        "mark": "optional",
        "why": "Idempotent column upgrades; no-op on a fresh schema."
       },
@@ -466,6 +520,7 @@
        "file": "waku/memory/__init__.py",
        "line": 60,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L60",
        "mark": "required",
        "why": "Setting up memory, one step per the question."
       },
@@ -475,6 +530,7 @@
        "file": "waku/tools/__init__.py",
        "line": 14,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/__init__.py#L14",
        "mark": "required",
        "why": "Building the tool registry, one step per the question."
       },
@@ -484,6 +540,7 @@
        "file": "waku/tools/waku_memory.py",
        "line": 101,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L101",
        "mark": "optional",
        "why": "Waku Memory wiring; returns None without MCP servers."
       },
@@ -492,7 +549,8 @@
        "function": "_server",
        "file": "waku/tools/waku_memory.py",
        "line": 67,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L67",
        "mark": "optional",
        "why": "Server lookup helper; None without a bridge."
       },
@@ -502,6 +560,7 @@
        "file": "waku/tools/waku_memory.py",
        "line": 55,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L55",
        "mark": "optional",
        "why": "Config getter; returns settings.consolidate_every unchanged here."
       },
@@ -511,6 +570,7 @@
        "file": "waku/tools/waku_memory.py",
        "line": 128,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L128",
        "mark": "optional",
        "why": "Waku Memory wiring; returns None without MCP servers."
       },
@@ -520,6 +580,7 @@
        "file": "waku/tools/waku_memory.py",
        "line": 152,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L152",
        "mark": "optional",
        "why": "Waku Memory wiring; returns None without MCP servers."
       },
@@ -529,6 +590,7 @@
        "file": "waku/tools/waku_memory.py",
        "line": 188,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L188",
        "mark": "optional",
        "why": "Name lookup; None without Waku Memory."
       },
@@ -538,6 +600,7 @@
        "file": "waku/tools/registry.py",
        "line": 44,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L44",
        "mark": "optional",
        "why": "Registry lookup; finds no remember tool."
       },
@@ -547,6 +610,7 @@
        "file": "waku/runtime/session.py",
        "line": 86,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/runtime/session.py#L86",
        "mark": "required",
        "why": "Builds the conversation session that composes prompts."
       },
@@ -556,6 +620,7 @@
        "file": "waku/plugins/store.py",
        "line": 75,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/plugins/store.py#L75",
        "mark": "optional",
        "why": "Plugin store read; no plugins installed."
       },
@@ -565,6 +630,7 @@
        "file": "waku/plugins/store.py",
        "line": 57,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/plugins/store.py#L57",
        "mark": "optional",
        "why": "Plugin store file read; detail of enabled."
       },
@@ -574,6 +640,7 @@
        "file": "waku/plugins/store.py",
        "line": 38,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/plugins/store.py#L38",
        "mark": "optional",
        "why": "Path helper inside the plugin store."
       }
@@ -589,6 +656,7 @@
        "file": "waku/app.py",
        "line": 136,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L136",
        "mark": "required",
        "why": "Entry point for the turn."
       },
@@ -598,6 +666,7 @@
        "file": "waku/ops/tracing.py",
        "line": 217,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L217",
        "mark": "optional",
        "why": "Observer fan-out plumbing."
       },
@@ -607,6 +676,7 @@
        "file": "waku/app.py",
        "line": 281,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L281",
        "mark": "optional",
        "why": "Plugin hooks; returns at once without hooks."
       },
@@ -616,6 +686,7 @@
        "file": "waku/app.py",
        "line": 392,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L392",
        "mark": "required",
        "why": "Running the turn, one step per the question."
       },
@@ -625,6 +696,7 @@
        "file": "waku/memory/reports.py",
        "line": 176,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L176",
        "mark": "optional",
        "why": "Report extraction; no report in this turn."
       },
@@ -633,7 +705,8 @@
        "function": "saved_by_model",
        "file": "waku/memory/reports.py",
        "line": 156,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L156",
        "mark": "optional",
        "why": "Report helper; no remember tool call this turn."
       },
@@ -642,7 +715,8 @@
        "function": "find",
        "file": "waku/memory/reports.py",
        "line": 88,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L88",
        "mark": "optional",
        "why": "Report marker search; finds none."
       },
@@ -652,6 +726,7 @@
        "file": "waku/memory/reports.py",
        "line": 260,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L260",
        "mark": "optional",
        "why": "Report upload step; no report and no Waku Memory, reply unchanged."
       },
@@ -661,6 +736,7 @@
        "file": "waku/app.py",
        "line": 211,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L211",
        "mark": "optional",
        "why": "Per-tool status label for the turn's meta."
       },
@@ -670,6 +746,7 @@
        "file": "waku/runtime/session.py",
        "line": 140,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/runtime/session.py#L140",
        "mark": "required",
        "why": "Records the exchange in history and chat log."
       },
@@ -679,6 +756,7 @@
        "file": "waku/memory/tool_note.py",
        "line": 46,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/tool_note.py#L46",
        "mark": "optional",
        "why": "Compact tool note, detail of add_exchange."
       },
@@ -687,7 +765,8 @@
        "function": "_short",
        "file": "waku/memory/tool_note.py",
        "line": 38,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/tool_note.py#L38",
        "mark": "optional",
        "why": "String clipping helper."
       },
@@ -697,6 +776,7 @@
        "file": "waku/memory/__init__.py",
        "line": 144,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L144",
        "mark": "optional",
        "why": "Chat-log insert, detail of add_exchange."
       },
@@ -706,6 +786,7 @@
        "file": "waku/app.py",
        "line": 358,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L358",
        "mark": "optional",
        "why": "Builds the recalled text passed to consolidation; argument prep."
       },
@@ -714,7 +795,8 @@
        "function": "tool_name",
        "file": "waku/tools/waku_memory.py",
        "line": 188,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L188",
        "mark": "optional",
        "why": "Name lookup; None without Waku Memory."
       },
@@ -723,7 +805,8 @@
        "function": "_server",
        "file": "waku/tools/waku_memory.py",
        "line": 67,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/waku_memory.py#L67",
        "mark": "optional",
        "why": "Server lookup helper; None without a bridge."
       },
@@ -733,6 +816,7 @@
        "file": "waku/memory/__init__.py",
        "line": 271,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L271",
        "mark": "required",
        "why": "The consolidation check, one step per the question."
       },
@@ -742,6 +826,7 @@
        "file": "waku/memory/__init__.py",
        "line": 213,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L213",
        "mark": "required",
        "why": "Mirrors memory to MEMORY.md after every turn."
       },
@@ -751,6 +836,7 @@
        "file": "waku/memory/__init__.py",
        "line": 240,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L240",
        "mark": "optional",
        "why": "Per-fact files, detail of export_markdown."
       },
@@ -760,6 +846,7 @@
        "file": "waku/memory/__init__.py",
        "line": 46,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L46",
        "mark": "optional",
        "why": "Formatting helper for one fact file."
       },
@@ -768,7 +855,8 @@
        "function": "_fact_file_text.<locals>.one_line",
        "file": "waku/memory/__init__.py",
        "line": 52,
-       "count": 1,
+       "count": 3,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L52",
        "mark": "optional",
        "why": "Whitespace helper."
       },
@@ -778,6 +866,7 @@
        "file": "waku/app.py",
        "line": 379,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L379",
        "mark": "required",
        "why": "The receipt, one step per the question."
       },
@@ -787,6 +876,7 @@
        "file": "waku/app.py",
        "line": 341,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L341",
        "mark": "optional",
        "why": "Stop hook; returns at once without hooks."
       }
@@ -802,6 +892,7 @@
        "file": "waku/runtime/session.py",
        "line": 100,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/runtime/session.py#L100",
        "mark": "required",
        "why": "Entry point that assembles the system prompt."
       },
@@ -811,6 +902,7 @@
        "file": "waku/runtime/session.py",
        "line": 73,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/runtime/session.py#L73",
        "mark": "required",
        "why": "Reads (creates) SOUL.md, the prompt's first part."
       },
@@ -820,6 +912,7 @@
        "file": "waku/tools/treg.py",
        "line": 95,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/treg.py#L95",
        "mark": "optional",
        "why": "Unavailable-tools filter; config check."
       },
@@ -829,6 +922,7 @@
        "file": "waku/tools/treg.py",
        "line": 70,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/treg.py#L70",
        "mark": "optional",
        "why": "Env-var check inside unavailable."
       },
@@ -838,6 +932,7 @@
        "file": "waku/memory/__init__.py",
        "line": 118,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L118",
        "mark": "required",
        "why": "Gated memory retrieval, the core of this question."
       },
@@ -847,6 +942,7 @@
        "file": "waku/ops/tracing.py",
        "line": 249,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L249",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -856,6 +952,7 @@
        "file": "waku/ops/tracing.py",
        "line": 227,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L227",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -865,6 +962,7 @@
        "file": "waku/memory/retrieval_gate.py",
        "line": 36,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/retrieval_gate.py#L36",
        "mark": "required",
        "why": "The small model's gate decision (retrieve=true, query 'alex')."
       },
@@ -874,6 +972,7 @@
        "file": "waku/ops/tracing.py",
        "line": 230,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L230",
        "mark": "optional",
        "why": "Metering wrapper around the gate's model call; detail of should_retrieve."
       },
@@ -883,6 +982,7 @@
        "file": "waku/memory/semantic/store.py",
        "line": 100,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/semantic/store.py#L100",
        "mark": "required",
        "why": "Searches semantic facts for 'alex'."
       },
@@ -891,7 +991,8 @@
        "function": "_fts_query",
        "file": "waku/memory/semantic/store.py",
        "line": 31,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/semantic/store.py#L31",
        "mark": "optional",
        "why": "FTS query-string helper."
       },
@@ -901,6 +1002,7 @@
        "file": "waku/memory/slot_gate.py",
        "line": 66,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/slot_gate.py#L66",
        "mark": "optional",
        "why": "Slot gate; off by default, passes facts through."
       },
@@ -910,6 +1012,7 @@
        "file": "waku/memory/episodic/store.py",
        "line": 27,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/episodic/store.py#L27",
        "mark": "required",
        "why": "Searches episodic memory for 'alex'."
       },
@@ -919,6 +1022,7 @@
        "file": "waku/memory/__init__.py",
        "line": 139,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L139",
        "mark": "required",
        "why": "Adds matching skill instructions, the prompt's procedural part."
       },
@@ -928,6 +1032,7 @@
        "file": "waku/memory/procedural/loader.py",
        "line": 77,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/procedural/loader.py#L77",
        "mark": "optional",
        "why": "Keyword matching, detail of matching_skills."
       },
@@ -937,6 +1042,7 @@
        "file": "waku/memory/procedural/loader.py",
        "line": 58,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/procedural/loader.py#L58",
        "mark": "optional",
        "why": "Skill-file change check for reloads."
       }
@@ -952,6 +1058,7 @@
        "file": "waku/loop/agent.py",
        "line": 91,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/agent.py#L91",
        "mark": "required",
        "why": "Entry point: the reason-act loop."
       },
@@ -960,7 +1067,8 @@
        "function": "ToolRegistry.schemas",
        "file": "waku/tools/registry.py",
        "line": 47,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L47",
        "mark": "optional",
        "why": "Tool schema getter for each model call."
       },
@@ -970,6 +1078,7 @@
        "file": "waku/tools/registry.py",
        "line": 50,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L50",
        "mark": "required",
        "why": "Dispatches the save_note call."
       },
@@ -979,6 +1088,7 @@
        "file": "waku/tools/notes.py",
        "line": 35,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/notes.py#L35",
        "mark": "required",
        "why": "The tool that saves the agenda."
       },
@@ -988,6 +1098,7 @@
        "file": "waku/loop/trim.py",
        "line": 60,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/trim.py#L60",
        "mark": "optional",
        "why": "Trim chain plumbing before the second call."
       },
@@ -997,6 +1108,7 @@
        "file": "waku/memory/reports.py",
        "line": 186,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L186",
        "mark": "optional",
        "why": "Report trimming; no report here."
       },
@@ -1006,6 +1118,7 @@
        "file": "waku/loop/trim.py",
        "line": 40,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/trim.py#L40",
        "mark": "optional",
        "why": "Long-result trimming; save_note result is short."
       }
@@ -1021,6 +1134,7 @@
        "file": "waku/loop/agent.py",
        "line": 91,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/agent.py#L91",
        "mark": "required",
        "why": "Entry point: the reason-act loop."
       },
@@ -1029,7 +1143,8 @@
        "function": "ToolRegistry.schemas",
        "file": "waku/tools/registry.py",
        "line": 47,
-       "count": 1,
+       "count": 3,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L47",
        "mark": "optional",
        "why": "Tool schema getter for each model call."
       },
@@ -1038,7 +1153,8 @@
        "function": "ToolRegistry.execute",
        "file": "waku/tools/registry.py",
        "line": 50,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/tools/registry.py#L50",
        "mark": "required",
        "why": "Runs manage_memory and send_message."
       },
@@ -1047,7 +1163,8 @@
        "function": "chain.<locals>.run",
        "file": "waku/loop/trim.py",
        "line": 60,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/trim.py#L60",
        "mark": "optional",
        "why": "Trim chain plumbing."
       },
@@ -1056,7 +1173,8 @@
        "function": "shrink_read",
        "file": "waku/memory/reports.py",
        "line": 186,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/reports.py#L186",
        "mark": "optional",
        "why": "Report trimming; no report here."
       },
@@ -1065,7 +1183,8 @@
        "function": "shrink_seen",
        "file": "waku/loop/trim.py",
        "line": 40,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/trim.py#L40",
        "mark": "required",
        "why": "Cuts the 4,800-character result before the final call."
       },
@@ -1075,6 +1194,7 @@
        "file": "waku/loop/agent.py",
        "line": 203,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/loop/agent.py#L203",
        "mark": "required",
        "why": "Tools-off final call once the iteration limit is reached."
       }
@@ -1090,6 +1210,7 @@
        "file": "waku/memory/__init__.py",
        "line": 271,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/__init__.py#L271",
        "mark": "required",
        "why": "Entry point for consolidation."
       },
@@ -1099,6 +1220,7 @@
        "file": "waku/ops/tracing.py",
        "line": 249,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L249",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1108,6 +1230,7 @@
        "file": "waku/ops/tracing.py",
        "line": 227,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L227",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1117,6 +1240,7 @@
        "file": "waku/memory/consolidation.py",
        "line": 161,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/consolidation.py#L161",
        "mark": "required",
        "why": "Does the consolidation: due check, model call, filtering, storing."
       },
@@ -1125,7 +1249,8 @@
        "function": "clip",
        "file": "waku/memory/tool_note.py",
        "line": 62,
-       "count": 1,
+       "count": 6,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/tool_note.py#L62",
        "mark": "optional",
        "why": "Clips old tool notes in the log."
       },
@@ -1135,6 +1260,7 @@
        "file": "waku/memory/consolidation.py",
        "line": 297,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/consolidation.py#L297",
        "mark": "optional",
        "why": "Collects saved report titles; none here."
       },
@@ -1144,6 +1270,7 @@
        "file": "waku/ops/tracing.py",
        "line": 230,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L230",
        "mark": "optional",
        "why": "Metering wrapper around the summarizer call; detail of kept_if_due."
       },
@@ -1152,7 +1279,8 @@
        "function": "is_ops_state",
        "file": "waku/memory/consolidation.py",
        "line": 375,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/consolidation.py#L375",
        "mark": "required",
        "why": "Drops the account-balance fact the question sets up."
       },
@@ -1162,6 +1290,7 @@
        "file": "waku/memory/consolidation.py",
        "line": 401,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/consolidation.py#L401",
        "mark": "optional",
        "why": "Second filter; drops nothing here."
       },
@@ -1171,6 +1300,7 @@
        "file": "waku/memory/slot_gate.py",
        "line": 83,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/slot_gate.py#L83",
        "mark": "optional",
        "why": "Slot gate; off by default, keeps all."
       },
@@ -1180,6 +1310,7 @@
        "file": "waku/memory/slot_gate.py",
        "line": 44,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/slot_gate.py#L44",
        "mark": "optional",
        "why": "Env check inside the slot gate."
       },
@@ -1189,6 +1320,7 @@
        "file": "waku/memory/semantic/store.py",
        "line": 71,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/semantic/store.py#L71",
        "mark": "required",
        "why": "Stores the kept meeting-times fact."
       },
@@ -1198,6 +1330,7 @@
        "file": "waku/memory/episodic/store.py",
        "line": 20,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/memory/episodic/store.py#L20",
        "mark": "required",
        "why": "Stores the episode."
       }
@@ -1213,6 +1346,7 @@
        "file": "waku/app.py",
        "line": 436,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L436",
        "mark": "required",
        "why": "Entry point for the graph turn."
       },
@@ -1222,6 +1356,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 89,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L89",
        "mark": "required",
        "why": "Builds the triage graph."
       },
@@ -1230,7 +1365,8 @@
        "function": "Graph.add_node",
        "file": "waku/graph/engine.py",
        "line": 71,
-       "count": 1,
+       "count": 5,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L71",
        "mark": "optional",
        "why": "Graph construction detail inside build_triage_graph."
       },
@@ -1239,7 +1375,8 @@
        "function": "Graph.add_edge",
        "file": "waku/graph/engine.py",
        "line": 76,
-       "count": 1,
+       "count": 6,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L76",
        "mark": "optional",
        "why": "Graph construction detail inside build_triage_graph."
       },
@@ -1249,6 +1386,7 @@
        "file": "waku/graph/nodes.py",
        "line": 65,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/nodes.py#L65",
        "mark": "optional",
        "why": "Router factory; detail of graph building."
       },
@@ -1258,6 +1396,7 @@
        "file": "waku/graph/engine.py",
        "line": 84,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L84",
        "mark": "optional",
        "why": "Graph construction detail inside build_triage_graph."
       },
@@ -1267,6 +1406,7 @@
        "file": "waku/graph/engine.py",
        "line": 106,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L106",
        "mark": "required",
        "why": "Runs the graph workflow."
       },
@@ -1275,7 +1415,8 @@
        "function": "run_graph.<locals>.next_wave",
        "file": "waku/graph/engine.py",
        "line": 128,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L128",
        "mark": "optional",
        "why": "Scheduler helper inside run_graph."
       },
@@ -1284,7 +1425,8 @@
        "function": "run_graph.<locals>.run_one",
        "file": "waku/graph/engine.py",
        "line": 141,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L141",
        "mark": "optional",
        "why": "Node-runner plumbing inside run_graph."
       },
@@ -1294,6 +1436,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 97,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L97",
        "mark": "required",
        "why": "The classify node."
       },
@@ -1302,7 +1445,8 @@
        "function": "metered.__init__",
        "file": "waku/ops/tracing.py",
        "line": 249,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L249",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1311,7 +1455,8 @@
        "function": "_MeteredMessages.__init__",
        "file": "waku/ops/tracing.py",
        "line": 227,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L227",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1321,6 +1466,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 52,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L52",
        "mark": "required",
        "why": "Triage model call that answers 'quick'."
       },
@@ -1329,7 +1475,8 @@
        "function": "_MeteredMessages.create",
        "file": "waku/ops/tracing.py",
        "line": 230,
-       "count": 1,
+       "count": 2,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L230",
        "mark": "optional",
        "why": "Metering wrapper around the triage and quick-reply model calls."
       },
@@ -1339,6 +1486,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 73,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L73",
        "mark": "required",
        "why": "Calendar node running in parallel; feeds the quick reply."
       },
@@ -1348,6 +1496,7 @@
        "file": "waku/graph/nodes.py",
        "line": 69,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/nodes.py#L69",
        "mark": "required",
        "why": "The router decision that picks quick_reply."
       },
@@ -1357,6 +1506,7 @@
        "file": "waku/app.py",
        "line": 448,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L448",
        "mark": "required",
        "why": "Produces the quick reply asked for."
       },
@@ -1366,6 +1516,7 @@
        "file": "waku/app.py",
        "line": 50,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L50",
        "mark": "optional",
        "why": "No plugin context; returns the message unchanged."
       }
@@ -1381,6 +1532,7 @@
        "file": "waku/app.py",
        "line": 436,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L436",
        "mark": "required",
        "why": "Entry point for the graph turn."
       },
@@ -1390,6 +1542,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 89,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L89",
        "mark": "required",
        "why": "Building the graph, one step per the question."
       },
@@ -1399,6 +1552,7 @@
        "file": "waku/graph/engine.py",
        "line": 106,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L106",
        "mark": "required",
        "why": "Runs the graph workflow."
       },
@@ -1407,7 +1561,8 @@
        "function": "run_graph.<locals>.next_wave",
        "file": "waku/graph/engine.py",
        "line": 128,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L128",
        "mark": "optional",
        "why": "Scheduler helper inside run_graph."
       },
@@ -1416,7 +1571,8 @@
        "function": "run_graph.<locals>.run_one",
        "file": "waku/graph/engine.py",
        "line": 141,
-       "count": 1,
+       "count": 4,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/engine.py#L141",
        "mark": "optional",
        "why": "Node-runner plumbing inside run_graph."
       },
@@ -1426,6 +1582,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 97,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L97",
        "mark": "required",
        "why": "The classify node."
       },
@@ -1435,6 +1592,7 @@
        "file": "waku/ops/tracing.py",
        "line": 249,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L249",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1444,6 +1602,7 @@
        "file": "waku/ops/tracing.py",
        "line": 227,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L227",
        "mark": "optional",
        "why": "Metering wrapper construction."
       },
@@ -1453,6 +1612,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 52,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L52",
        "mark": "required",
        "why": "Triage model call that answers 'full'."
       },
@@ -1462,6 +1622,7 @@
        "file": "waku/ops/tracing.py",
        "line": 230,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/ops/tracing.py#L230",
        "mark": "optional",
        "why": "Metering wrapper around the triage model call."
       },
@@ -1471,6 +1632,7 @@
        "file": "waku/graph/workflows/triage.py",
        "line": 73,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/workflows/triage.py#L73",
        "mark": "required",
        "why": "Calendar node running in parallel with classify."
       },
@@ -1480,6 +1642,7 @@
        "file": "waku/graph/nodes.py",
        "line": 69,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/graph/nodes.py#L69",
        "mark": "required",
        "why": "The router decision that picks full_agent."
       },
@@ -1489,6 +1652,7 @@
        "file": "waku/app.py",
        "line": 392,
        "count": 1,
+       "link": "https://github.com/ShenSeanChen/waku-agent/blob/2c7e7e68d3d65ac19d428bdde7820844d87dfa19/waku/app.py#L392",
        "mark": "required",
        "why": "The full turn it hands over to, one step per the question."
       }

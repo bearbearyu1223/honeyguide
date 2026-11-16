@@ -6,12 +6,18 @@
   ],
   "rubric_bullets": [
    2,
-   5
+   6
   ],
   "target": 10
  },
  "chore": "T5 why/how questions",
  "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+ "grading_policy": {
+  "evidence_policy": "Line numbers are not required, but claims are checked against the pinned source; a plausible but unsupported assertion gets no credit.",
+  "full_credit": "Every rubric_must point is supported by the pinned code, with the relevant functions and branches correctly identified.",
+  "no_credit": "The answer contradicts the pinned source, invents repository behaviour, or doesn't explain the mechanism asked about.",
+  "partial_credit": "The core mechanism is right but the answer is incomplete. A generic, framework-level answer gets at most half credit."
+ },
  "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
  "next_number": 11,
  "questions": [
@@ -59,7 +65,8 @@
   },
   {
    "id": "nc-why-04",
-   "relevant": "nanochat/optim.py; scripts/base_train.py",
+   "relevant": "nanochat/optim.py; scripts/base_train.py; nanochat/gpt.py",
+   "relevant_original": "nanochat/optim.py; scripts/base_train.py",
    "repo": "nanochat",
    "rubric_must": [
     "Explain parameter-group differences",
@@ -100,14 +107,16 @@
   },
   {
    "id": "nc-why-07",
-   "relevant": "nanochat/engine.py; nanochat/gpt.py",
+   "relevant": "nanochat/engine.py; nanochat/gpt.py; nanochat/flash_attention.py",
+   "relevant_original": "nanochat/engine.py; nanochat/gpt.py",
    "repo": "nanochat",
    "rubric_must": [
     "Explain prompt prefill",
     "cached attention keys/values",
     "incremental decoding",
     "cache position management",
-    "memory/speed tradeoffs"
+    "memory/speed tradeoffs",
+    "Identify the roles of Engine.generate, KVCache.prefill, GPT.forward, and cache-position advancement where applicable to the pinned implementation"
    ],
    "rubric_partial": "",
    "rubric_wrong": "",
@@ -130,7 +139,8 @@
   },
   {
    "id": "nc-why-09",
-   "relevant": "scripts/chat_rl.py; nanochat/engine.py",
+   "relevant": "scripts/chat_rl.py; nanochat/engine.py; tasks/gsm8k.py",
+   "relevant_original": "scripts/chat_rl.py; nanochat/engine.py",
    "repo": "nanochat",
    "rubric_must": [
     "Explain candidate generation",
@@ -159,9 +169,10 @@
   }
  ],
  "questions_json_sha256": "98e5b0cba25db9608d6aa6886773b133b57d32035b7993aaa80c56469e848937",
+ "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "reminder": "Write these from the repo and your own curiosity. Don't look at Honeyguide's map of this repo while writing (the eval compares the map against exploring; questions shaped by the map would favour it).",
  "repo": "nanochat",
- "saved_at": "2026-11-16T17:13:06Z",
+ "saved_at": "2026-11-16T17:41:47Z",
  "schema": 1,
  "source": "eval/t5/han_why_how_2026-11-16.md (Han's chat message, imported verbatim; rubric sentence split into bullets at its commas)",
  "url": "https://github.com/karpathy/nanochat"

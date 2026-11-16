@@ -139,8 +139,11 @@ def test_whyhow_ids_rules_and_validation(tmp_path):
     with pytest.raises(ValueError):
         a.set_hop("nanochat", "nc-flo-01", 0, "maybe")
     assert chores.whyhow_problems(dict(q1, text="x", rubric_must=["a", " "])) == [
-        "rubric has 1 bullet (needs 2-5)"]
+        "rubric has 1 bullet (needs 2-6)"]
     assert chores.whyhow_problems(dict(q1, text="x", rubric_must=["a", "b"])) == []
+    assert chores.whyhow_problems(dict(q1, text="x", rubric_must=list("abcdef"))) == []
+    assert chores.whyhow_problems(dict(q1, text="x", rubric_must=list("abcdefg"))) == [
+        "rubric has 7 bullets (needs 2-6)"]
 
 
 def test_summary_completes(tmp_path):
@@ -148,7 +151,8 @@ def test_summary_completes(tmp_path):
     for r, fz in a.frozen.items():
         for q in fz["flows"]:
             for h in q["hops"]:
-                a.set_hop(r, q["id"], h["index"], "optional")
+                a.set_hop(r, q["id"], h["index"], "required")
+        a.set_hop(r, fz["flows"][0]["id"], 0, "excluded")             # an excluded hop counts as marked
         for q in fz["callers"]:
             for d in q["disputes"]:
                 a.set_dispute(r, q["id"], d["index"], "not", "")
@@ -160,7 +164,7 @@ def test_summary_completes(tmp_path):
                          capture_output=True, text=True)
     assert out.returncode == 0 and out.stdout.endswith("all complete: yes\n")
     n = len(md_lines("nanochat", "flow_hops_to_mark", "- [ ] required"))
-    assert f"nanochat {n} of {n} hops marked" in out.stdout
+    assert f"nanochat {n} of {n} hops marked ({n - 1} required, 0 optional, 1 excluded)" in out.stdout
 
 
 # ---------- the server ----------
@@ -227,10 +231,14 @@ def test_keyboard_hop_and_add_whyhow_in_chrome(site):
         c.key("ArrowDown", code="ArrowDown")
         c.key("r", code="KeyR")                      # hop 2 of nc-flo-01: required, cursor moves to hop 3
         c.key("o", code="KeyO")
-        c.wait(f"document.getElementById('hopprog').textContent === 'nanochat 2 of {n} hops marked'")
+        c.key("x", code="KeyX")                      # hop 4: excluded, shown struck through
+        c.wait(f"document.getElementById('hopprog').textContent === 'nanochat 3 of {n} hops marked'")
         c.wait("document.getElementById('saved').textContent === 'Saved'")
         doc = json.loads((site["dir"] / "hops_nanochat.json").read_text())
-        assert [h["mark"] for h in doc["questions"]["nc-flo-01"]["hops"][:4]] == [None, "required", "optional", None]
+        assert [h["mark"] for h in doc["questions"]["nc-flo-01"]["hops"][:5]] == [
+            None, "required", "optional", "excluded", None]
+        assert c.js("document.querySelectorAll('.hop.excluded').length") == 1
+        assert c.js("document.querySelector('.hop.excluded [data-mark=excluded]').getAttribute('aria-pressed')") == "true"
         c.key("n", code="KeyN")
         assert c.js("document.querySelector('.fq.cur').dataset.q") == "nc-flo-02"
 
@@ -245,3 +253,109 @@ def test_keyboard_hop_and_add_whyhow_in_chrome(site):
         assert [q["text"] for q in doc["questions"]] == ["Why does the model keep a separate KV cache per row?"]
         assert doc["questions"][0]["id"] == "nc-why-01" and doc["manifest_sha256"] == chores.manifest_sha()
         assert c.console_errors() == []
+
+
+# ---------- the excluded mark, the refinements of 2026-11-16, the export ----------
+
+def test_excluded_mark_round_trips_and_keeps_why_and_extras(tmp_path):
+    a = chores.Answers(tmp_path)
+    a.set_hop("nanochat", "nc-flo-04", 0, "excluded")
+    path = tmp_path / "hops_nanochat.json"
+    doc = json.loads(path.read_text())
+    doc["provenance"] = "drafted, confirmed"
+    doc["questions"]["nc-flo-04"]["hops"][0]["why"] = "before the call asked about"
+    chores.write_json(path, doc)
+    b = chores.Answers(tmp_path)
+    assert b.hops["nanochat"]["nc-flo-04"][0] == "excluded"
+    b.set_hop("nanochat", "nc-flo-04", 1, "required")                 # a page save keeps the why and the extras
+    doc = json.loads(path.read_text())
+    assert doc["provenance"] == "drafted, confirmed"
+    assert doc["questions"]["nc-flo-04"]["hops"][0] == {
+        "index": 0, "file": "nanochat/engine.py", "qual": "Engine.__init__", "line": 171, "mark": "excluded",
+        "why": "before the call asked about"}
+    s = chores.summarize(tmp_path)
+    assert s["repos"]["nanochat"]["hops"]["by_mark"] == {"required": 1, "optional": 0, "excluded": 1}
+    assert s["repos"]["nanochat"]["hops"]["marked"] == 2
+
+
+def test_whyhow_keeps_relevant_original_source_and_policy(tmp_path):
+    a = chores.Answers(tmp_path)
+    q = a.add_whyhow("waku-agent")
+    a.save_whyhow("waku-agent", [dict(q, text="Why?", rubric_must=list("abcdef"), relevant="waku/db.py",
+                                      relevant_original="waku/")])
+    path = tmp_path / "whyhow_waku-agent.json"
+    doc = json.loads(path.read_text())
+    assert doc["grading_policy"] == chores.GRADING_POLICY
+    doc["source"] = "Han's message"
+    chores.write_json(path, doc)
+    b = chores.Answers(tmp_path)
+    b.save_whyhow("waku-agent", b.whyhow["waku-agent"]["questions"])
+    doc = json.loads(path.read_text())
+    assert doc["source"] == "Han's message"
+    assert doc["questions"][0]["relevant_original"] == "waku/" and len(doc["questions"][0]["rubric_must"]) == 6
+    assert "relevant_original" not in b.add_whyhow("waku-agent")       # a new question has none
+    assert chores.relevant_paths(" a.py; b/c.py ;") == ["a.py", "b/c.py"]
+
+
+ANSWERS = json.loads((chores.ANSWERS / "whyhow_nanochat.json").read_text()) if (
+    chores.ANSWERS / "whyhow_nanochat.json").exists() else None
+
+
+@pytest.mark.skipif(ANSWERS is None, reason="no answers saved")
+def test_the_refined_key():
+    """The refinements Han accepted on 2026-11-16, as they stand in eval/human/answers/."""
+    hops = json.loads((chores.ANSWERS / "hops_nanochat.json").read_text())
+    h0 = hops["questions"]["nc-flo-04"]["hops"][0]
+    assert (h0["qual"], h0["mark"]) == ("Engine.__init__", "excluded") and "before generate" in h0["why"]
+    marks = [h["mark"] for r in REPOS for q in json.loads((chores.ANSWERS / f"hops_{r}.json").read_text())[
+        "questions"].values() for h in q["hops"]]
+    assert marks.count("excluded") == 1
+    whys = {}
+    for r in REPOS:
+        doc = json.loads((chores.ANSWERS / f"whyhow_{r}.json").read_text())
+        assert doc["grading_policy"] == chores.GRADING_POLICY and doc["refinement"].startswith("Refined 2026-11-16")
+        assert all("grading_policy" not in q for q in doc["questions"])
+        whys.update({q["id"]: q for q in doc["questions"]})
+    assert whys["nc-why-07"]["rubric_must"][-1].startswith("Identify the roles of Engine.generate, KVCache.prefill")
+    assert whys["wk-why-02"]["rubric_must"][-1].startswith("Identify the concrete agent loop")
+    assert whys["wk-why-04"]["rubric_must"][-1].startswith("Distinguish the decision to retrieve memory")
+    for q in whys.values():
+        assert chores.RUBRIC_MIN <= len(q["rubric_must"]) <= chores.RUBRIC_MAX
+        if q["repo"] == "waku-agent":                                   # exact files, Han's string kept
+            assert q["relevant_original"] and not any(p.endswith("/") for p in chores.relevant_paths(q["relevant"]))
+
+
+@pytest.mark.parametrize("repo", REPOS)
+def test_relevant_files_exist_at_the_pin(repo):
+    data = json.loads((QDIR / f"{repo}.json").read_text())
+    clone = Path.home() / "Documents" / "GitHub" / "honeyguide-targets" / repo
+    path = chores.ANSWERS / f"whyhow_{repo}.json"
+    if not clone.exists() or not path.exists():
+        pytest.skip("no local clone or no answers")
+    tracked = set(subprocess.run(["git", "-C", str(clone), "ls-tree", "-r", "--name-only", data["commit"]],
+                                 capture_output=True, text=True, check=True).stdout.split())
+    for q in json.loads(path.read_text())["questions"]:
+        for p in chores.relevant_paths(q["relevant"]):
+            assert p in tracked, (q["id"], p)
+
+
+def test_export_links_and_one_grading_policy():
+    sys.path.insert(0, str(ROOT / "eval" / "human"))
+    import export
+    out = export.build()
+    t5, t6a, t6b = out["t5_whyhow.json"], out["t6_flow_hops.json"], out["t6_callers.json"]
+    assert t5["grading_policy"] == chores.GRADING_POLICY
+    assert set(t6a["marks"]) == set(chores.MARKS)
+    for r in REPOS:
+        data = json.loads((QDIR / f"{r}.json").read_text())
+        base = f"{data['url']}/blob/{data['commit']}/"
+        for q in t5["repos"][r]["questions"]:
+            assert "grading_policy" not in q
+            assert [f["path"] for f in q["relevant_files"]] == chores.relevant_paths(q["relevant"])
+            assert all(f["link"] == base + f["path"] for f in q["relevant_files"])
+        for q in t6a["repos"][r]["questions"]:
+            for h in q["hops"]:
+                assert h["link"] == f"{base}{h['file']}#L{h['line']}" and h["count"] >= 1
+        for q in t6b["repos"][r]["questions"]:
+            for d in q["disputes"]:
+                assert d["link"] == f"{base}{d['file']}#L{d['lines'][0]}"

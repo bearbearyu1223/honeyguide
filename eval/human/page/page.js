@@ -296,6 +296,7 @@
         h("span", null, h("kbd", {text: "←"}), h("kbd", {text: "→"}), "previous / next question"),
         h("span", null, h("kbd", {text: "R"}), "required"),
         h("span", null, h("kbd", {text: "O"}), "optional"),
+        h("span", null, h("kbd", {text: "X"}), "excluded (out of the question's scope)"),
         h("span", null, h("kbd", {text: "⌫"}), "unmark"),
         h("span", null, h("kbd", {text: "N"}), "next question")),
       h("div", {class: "reporow"},
@@ -323,16 +324,18 @@
     hp.tags.forEach(function (t) {
       where.appendChild(h("span", {class: "tag" + (t[0] === "x" ? " calls" : t[0] === "[" ? " thread" : ""), text: t}));
     });
-    return h("li", {class: "hop" + (qi === cur.q && hi === cur.h ? " cur" : ""), "data-q": q.id, "data-i": hi,
+    function choice(cls, m) {
+      return h("button", {type: "button", class: cls, "aria-pressed": String(mark === m), "data-mark": m,
+                          title: S.mark_meanings ? S.mark_meanings[m] : m,
+                          onclick: function () { ui.cur[r.repo] = {q: qi, h: hi}; markHop(r, qi, hi, mark === m ? null : m, false); }},
+        m);
+    }
+    return h("li", {class: "hop" + (qi === cur.q && hi === cur.h ? " cur" : "") + (mark === "excluded" ? " excluded" : ""),
+                    "data-q": q.id, "data-i": hi,
                     onclick: function (e) { if (e.target.closest("a,button")) return; ui.cur[r.repo] = {q: qi, h: hi}; render(); }},
       h("span", {class: "ix", text: String(hi + 1)}),
       h("span", {class: "tg", role: "group", "aria-label": "Mark " + hp.qual},
-        h("button", {type: "button", class: "a", "aria-pressed": String(mark === "required"), "data-mark": "required",
-                     onclick: function () { ui.cur[r.repo] = {q: qi, h: hi}; markHop(r, qi, hi, mark === "required" ? null : "required", false); }},
-          "required"),
-        h("button", {type: "button", class: "b", "aria-pressed": String(mark === "optional"), "data-mark": "optional",
-                     onclick: function () { ui.cur[r.repo] = {q: qi, h: hi}; markHop(r, qi, hi, mark === "optional" ? null : "optional", false); }},
-          "optional")),
+        choice("a", "required"), choice("b", "optional"), choice("x", "excluded")),
       h("span", {class: "fn"}, code(hp.qual),
         hp.first_caller ? h("span", {class: "from", text: "first called from " + hp.first_caller}) : null),
       where);
@@ -375,6 +378,7 @@
     else if (k === "ArrowLeft") moveCur(r, -1, 0);
     else if (k === "r" || k === "R") markHop(r, c.q, c.h, "required", true);
     else if (k === "o" || k === "O") markHop(r, c.q, c.h, "optional", true);
+    else if (k === "x" || k === "X") markHop(r, c.q, c.h, "excluded", true);
     else if (k === "Backspace" || k === "Delete") markHop(r, c.q, c.h, null, false);
     else return;
     e.preventDefault();

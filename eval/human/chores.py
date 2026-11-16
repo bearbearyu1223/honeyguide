@@ -9,11 +9,14 @@ Answers live in eval/human/answers/, one file per chore and repo:
 
 - ``whyhow_<repo>.json``: T5, Han's own why/how questions with a rubric each (ids ``<prefix>-why-NN``, never
   reused; list order is the order Han set);
-- ``hops_<repo>.json``: T6a, required / optional per candidate hop of every flow question;
+- ``hops_<repo>.json``: T6a, required / optional / excluded per candidate hop of every flow question (with an
+  optional one-line ``why`` per hop);
 - ``disputes_<repo>.json``: T6b, caller / not (and an optional note) per disputed call site.
 
 Each file records the SHA-256 of eval/questions/MANIFEST.txt, so a later change of the keys is detected, and is
 written as stable sorted JSON (sorted keys, one-space indent, trailing newline) through a temp file and a rename.
+A few document-level records (``DOC_EXTRAS``: where the answers came from, the refinements applied, the shared T5
+grading policy) and each hop's ``why`` are carried through every save, so a click on the page never drops them.
 """
 
 from __future__ import annotations
@@ -35,10 +38,30 @@ SCHEMA = 1
 
 REMINDER = ("Write these from the repo and your own curiosity. Don't look at Honeyguide's map of this repo while "
             "writing (the eval compares the map against exploring; questions shaped by the map would favour it).")
-# T5 bounds: "about 10 per repo (allow 6-15)"; a rubric is 2-5 bullet points of what a good answer must say.
+# T5 bounds: "about 10 per repo (allow 6-15)"; a rubric is 2-6 bullet points of what a good answer must say
+# (6 since 2026-11-16: three questions took one more point from the review pass Han accepted).
 WHYHOW_MIN, WHYHOW_MAX, WHYHOW_TARGET = 6, 15, 10
-RUBRIC_MIN, RUBRIC_MAX = 2, 5
-MARKS = ("required", "optional")
+RUBRIC_MIN, RUBRIC_MAX = 2, 6
+MARKS = ("required", "optional", "excluded")
+MARK_MEANINGS = {
+    "required": "an answer that misses it is incomplete",
+    "optional": "fine to mention, fine to skip",
+    "excluded": "outside the question's scope: neither credited nor penalised by the scorer",
+}
+# One grading policy for every T5 question in both repos (kept once per answers doc and once in the export, never
+# copied per question). A question's own rubric_partial / rubric_wrong, when Han wrote one, adds to it.
+GRADING_POLICY = {
+    "full_credit": ("Every rubric_must point is supported by the pinned code, with the relevant functions and "
+                    "branches correctly identified."),
+    "partial_credit": ("The core mechanism is right but the answer is incomplete. A generic, framework-level answer "
+                       "gets at most half credit."),
+    "no_credit": ("The answer contradicts the pinned source, invents repository behaviour, or doesn't explain the "
+                  "mechanism asked about."),
+    "evidence_policy": ("Line numbers are not required, but claims are checked against the pinned source; a "
+                        "plausible but unsupported assertion gets no credit."),
+}
+# Document-level fields a save carries over from the file on disk (written by hand or by a refinement step).
+DOC_EXTRAS = ("source", "provenance", "refinement")
 DECISIONS = ("caller", "not")
 # input limits (a local page, but a bad request should be refused, not saved)
 MAX_TEXT, MAX_BULLET, MAX_NOTE, MAX_ITEMS, MAX_BULLETS = 4000, 600, 300, 40, 8
@@ -204,10 +227,11 @@ def header(frozen: dict, chore: str, manifest: str) -> dict:
             "questions_json_sha256": frozen["json_sha256"], "saved_at": now()}
 
 
-def merge_hops(frozen: dict, saved: dict | None) -> dict:
-    """{qid: [mark or None per hop]}. A saved mark carries over only onto the same hop (index, file, function,
-    line): if the keys changed, a hop that moved or vanished comes back unmarked rather than taking another's mark."""
-    marks = {}
+def _saved_hops(frozen: dict, saved: dict | None, key: str, ok) -> dict:
+    """{qid: [the saved hop's ``key`` or None per hop]}, carried over only onto the same hop (index, file,
+    function, line): if the keys changed, a hop that moved or vanished comes back empty rather than taking
+    another's value."""
+    out = {}
     old = (saved or {}).get("questions", {})
     for q in frozen["flows"]:
         prev = {h.get("index"): h for h in old.get(q["id"], {}).get("hops", [])}
@@ -215,17 +239,34 @@ def merge_hops(frozen: dict, saved: dict | None) -> dict:
         for h in q["hops"]:
             p = prev.get(h["index"])
             same = p and (p.get("file"), p.get("qual"), p.get("line")) == (h["file"], h["qual"], h["line"])
-            row.append(p.get("mark") if same and p.get("mark") in MARKS else None)
-        marks[q["id"]] = row
-    return marks
+            row.append(p.get(key) if same and ok(p.get(key)) else None)
+        out[q["id"]] = row
+    return out
 
 
-def hops_doc(frozen: dict, marks: dict, manifest: str) -> dict:
+def merge_hops(frozen: dict, saved: dict | None) -> dict:
+    """{qid: [mark or None per hop]} (see ``_saved_hops`` for when a saved mark carries over)."""
+    return _saved_hops(frozen, saved, "mark", lambda m: m in MARKS)
+
+
+def merge_hop_whys(frozen: dict, saved: dict | None) -> dict:
+    """{qid: [why or None per hop]}: the one-line reason saved beside a mark, carried over like the mark."""
+    return _saved_hops(frozen, saved, "why", lambda w: isinstance(w, str) and w != "")
+
+
+def hops_doc(frozen: dict, marks: dict, manifest: str, whys: dict | None = None) -> dict:
     doc = header(frozen, "T6a flow hops", manifest)
-    doc["questions"] = {
-        q["id"]: {"hops": [{"index": h["index"], "file": h["file"], "qual": h["qual"], "line": h["line"],
-                            "mark": marks[q["id"]][h["index"]]} for h in q["hops"]]}
-        for q in frozen["flows"]}
+    doc["questions"] = {}
+    for q in frozen["flows"]:
+        hops = []
+        for h in q["hops"]:
+            row = {"index": h["index"], "file": h["file"], "qual": h["qual"], "line": h["line"],
+                   "mark": marks[q["id"]][h["index"]]}
+            why = (whys or {}).get(q["id"], [None] * len(q["hops"]))[h["index"]]
+            if why:
+                row["why"] = why
+            hops.append(row)
+        doc["questions"][q["id"]] = {"hops": hops}
     return doc
 
 
@@ -279,9 +320,18 @@ def clean_whyhow_item(item: dict, qid: str, repo: str) -> dict:
         raise ValueError(f"rubric_must must be a list of at most {MAX_BULLETS} strings")
     if any(len(b) > MAX_BULLET for b in must):
         raise ValueError(f"a rubric bullet is longer than {MAX_BULLET} characters")
-    return {"id": qid, "repo": repo, "text": text("text", MAX_TEXT), "rubric_must": list(must),
-            "rubric_partial": text("rubric_partial", MAX_TEXT), "rubric_wrong": text("rubric_wrong", MAX_TEXT),
-            "relevant": text("relevant", MAX_TEXT)}
+    out = {"id": qid, "repo": repo, "text": text("text", MAX_TEXT), "rubric_must": list(must),
+           "rubric_partial": text("rubric_partial", MAX_TEXT), "rubric_wrong": text("rubric_wrong", MAX_TEXT),
+           "relevant": text("relevant", MAX_TEXT)}
+    original = text("relevant_original", MAX_TEXT)     # Han's own string, kept when ``relevant`` was refined
+    if original:
+        out["relevant_original"] = original
+    return out
+
+
+def relevant_paths(relevant: str) -> list[str]:
+    """The paths in a ``relevant`` string ("a.py; b/c.py"), in order."""
+    return [p.strip() for p in relevant.split(";") if p.strip()]
 
 
 def apply_whyhow(state: dict, items: list, repo: str) -> dict:
@@ -309,7 +359,7 @@ def add_whyhow(state: dict, prefix: str, repo: str) -> tuple[dict, dict]:
 
 def whyhow_doc(frozen: dict, state: dict, manifest: str) -> dict:
     doc = header(frozen, "T5 why/how questions", manifest)
-    doc.update(questions=state["questions"], next_number=state["next_number"],
+    doc.update(questions=state["questions"], next_number=state["next_number"], grading_policy=GRADING_POLICY,
                reminder=REMINDER, bounds={"questions": [WHYHOW_MIN, WHYHOW_MAX], "target": WHYHOW_TARGET,
                                           "rubric_bullets": [RUBRIC_MIN, RUBRIC_MAX]})
     return doc
@@ -337,13 +387,16 @@ class Answers:
         self.manifest = manifest_sha(self.questions_dir)
         self.frozen = {r: load_frozen(r, self.questions_dir) for r in repo_names(self.questions_dir)}
         self.stale = {}          # file name -> the manifest hash it was recorded against, when not the current one
-        self.hops, self.disputes, self.whyhow = {}, {}, {}
+        self.hops, self.disputes, self.whyhow, self.hop_whys = {}, {}, {}, {}
+        self.extras = {}         # (chore, repo) -> the DOC_EXTRAS fields of the file on disk, written back on save
         for r, fz in self.frozen.items():
             saved = {c: read_json(answer_path(self.dir, c, r)) for c in ("hops", "disputes", "whyhow")}
             for c, doc in saved.items():
                 if doc and doc.get("manifest_sha256") != self.manifest:
                     self.stale[answer_path(self.dir, c, r).name] = doc.get("manifest_sha256")
+                self.extras[(c, r)] = {k: doc[k] for k in DOC_EXTRAS if doc and k in doc}
             self.hops[r] = merge_hops(fz, saved["hops"])
+            self.hop_whys[r] = merge_hop_whys(fz, saved["hops"])
             self.disputes[r] = merge_disputes(fz, saved["disputes"])
             w = saved["whyhow"]
             if w:
@@ -360,13 +413,14 @@ class Answers:
     def set_hop(self, repo, qid, index, mark) -> None:
         fz = self._repo(repo)
         if mark is not None and mark not in MARKS:
-            raise ValueError("mark must be required, optional or null")
+            raise ValueError("mark must be required, optional, excluded or null")
         with self.lock:
             row = self.hops[repo].get(qid)
             if row is None or not isinstance(index, int) or not 0 <= index < len(row):
                 raise ValueError("no such hop")
             row[index] = mark
-            write_json(answer_path(self.dir, "hops", repo), hops_doc(fz, self.hops[repo], self.manifest))
+            doc = hops_doc(fz, self.hops[repo], self.manifest, self.hop_whys[repo])
+            write_json(answer_path(self.dir, "hops", repo), {**doc, **self.extras.get(("hops", repo), {})})
             self.stale.pop(answer_path(self.dir, "hops", repo).name, None)
 
     def set_dispute(self, repo, qid, index, decision, note) -> None:
@@ -380,7 +434,8 @@ class Answers:
             if row is None or not isinstance(index, int) or not 0 <= index < len(row):
                 raise ValueError("no such disputed site")
             row[index] = {"decision": decision, "note": note}
-            write_json(answer_path(self.dir, "disputes", repo), disputes_doc(fz, self.disputes[repo], self.manifest))
+            doc = disputes_doc(fz, self.disputes[repo], self.manifest)
+            write_json(answer_path(self.dir, "disputes", repo), {**doc, **self.extras.get(("disputes", repo), {})})
             self.stale.pop(answer_path(self.dir, "disputes", repo).name, None)
 
     def save_whyhow(self, repo, items) -> list:
@@ -399,7 +454,8 @@ class Answers:
 
     def _write_whyhow(self, fz) -> None:
         repo = fz["repo"]
-        write_json(answer_path(self.dir, "whyhow", repo), whyhow_doc(fz, self.whyhow[repo], self.manifest))
+        doc = whyhow_doc(fz, self.whyhow[repo], self.manifest)
+        write_json(answer_path(self.dir, "whyhow", repo), {**doc, **self.extras.get(("whyhow", repo), {})})
         self.stale.pop(answer_path(self.dir, "whyhow", repo).name, None)
 
     def state(self) -> dict:
@@ -407,6 +463,7 @@ class Answers:
             return {"manifest_sha256": self.manifest, "reminder": REMINDER, "stale": dict(self.stale),
                     "bounds": {"whyhow": [WHYHOW_MIN, WHYHOW_MAX], "target": WHYHOW_TARGET,
                                "rubric": [RUBRIC_MIN, RUBRIC_MAX]},
+                    "marks": list(MARKS), "mark_meanings": MARK_MEANINGS,
                     "repos": [{**fz, "marks": self.hops[r], "decisions": self.disputes[r],
                                "whyhow": self.whyhow[r]["questions"]} for r, fz in self.frozen.items()]}
 
@@ -432,7 +489,9 @@ def summarize(answers_dir: Path = ANSWERS, questions_dir: Path = QUESTIONS) -> d
                    "open": [f"{d['caller']} ({d['file']})" for d, a in zip(q["disputes"], store.disputes[r][q["id"]], strict=True)
                             if a["decision"] is None]}
                   for q in fz["callers"] if q["disputes"]]
+        # every mark counts as marked, "excluded" too: it is a decision about the hop, not a gap
         hops = {"marked": sum(q["marked"] for q in hop_qs), "total": sum(q["total"] for q in hop_qs),
+                "by_mark": {m: sum(row.count(m) for row in store.hops[r].values()) for m in MARKS},
                 "questions": hop_qs}
         disputes = {"decided": sum(q["decided"] for q in dis_qs), "total": sum(q["total"] for q in dis_qs),
                     "questions": dis_qs}
@@ -471,7 +530,9 @@ def summary_text(s: dict) -> str:
         for q in w["left"]:
             lines.append(f"    left: {q['id']}: {'; '.join(q['problems'])}")
         h = v["hops"]
-        lines.append(f"  T6a flow hops    {r} {h['marked']} of {h['total']} hops marked" + ("  [done]" if h["done"] else ""))
+        split = ", ".join(f"{h['by_mark'][m]} {m}" for m in MARKS)
+        lines.append(f"  T6a flow hops    {r} {h['marked']} of {h['total']} hops marked ({split})"
+                     + ("  [done]" if h["done"] else ""))
         for q in h["questions"]:
             if q["marked"] < q["total"]:
                 lines.append(f"    left: {q['id']}: {q['total'] - q['marked']} of {q['total']} hops unmarked")
