@@ -76,7 +76,7 @@ const LOGO = `<span class="logo">${hgAv("guide", "idle", 40)}</span>`;   // Hone
 
 /* ---------------------------------------------------------------- data */
 const D = { state: null, map: null, threads: { questions: [], responses: [] }, notes: { notes: [] }, activity: { working: [], recent: [] } };
-const UI = { hopped: new Set(), open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "" };
+const UI = { hopped: new Set(), open: false, tab: "thread", cur: null, curNode: null, compose: null, closed: new Set(), openMods: new Set(), mapRev: null, pendingRev: null, dismissed: store.get("refreshDismissed") || "" };
 let IDX = null;   // derived indexes, rebuilt by index()
 
 function claimsById() {
@@ -99,7 +99,17 @@ function claimState(c) {
 }
 
 /* ---------------------------------------------------------------- plain text and leaves */
-/* the map's plain text, exactly as mapdoc.plain_text builds it, with each block's [start, end) */
+/* a block's text pieces, as mapdoc.block_segments: its spans (if any), then list items, then facts rows (T7.13);
+   joined by one newline in the plain text */
+function segsOf(block) {
+  const segs = [];
+  if (block.spans && block.spans.length) segs.push(block.spans);
+  for (const it of block.items || []) segs.push(it.spans || []);
+  for (const r of (block.type === "facts" ? block.rows : block.facts) || []) segs.push(r.spans || []);
+  return segs.length ? segs : [[]];
+}
+/* the map's plain text, exactly as mapdoc.plain_text builds it, with each block's [start, end) and the start of
+   each of its segments */
 function mapText(doc) {
   const parts = [], blocks = [];
   let pos = 0, first = true;
@@ -107,8 +117,16 @@ function mapText(doc) {
     for (const piece of [sec.title || "", ...(sec.blocks || [])]) {
       if (!first) pos += 2;
       first = false;
-      const text = typeof piece === "string" ? piece : (piece.spans || []).map(s => s.text || "").join("");
-      if (typeof piece !== "string") blocks.push({ id: piece.id, start: pos, end: pos + cpLen(text), sec, block: piece });
+      if (typeof piece === "string") { parts.push(piece); pos += cpLen(piece); continue; }
+      const segs = [], texts = [];
+      let p = pos;
+      for (const seg of segsOf(piece)) {
+        if (segs.length) p += 1;
+        const t = seg.map(s => s.text || "").join("");
+        segs.push(p); texts.push(t); p += cpLen(t);
+      }
+      const text = texts.join("\n");
+      blocks.push({ id: piece.id, start: pos, end: pos + cpLen(text), sec, block: piece, segs });
       parts.push(text);
       pos += cpLen(text);
     }
@@ -154,6 +172,26 @@ function spansHTML(spans, o, ctx, byId) {
     pos += cpLen(t);
   }
   return html;
+}
+
+/* one segment of a map block: its spans, with a retired claim's reason moved under it so the sentence stays whole */
+function segHTML(spans, o, byId) {
+  const body = spansHTML(spans, o, "map", byId);
+  const whys = [...body.matchAll(/<span class="rwhy-at" data-why="([^"]*)"><\/span>/g)].map(m => m[1]);
+  return body.replace(/<span class="rwhy-at" data-why="[^"]*"><\/span>/g, "") + whys.map(w => `<span class="rwhy">Retired: ${w}.</span>`).join("");
+}
+/* the Overview's topic headings and the module facts' labels (mapdoc.TOPIC_TITLES, FACT_LABELS) */
+const TOPICS = { purpose: "Purpose", users: "Who it's for", capabilities: "What it can do", commands: "Commands",
+  "entry-points": "Entry points", components: "Components", "start-here": "Start here" };
+const FACTS = { responsibility: "Responsibility", key_files: "Key files", key_symbols: "Key symbols", interfaces: "Interfaces",
+  io: "Inputs and outputs", callers: "Callers", dependencies: "Dependencies", external: "External", errors: "Errors",
+  tests: "Tests", debug: "Debugging" };
+function factHTML(row, body, cls) {
+  const c = cls ? ` class="${cls}"` : "";
+  const label = row.label || FACTS[row.key] || row.key;
+  /* a key that names a file or symbol (components: model.py, src/app/) shows as code */
+  const shown = !row.label && !FACTS[row.key] && /[./_]/.test(row.key) && !/\s/.test(row.key) ? `<code>${esc(label)}</code>` : esc(label);
+  return `<dt${c}>${shown}</dt><dd${c}>${body}</dd>`;
 }
 
 /* ---------------------------------------------------------------- claims: evidence mark, chips, checker mark */
@@ -212,28 +250,51 @@ function renderMap() {
   let bi = 0, graphShown = false;
   for (const sec of doc.sections || []) {
     html += `<section id="s-${esc(sec.id)}" data-sec="${esc(sec.id)}"><h2>${esc(sec.title)}</h2>`;
-    for (const block of sec.blocks || []) {
+    const blocks = sec.blocks || [];
+    const topical = sec.kind === "overview" && blocks.some(x => x.topic);
+    /* the module graph: after the Components group in a topic Overview, else after the first paragraph */
+    const graphAfter = topical ? blocks.map(x => x.topic).lastIndexOf("components") : 0;
+    let topic = null;
+    blocks.forEach((block, k) => {
       const b = MAPTEXT.blocks[bi++];
-      let body = spansHTML(block.spans || [], b.start, "map", byId);
-      /* a retired claim's reason goes under its passage, so the sentence itself stays whole */
-      const whys = [...body.matchAll(/<span class="rwhy-at" data-why="([^"]*)"><\/span>/g)].map(m => m[1]);
-      body = body.replace(/<span class="rwhy-at" data-why="[^"]*"><\/span>/g, "") + whys.map(w => `<span class="rwhy">Retired: ${w}.</span>`).join("");
-      const allGone = (block.spans || []).filter(x => x.claim).every(x => byId.get(x.claim)?.freshness === "retired") && (block.spans || []).some(x => x.claim);
+      if (topical && block.topic && block.topic !== topic) {
+        topic = block.topic;
+        html += `<h3 class="topic" data-topic="${esc(topic)}">${esc(TOPICS[topic] || topic)}</h3>`;
+      }
+      let si = 0;
+      const nextSeg = spans => segHTML(spans, b.segs[si++], byId);
+      const own = block.spans && block.spans.length ? nextSeg(block.spans) : null;
+      const claimed = segsOf(block).flat().filter(x => x.claim);
+      const allGone = claimed.length > 0 && claimed.every(x => byId.get(x.claim)?.freshness === "retired");
       if (block.type === "module") {
-        html += `<div class="mod" data-block="${esc(block.id)}" data-path="${esc(block.path)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div><p class="blk">${body}</p></div>`;
+        const rows = (block.facts || []).map(r => [r, nextSeg(r.spans || [])]);
+        const shown = rows.filter(([r]) => r.key === "responsibility"), more = rows.filter(([r]) => r.key !== "responsibility");
+        const open = UI.openMods.has(block.id);
+        html += `<div class="mod${open ? " open" : ""}" data-block="${esc(block.id)}" data-path="${esc(block.path)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div>`
+          + (own !== null ? `<p class="blk">${own}</p>` : "")
+          + (rows.length ? `<dl class="facts mfacts">${shown.map(([r, h]) => factHTML(r, h)).join("")}${more.map(([r, h]) => factHTML(r, h, "fx")).join("")}</dl>` : "")
+          + (more.length ? `<button class="more" data-more="${esc(block.id)}" aria-expanded="${open}"><span class="mt">${open ? "Less" : "More"}</span><span class="mn">${plural(more.length, "fact")}</span></button>` : "")
+          + `</div>`;
+      } else if (block.type === "list") {
+        const tag = block.ordered ? "ol" : "ul";
+        html += `<div class="blist" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<${tag}>`
+          + (block.items || []).map(it => `<li>${nextSeg(it.spans || [])}</li>`).join("") + `</${tag}></div>`;
+      } else if (block.type === "facts") {
+        html += `<div class="bfacts" data-block="${esc(block.id)}">${own !== null ? `<p class="blk lead">${own}</p>` : ""}<dl class="facts">`
+          + (block.rows || []).map(r => factHTML(r, nextSeg(r.spans || []))).join("") + `</dl></div>`;
       } else if (block.type === "flow") {
         const f = flows.get(block.flow);
         html += `<div class="flow" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta">${hgAv("tracer", "idle static", 20)}Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
-          + `<p class="cap blk">${body}</p><div class="fbody">`
+          + `<p class="cap blk">${own ?? ""}</p><div class="fbody">`
           + (f ? `<div class="fbar"><span class="fhint">Hover or click an arrow for its code</span><span class="fviews" role="group" aria-label="View"><button data-fview="dg" class="on" aria-pressed="true">Diagram</button><button data-fview="list" aria-pressed="false">Steps</button></span></div>`
             + `<div class="fnarrow">Shown as steps while the panel is open: the diagram would be too small to read beside it. <button data-fview="dg">Show the diagram</button></div>`
             + `<figure class="fig wide" data-key="map:${esc(f.id)}"><div class="dgwrap"></div></figure><div class="rail">${pathHTML(f, byId, false)}</div>` : "") + `</div></div>`;
-      } else html += `<p class="blk" data-block="${esc(block.id)}">${body}</p>`;
-      if (sec.kind === "overview" && !graphShown && FIGS.has("graph")) {
+      } else html += `<p class="blk" data-block="${esc(block.id)}">${own ?? ""}</p>`;
+      if (sec.kind === "overview" && !graphShown && k >= graphAfter && FIGS.has("graph")) {
         graphShown = true;
         html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure><p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
       }
-    }
+    });
     html += `</section>`;
   }
   COL.innerHTML = html;
@@ -244,6 +305,13 @@ function renderMap() {
   renderHeader();
   applyOverlays();
   renderFigs();
+}
+function setModOpen(mod, open) {
+  if (!mod) return;
+  mod.classList.toggle("open", open);
+  if (open) UI.openMods.add(mod.dataset.block); else UI.openMods.delete(mod.dataset.block);
+  const b = $(".more", mod);
+  if (b) { b.setAttribute("aria-expanded", String(open)); $(".mt", b).textContent = open ? "Less" : "More"; }
 }
 function renderNoMap() {
   MAPTEXT = null; UI.mapRev = null;
@@ -596,6 +664,8 @@ function applyOverlays() {
     MARKS.notes.set(n.id, { els, pill });
   }
   if (UI.compose && UI.compose.doc === "map") highlight(COL, UI.compose.start, UI.compose.end, mk("mk pend", {}));
+  /* a discussion or note on a folded fact opens its module, so its mark is never hidden */
+  for (const el of $$(".mk,.nt", COL)) if (el.closest("dd.fx")) setModOpen(el.closest(".mod"), true);
   renderMarks();
 }
 function renderMarks() {
@@ -1218,6 +1288,8 @@ document.addEventListener("click", e => {
   if (el.closest("[data-cancel]")) { UI.compose = null; applyOverlays(); render(true); return; }
   const qp = el.closest("#qp button");
   if (qp) { submit(qp.textContent); return; }
+  const mo = el.closest("[data-more]");
+  if (mo) { const m = mo.closest(".mod"); setModOpen(m, !m.classList.contains("open")); layout(); return; }
   const fh = el.closest(".flow-h");
   if (fh) { const f = fh.parentElement; f.classList.toggle("open"); fh.setAttribute("aria-expanded", f.classList.contains("open")); renderFigs(); layout(); return; }
   const tocA = el.closest("#toc a");

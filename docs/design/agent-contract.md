@@ -1,4 +1,4 @@
-# Agent contract (T7.1; memory and refresh: T7.5)
+# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13)
 
 What the agents (Guide, Cartographer, Investigator, Tracer, Checker) and the map page call, and the records they
 read and write. Built on the T7a foundation (`memory-and-anchors.md`); standard library only. Exact work is a
@@ -6,15 +6,16 @@ script: agents quote text, the script resolves lines, hashes, ids, links and tim
 
 ## Calling convention
 
-Every agent command reads **one JSON object** on stdin (or `--input FILE`) and prints **one JSON object** on
+Every agent command reads **one JSON object** on stdin (or `--input FILE`; on `map validate`, `--input` implies
+`--stdin`) and prints **one JSON object** on
 stdout. `--repo PATH` (default `.`) picks the checkout; memory is `$HONEYGUIDE_HOME/<repo-id>/` as in T7a.
 
 - Success: exit 0, `{"ok": true, ...result}`.
 - Failure: exit 1, `{"ok": false, "error": {"code": ..., "message": ..., "details": [...]}}`. Nothing was
   written. Codes: `bad_input`, `not_found`, `invalid_transition`, `validation_failed` (`details` lists every
   problem, one string each, so an agent can fix all at once), `secret_refused`, `lock_timeout`, `git_error`,
-  `store_error`, and `forbidden` (server only:
-  host, token or origin check failed).
+  `store_error`, and `forbidden` (the server: host, token or origin check failed; `map check` / `map ingest`:
+  a directory outside the drafts directory).
 
 Every write is one read-modify-write under the store's lock (10 s, then `lock_timeout`), landing by atomic
 rename, so a crash leaves each file old or new, never half-written. Most commands change one file. Three
@@ -55,7 +56,10 @@ Rules, all checked before anything is written:
 | `claims save` | `{target: "map", mode: "replace"\|"add", commit?, document?, claims: [draft], retire?: [{claim, reason}]}` | `{saved: [{key, id}], revision, retired: [id], warnings}` |
 | `claims list` | `{scope?: "map"\|"answers"\|"all", responses?: [r_...], check?, freshness?, ids?}` | `{claims: [claim + response], count}` |
 | `claims retire` | `{claim \| claims: [id], reason}` | `{retired: [id], already_retired: [id]}` |
-| `map validate` | none (the saved map), or `--stdin` with a `claims save` input | `{valid, errors: [...], warnings: [...]}` |
+| `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
+| `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
+| `map check DIR` | the draft files in `DIR` (below) | `map validate --strict`'s result + `{files, claims, blocks, flows, overview_words}`; saves nothing |
+| `map ingest DIR` | the draft files in `DIR` | the same check, then `claims save`'s result + `readability`; on any error, `validation_failed` and nothing written |
 | `verdict set` | `{claim, verdict, note?, anchors?, commit?}` or `{verdicts: [...]}` | `{set: n, current_again: [id]}` |
 | `inbox` | none | `{open: [question], investigating: [question]}` |
 | `question show` | `{id}` | `{question, thread: [ancestors, oldest first], context}` (`context` = retrieval: map claims, earlier answers, shared notes) |
@@ -137,19 +141,76 @@ Records saved before T7 have no `status`; they read as `open` until answered.
 ```
 
 - `section.kind`: `overview`, `modules`, `flows`, `other`. `block.type`: `text`, `module` (adds `path`, the
-  file it describes), `flow` (adds `flow`, a path record id; its spans are the caption). Ids match
-  `[a-z0-9][a-z0-9-]*`, unique per document.
+  file it describes), `flow` (adds `flow`, a path record id; its spans are the caption), and (T7.13) `list`
+  (`items: [{spans}]`, optional `ordered: true`) and `facts` (`rows: [{key, label?, spans}]`, keys unique in the
+  block, <= 40 chars; the page shows `label`, else the key). On `list` and `facts`, `spans` is an optional
+  lead-in. Ids match `[a-z0-9][a-z0-9-]*`, unique per document.
+- **Overview topics (T7.13)**: Overview blocks carry `topic`, one of `purpose`, `users`, `capabilities`,
+  `commands`, `entry-points`, `components`, `start-here` (page headings: Purpose, Who it's for, What it can do,
+  Commands, Entry points, Components, Start here). Once any Overview block has a topic, every one must; each
+  topic's blocks are contiguous, in that order, and all seven are present (a topic the repo lacks is a block
+  citing a `searched_not_found` claim). `topic` on a block outside the Overview is an error. An Overview with no
+  topics at all is a pre-T7.13 map: valid, except under the draft rules. The page draws the module graph after
+  the `components` group (after the first block in an old Overview).
+- **Module facts (T7.13)**: a `module` block may carry `facts: [{key, label?, spans}]`, keys from
+  `responsibility`, `key_files`, `key_symbols`, `interfaces`, `io`, `callers`, `dependencies`, `external`,
+  `errors`, `tests`, `debug`, unique, `responsibility` first when present. With `facts`, the block's `spans`
+  (its summary) are optional. The page shows the summary and the responsibility row, and folds the other rows
+  under "More" (a module whose folded rows hold a discussion or note opens by itself).
+- **Draft rules** (`map check`, `map ingest`, `map validate --strict`): all seven topics, every `module` block
+  has a summary and facts starting with `responsibility`, and readability errors are errors.
 - Optional on a `module` block (T7.4): `role`, the file's one-line role (a string, one line, <= 80 chars; shown
   after the path in the Modules heading, as the subtitle of that file's lanes in flow diagrams, and in the module
   graph), and `entry: true` on the module that is the repo's entry point (the module graph tags it ENTRY POINT).
   Neither is part of the plain text, so neither moves annotation offsets.
 - **Claims to text**: a span with `claim` is that claim's rendered text. In drafts, `claim` is the draft `key`; save
   rewrites it to the id. A claim may back several spans; a claim no span shows is a warning.
-- **Plain text** (what DocumentAnchor offsets index): section title, blank line, then each block's spans joined,
-  blocks separated by a blank line, sections separated by a blank line (`mapdoc.plain_text`).
+- **Plain text** (what DocumentAnchor offsets index): section title, blank line, then each block's text,
+  blocks separated by a blank line, sections separated by a blank line (`mapdoc.plain_text`). A block's text is
+  its segments joined by one newline: its own `spans` (when present), then each `items[]` entry, then each
+  `rows[]` (or a module's `facts[]`) entry, each segment its spans joined (`mapdoc.block_segments`). Topic
+  headings and facts labels are not plain text. A pre-T7.13 block has one segment, so its text and the
+  document's revision are unchanged.
   `revision` = first 12 hex of sha256 of the plain text plus the flows' JSON, set by the script; annotations on
   the map re-anchor when it changes.
 - Answers use the same `spans` (or plain `text`); `answer:<id>` plain text is the spans joined.
+
+## Readability (T7.13)
+
+`map validate` reports `readability: {errors, warnings}` for the Overview and Modules (`readability.py`). Checked
+prose: text blocks and module summaries ("paragraphs") and list items; flow captions and facts rows are not
+checked. Backtick code counts as one word and is never parsed.
+
+| kind | warns when |
+|---|---|
+| `short` | a paragraph under 12 words; a list item under 5 |
+| `choppy` | a paragraph of 2+ sentences averaging under 8 words |
+| `semicolons` | 3+ `;`-separated fragments averaging under 6 words (or 2 averaging under 3) |
+| `verbless` | a sentence of 2+ words with no verb (a list item: no verb anywhere in it) |
+| `abbreviation` | Overview only: an abbreviation or short code word (`SFT`, `bf16`, `d24`) outside backticks, not in a list of common ones (`API`, `GPU`, `LLM`, `GPT`, ...), and not next to a parenthesis anywhere in the Overview (`supervised fine-tuning (SFT)`) |
+| `length` | draft rules only: Overview prose outside 250-450 words; a module summary outside 2-4 sentences |
+
+**Errors**: a block with 2+ distinct kinds (telegraph style), or a section where 40% or more of the prose blocks,
+and at least 3, have a kind other than `abbreviation`. Errors make a draft invalid; on a saved map they are
+only reported (`valid` stays structural, so maps saved before T7.13 still validate).
+
+## Draft files (T7.13)
+
+The Cartographer writes the map as files with the Write tool, in `map draft-dir`'s directory
+(`$HONEYGUIDE_HOME/<repo-id>/drafts/map/`), so the map never passes through a shell command line:
+
+| file | holds |
+|---|---|
+| `meta.json` | `{title, commit?, mode?: "replace" (default) \| "add", retire?: [{claim, reason}]}` |
+| `overview.json`, `modules.json`, `flows.json` | one section object each; `flows.json` also holds the path records as `flows: [...]` |
+| `section-<name>.json` | any other section, in name order after flows |
+| `claims.json`, `claims-<name>.json` | a list of claim drafts (or `{claims: [...]}`), merged in name order |
+
+`overview.json`, `meta.json` and at least one claims file are required; any other `.json` file is an error
+(non-JSON files are ignored). The files assemble into one `claims save` input. `map check` and `map ingest` read
+only directories inside `<memory>/drafts/` (`guard.draft_dir_problem`): the repo, another path in the memory
+store, or a draft file that is a symlink out of it is `forbidden`. In mode `add` the document may cite claims
+already saved.
 
 ## Tracer path record
 

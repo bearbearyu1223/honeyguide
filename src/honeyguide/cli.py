@@ -9,7 +9,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from . import activity, claims, inbox, memory
+from . import activity, claims, drafts, inbox, memory
 from .contract import ContractError
 from .gitio import GitError, Repo
 from .preview import preview
@@ -197,9 +197,48 @@ def run_json(args, func) -> int:
 
 
 def cmd_map_validate(args) -> int:
+    draft = args.stdin or bool(args.input)   # --input FILE is the same check as --stdin, read from a file
+
     def func(repo, store, data):
-        return claims.validate_draft(repo, data) if args.stdin else claims.validate_map(repo, store.load("map"))
-    args.takes_input = args.stdin
+        if draft:
+            return claims.validate_draft(repo, data, store, strict=args.strict)
+        return claims.validate_map(repo, store.load("map"), strict=args.strict)
+    args.takes_input = draft
+    return run_json(args, func)
+
+
+def _draft_summary(data: dict, files: list[str]) -> dict:
+    from .readability import prose_pieces, words
+    doc = data["document"]
+    overview = " ".join(t for k, _, _, t in prose_pieces(doc) if k == "overview")
+    return {"files": files, "claims": len(data["claims"]),
+            "blocks": sum(len(s.get("blocks") or []) for s in doc["sections"] if isinstance(s, dict)),
+            "flows": len(doc["flows"]), "overview_words": len(words(overview))}
+
+
+def cmd_map_draft_dir(args) -> int:
+    args.takes_input = False
+    return run_json(args, lambda r, s, d: {"dir": str(drafts.map_draft_dir(s, fresh=args.fresh))})
+
+
+def cmd_map_check(args) -> int:
+    def func(repo, store, _):
+        data, files = drafts.assemble(store, args.dir)
+        return {**claims.validate_draft(repo, data, store, strict=True), **_draft_summary(data, files)}
+    args.takes_input = False
+    return run_json(args, func)
+
+
+def cmd_map_ingest(args) -> int:
+    def func(repo, store, _):
+        data, files = drafts.assemble(store, args.dir)
+        checked = claims.validate_draft(repo, data, store, strict=True)
+        if not checked["valid"]:
+            raise ContractError("validation_failed", f"{len(checked['errors'])} problem(s); nothing was saved "
+                                "(run map check, fix every error, then ingest again)", checked["errors"])
+        saved = claims.save_claims(store, repo, data)
+        return {**saved, "readability": checked["readability"], **_draft_summary(data, files)}
+    args.takes_input = False
     return run_json(args, func)
 
 
@@ -259,11 +298,25 @@ def build_parser() -> argparse.ArgumentParser:
         p.set_defaults(func=lambda a, f=func: run_json(a, f), takes_input=takes_input, input=None)
     g = sub.add_parser("map", help="agent contract (JSON)")
     msub = g.add_subparsers(dest="action", required=True)
-    p = msub.add_parser("validate", help="check the saved map (or --stdin: a claims-save input) against the rules")
+    p = msub.add_parser("validate", help="check the saved map (or --stdin / --input: a claims-save input) against the rules")
     p.add_argument("--repo", default=".")
     p.add_argument("--stdin", action="store_true")
-    p.add_argument("--input")
+    p.add_argument("--input", help="read the claims-save input from this file (implies --stdin)")
+    p.add_argument("--strict", action="store_true",
+                   help="the draft rules: Overview topics and module facts required, readability errors are errors")
     p.set_defaults(func=cmd_map_validate)
+    p = msub.add_parser("draft-dir", help="print (and create) the directory the Cartographer writes its draft map in")
+    p.add_argument("--repo", default=".")
+    p.add_argument("--fresh", action="store_true", help="first remove the .json drafts left there by an earlier run")
+    p.set_defaults(func=cmd_map_draft_dir)
+    p = msub.add_parser("check", help="validate the draft files in DIR (structure, claims, readability); saves nothing")
+    p.add_argument("dir")
+    p.add_argument("--repo", default=".")
+    p.set_defaults(func=cmd_map_check)
+    p = msub.add_parser("ingest", help="check the draft files in DIR and save them as the map (claims save)")
+    p.add_argument("dir")
+    p.add_argument("--repo", default=".")
+    p.set_defaults(func=cmd_map_ingest)
     p = add("serve", cmd_serve, "the local map page and its API on 127.0.0.1")
     p.add_argument("--port", type=int, default=8780)
     p = add("watch", cmd_watch, "print one line per new question (for the session's Monitor)")

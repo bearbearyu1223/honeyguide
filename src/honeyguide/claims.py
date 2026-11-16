@@ -16,6 +16,7 @@ from .guard import check_secret
 from .links import editor_links, github_link
 from .mapdoc import check_document, check_path_record, claim_refs, revision, rewrite_refs
 from .outline import line_hash
+from .readability import check_readability
 from .store import EVIDENCE, Store, all_claims, make_claim, now_iso, validate_claim
 
 UNANCHORED = ("general_knowledge", "searched_not_found")
@@ -253,8 +254,14 @@ def check_saved_claim(repo: Repo, claim: dict, where: str) -> tuple[list[str], l
     return errors, warnings
 
 
-def validate_map(repo: Repo, layer: dict) -> dict:
-    """``map validate``: structure, every claim anchored or labelled, hashes, secrets, references."""
+def validate_map(repo: Repo, layer: dict, strict: bool = False) -> dict:
+    """``map validate``: structure, every claim anchored or labelled, hashes, secrets, references; plus the
+    readability report (T7.13).
+
+    ``strict`` (drafts: ``map check``, ``map ingest``, ``map validate --strict``): the Overview's topic groups and
+    the module facts are required, and readability errors are errors. Without it (a saved map, which may predate
+    T7.13), readability is reported in ``readability`` only and never makes the map invalid.
+    """
     errors: list[str] = []
     warnings: list[str] = []
     ids: set[str] = set()
@@ -267,11 +274,12 @@ def validate_map(repo: Repo, layer: dict) -> dict:
         errors += e
         warnings += w
     doc = layer.get("document")
+    readable = {"errors": [], "warnings": []}
     if doc is None:
         if layer.get("claims"):
             warnings.append("document: none saved; claims are not shown anywhere")
     else:
-        e, w = check_document(doc)
+        e, w = check_document(doc, strict=strict)
         errors += e
         warnings += w
         refs = claim_refs(doc)
@@ -281,11 +289,18 @@ def validate_map(repo: Repo, layer: dict) -> dict:
                      for c in layer.get("claims", []) if c.get("id") not in shown and c.get("freshness") != "retired"]
         if doc.get("revision") != revision(doc):
             errors.append("document: revision doesn't match its text (edited outside honeyguide?)")
-    return {"valid": not errors, "errors": errors, "warnings": warnings}
+        re_, rw = check_readability(doc, strict=strict)
+        readable = {"errors": re_, "warnings": rw}
+        if strict:
+            errors += re_
+    return {"valid": not errors, "errors": errors, "warnings": warnings, "readability": readable}
 
 
-def validate_draft(repo: Repo, data: Any) -> dict:
-    """``map validate --stdin``: a ``claims save`` input, checked without saving."""
+def validate_draft(repo: Repo, data: Any, store: Store | None = None, strict: bool = False) -> dict:
+    """``map validate --stdin`` (and ``map check``): a ``claims save`` input, checked without saving.
+
+    In mode ``add`` the document may cite claims already saved: they are read from ``store``.
+    """
     if not isinstance(data, dict):
         raise ContractError("bad_input", "expected a JSON object")
     try:
@@ -293,11 +308,17 @@ def validate_draft(repo: Repo, data: Any) -> dict:
     except ContractError as exc:
         if exc.code == "bad_input":
             raise
-        return {"valid": False, "errors": exc.details, "warnings": []}
+        return {"valid": False, "errors": exc.details, "warnings": [], "readability": {"errors": [], "warnings": []}}
     doc = rewrite_refs(copy.deepcopy(data.get("document")), keys) if data.get("document") is not None else None
     if doc is not None:
         doc["revision"] = revision(doc)
-    return validate_map(repo, {"claims": claims, "document": doc})
+    saved = store.load("map")["claims"] if store is not None and data.get("mode") == "add" else []
+    result = validate_map(repo, {"claims": saved + claims, "document": doc}, strict=strict)
+    if saved:   # the saved claims were checked when they were saved; only new ones can be unshown by this draft
+        new = {c["id"] for c in claims}
+        result["warnings"] = [w for w in result["warnings"] if not w.startswith("claim ")
+                              or any(w.startswith(f"claim {c.get('key') or c['id']} ") for c in claims if c["id"] in new)]
+    return result
 
 
 def build_path(path: Any, keys: dict[str, str]) -> dict:

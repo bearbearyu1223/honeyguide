@@ -9,7 +9,8 @@ builds OUT_DIR/<variant>/repo and OUT_DIR/<variant>/home and prints them as JSON
 Variants: ``base`` (a checked map, three discussions with branches, a not-supported claim, a general-knowledge claim,
 a Tracer path answer, notes), ``working`` (base plus agents at work), ``refreshed`` (base, then a new commit and a
 real refresh: claims moved, one re-checked, one still stale, one retired; last visit before the refresh), ``empty``
-(an initialised store, no map).
+(an initialised store, no map), ``v2`` (T7.13: base's discussions and notes on the v2 map, whose Overview has topic
+groups, lists and facts and whose modules have facts; one more question sits on a folded fact).
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ from honeyguide.refresh import apply_plan, plan_refresh  # noqa: E402
 from honeyguide.repoid import identify  # noqa: E402
 from honeyguide.store import Store, all_claims  # noqa: E402
 
-VARIANTS = ("base", "working", "refreshed", "empty")
+VARIANTS = ("base", "working", "refreshed", "empty", "v2")
 
 FILES = {
     "README.md": """# tinytrain
@@ -426,6 +427,223 @@ DOCUMENT = {
     "flows": FLOWS,
 }
 
+# -- the v2 map (T7.13): Overview topic groups, lists, facts, and module facts ---------------------------------------
+# The same claims and quotes as DOCUMENT (the shared build steps anchor questions and notes on them), rearranged into
+# topics, plus the claims the new topics and facts need. The repo gains a pyproject.toml for the Commands topic.
+
+V2_FILES = {
+    "pyproject.toml": '''[project]
+name = "tinytrain"
+requires-python = ">=3.10"
+dependencies = ["torch", "numpy", "tiktoken"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+''',
+}
+
+V2_CLAIMS = [
+    C("what", "a small GPT pretraining repo", "docs", A("README.md", "A small GPT pretraining repo.")),
+    C("noserve", "There is no server, API or command-line interface", "searched_not_found",
+      searched=["__main__", "argparse", "project.scripts", "flask", "fastapi", "http.server"]),
+    C("gencap", "`Engine.generate` runs the whole prompt once, then one position per new token, reusing a key-value cache",
+      "read_in_source", A("engine.py", "        logits = self.model(x, cache=cache)  # prefill")),
+    C("deps", "`uv sync` installs `torch`, `numpy` and `tiktoken`, the only runtime dependencies", "read_in_source",
+      A("pyproject.toml", 'dependencies = ["torch", "numpy", "tiktoken"]')),
+    C("tests", "`uv run pytest` runs the tests in `tests/`, which build a two-layer model on the CPU and need no data",
+      "read_in_source", A("pyproject.toml", 'testpaths = ["tests"]'), A("tests/test_model.py", "    m = GPT(ModelConfig(n_layer=2))")),
+    C("maincfg", "`main(cfg)` takes one config object holding every setting, from the seed to the step count",
+      "read_in_source", A("train.py", "def main(cfg):", True)),
+    C("genentry", "`Engine.generate` in `engine.py` is the way in for sampling", "read_in_source",
+      A("engine.py", "    def generate(self, prompt, max_tokens=256, temperature=0.8):")),
+    C("nocaller", "no script in the repo calls it", "searched_not_found", searched=["Engine(", ".generate("]),
+    C("c-model", "The GPT: attention blocks with rotary positions and a tied output head", "docs",
+      A("model.py", '"""GPT: attention blocks with rotary positions."""')),
+    C("c-data", "The sharded token loader, which keeps one memory-mapped shard open at a time", "read_in_source",
+      A("data.py", "    def _open(self, i):", True)),
+    C("c-engine", "Sampling, with a key-value cache kept on the engine between calls", "read_in_source",
+      A("engine.py", "        self._cache = cache")),
+    C("c-optim", "AdamW with two parameter groups, and the learning-rate schedule", "docs",
+      A("optim.py", '"""AdamW and the learning-rate schedule."""')),
+    C("c-tok", "A thin wrapper around tiktoken", "docs", A("tokenizer.py", '"""Encode and decode with tiktoken."""')),
+    C("start-train", "It is short and calls every other module, so it is the repo's table of contents in code",
+      "inferred", A("train.py", "def main(cfg):", True)),
+    C("start-model", "`GPT.forward` turns token ids into logits, and into a loss when targets are given",
+      "read_in_source", A("model.py", "    def forward(self, idx, targets=None, cache=None):", True)),
+    C("kept", "the cache it keeps between calls is rewound and reused by the next call, never freed", "read_in_source",
+      A("engine.py", "        # keep the buffer: the next call reuses it", end_anchor="        self._cache = cache"),
+      A("engine.py", "        cache.pos = 0")),
+    C("resume", "a run resumed from a checkpoint would restart AdamW's moment estimates from zero", "inferred",
+      A("train.py", "            torch.save({\"model\": model.state_dict(), \"step\": step}, f\"ckpt_{step}.pt\")")),
+    C("t-resp", "Runs the whole job: seeding, building the parts, the step loop, logging and checkpoints",
+      "read_in_source", A("train.py", "def main(cfg):", True)),
+    C("t-deps", "`data.ShardLoader`, `model.GPT`, `optim.build_optimizer` and `optim.schedule`", "read_in_source",
+      A("train.py", "from data import ShardLoader", end_anchor="from optim import build_optimizer, schedule")),
+    C("t-nocall", "Nothing in the repo calls `main`", "searched_not_found", searched=["main(", "import train"]),
+    C("t-notest", "No test imports `train.py`", "searched_not_found", searched=["import train", "from train"]),
+    C("t-log", "Every 10 steps it prints the step, the loss and the learning rate; the loss shown is the last "
+      "micro-batch's, rescaled, not an average", "read_in_source",
+      A("train.py", "            print(step, loss.item() * cfg.grad_accum, lr)")),
+    C("m-resp", "The model: configuration, rotary attention and the GPT stack", "docs",
+      A("model.py", '"""GPT: attention blocks with rotary positions."""')),
+    C("m-syms", "`ModelConfig`, `apply_rotary`, `Attention`, `GPT`", "read_in_source",
+      A("model.py", "class ModelConfig:"), A("model.py", "class GPT(nn.Module):")),
+    C("m-io", "Token ids of shape `(B, T)` in; logits of shape `(B, T, 50304)` out", "inferred",
+      A("model.py", "        logits = self.lm_head(x)"), A("model.py", "    vocab_size: int = 50304")),
+    C("e-resp", "Turns a prompt into text, one sampled token at a time", "read_in_source",
+      A("engine.py", "    def generate(self, prompt, max_tokens=256, temperature=0.8):", True)),
+    C("e-fit", "The prompt plus `max_tokens` must fit in `block_size`: the cache is allocated once and never grows",
+      "inferred", A("engine.py", "        cache = self._cache or KVCache(cfg, batch=1, max_len=cfg.block_size)")),
+    C("d-resp", "Serves `(x, y)` batches of token ids from the `.bin` shards in a directory", "read_in_source",
+      A("data.py", "    def next_batch(self):", True)),
+    C("d-order", "two runs with the same shards see them in the same order", "inferred",
+      A("data.py", "        random.Random(self.epoch).shuffle(self.files)")),
+    C("o-resp", "Builds the optimizer and computes the learning rate for a step", "docs",
+      A("optim.py", '"""AdamW and the learning-rate schedule."""')),
+    C("k-resp", "Turns text into token ids and back", "docs", A("tokenizer.py", '"""Encode and decode with tiktoken."""')),
+    C("k-once", "The encoder is created once, when the module is first imported", "read_in_source",
+      A("tokenizer.py", "_enc = tiktoken.get_encoding(\"gpt2\")")),
+]
+
+
+def _t(topic, bid, kind, **rest):
+    return {"id": bid, "type": kind, "topic": topic, **rest}
+
+
+def _items(*rows):
+    return [{"spans": spans} for spans in rows]
+
+
+def _rows(*rows):
+    return [{"key": key, "spans": spans} for key, spans in rows]
+
+
+DOCUMENT_V2 = {
+    "title": "tinytrain",
+    "sections": [
+        {"id": "overview", "kind": "overview", "title": "Overview", "blocks": [
+            _t("purpose", "ov-what", "text", spans=[
+                S("tinytrain is "), S("a small GPT pretraining repo", "what"), S(": it trains a language model on "
+                "pre-tokenized text and then samples from it. "), S("It builds the model, the data loader and one AdamW "
+                "optimizer, then runs a fixed number of steps", "loop"), S(", and every other file exists to serve "
+                "that loop.")]),
+            _t("purpose", "ov-model", "text", spans=[
+                S("The model is a 12-layer decoder-only transformer", "layers"), S(". "),
+                S("Positions are rotary, not learned", "rotary"), S(", and "),
+                S("the token embedding and the output head share one weight matrix", "tied"),
+                S(", which a test checks so that a refactor can't untie them by accident.")]),
+            _t("users", "ov-users", "text", spans=[
+                S("The README reports 3.3 validation loss after about two hours on one H100", "readme"), S(", so it "
+                "is written for someone reproducing that run or reading a GPT end to end. "),
+                S("There is no server, API or command-line interface", "noserve"), S(": you drive it from Python.")]),
+            _t("capabilities", "ov-can", "list", items=_items(
+                [S("It trains with bfloat16 autocast on CUDA and in full 32-bit precision everywhere else", "bf16"),
+                 S(", so the same loop runs on a laptop and on a GPU.")],
+                [S(MAP_CLAIMS[5]["text"], "memmap"), S(".")],
+                [S(MAP_CLAIMS[6]["text"], "slice"), S(".")],
+                [S("`Engine.generate` runs the whole prompt once, then one position per new token, reusing a "
+                   "key-value cache", "gencap"), S(".")])),
+            _t("commands", "ov-cmds", "facts", rows=_rows(
+                ("install", [S("`uv sync` installs `torch`, `numpy` and `tiktoken`, the only runtime dependencies",
+                               "deps"), S(".")]),
+                ("test", [S("`uv run pytest` runs the tests in `tests/`, which build a two-layer model on the CPU "
+                            "and need no data", "tests"), S(".")]),
+                ("run", [S("Call `train.main(cfg)` from your own script: "),
+                         S("`main(cfg)` takes one config object holding every setting, from the seed to the step "
+                           "count", "maincfg"), S(".")]))),
+            _t("entry-points", "ov-entry", "list", items=_items(
+                [S("`train.py` is the only entry point", "entry"), S(" for training; it is the file you run.")],
+                [S("`Engine.generate` in `engine.py` is the way in for sampling", "genentry"), S(", although "),
+                 S("no script in the repo calls it", "nocaller"), S(".")])),
+            _t("components", "ov-parts", "facts", rows=_rows(
+                ("model.py", [S("The GPT: attention blocks with rotary positions and a tied output head", "c-model"),
+                              S(".")]),
+                ("data.py", [S("The sharded token loader, which keeps one memory-mapped shard open at a time",
+                               "c-data"), S(".")]),
+                ("engine.py", [S("Sampling, with a key-value cache kept on the engine between calls", "c-engine"),
+                               S(".")]),
+                ("optim.py", [S("AdamW with two parameter groups, and the learning-rate schedule", "c-optim"),
+                              S(".")]),
+                ("tokenizer.py", [S("A thin wrapper around tiktoken", "c-tok"), S(".")]))),
+            _t("start-here", "ov-start", "list", ordered=True, items=_items(
+                [S("`train.py`, `main` first. "),
+                 S("It is short and calls every other module, so it is the repo's table of contents in code",
+                   "start-train"), S(".")],
+                [S("`model.py`, then: "), S("`GPT.forward` turns token ids into logits, and into a loss when "
+                                            "targets are given", "start-model"), S(".")],
+                [S("`engine.py` last, because "), S("the cache it keeps between calls is rewound and reused by the "
+                                                   "next call, never freed", "kept"),
+                 S(". That is the one surprise in the repo.")])),
+        ]},
+        {"id": "modules", "kind": "modules", "title": "Modules", "blocks": [
+            {"id": "m-train", "type": "module", "path": "train.py", "role": "the training loop", "entry": True,
+             "spans": [S(MAP_CLAIMS[10]["text"], "accum"), S(", so the effective batch is `grad_accum` times what "
+                       "fits in memory. "), S(MAP_CLAIMS[11]["text"], "ckpt"), S(", which means "),
+                       S("a run resumed from a checkpoint would restart AdamW's moment estimates from zero",
+                         "resume"), S(".")],
+             "facts": _rows(
+                 ("responsibility", [S("Runs the whole job: seeding, building the parts, the step loop, logging and "
+                                       "checkpoints", "t-resp"), S(".")]),
+                 ("key_symbols", [S("`main(cfg)`", "maincfg"), S(".")]),
+                 ("callers", [S("Nothing in the repo calls `main`", "t-nocall"), S("; you call it yourself.")]),
+                 ("dependencies", [S("`data.ShardLoader`, `model.GPT`, `optim.build_optimizer` and "
+                                     "`optim.schedule`", "t-deps"), S(".")]),
+                 ("errors", [S("There is no gradient clipping", "noclip"), S(", so one bad batch can move the "
+                             "weights a long way.")]),
+                 ("tests", [S("No test imports `train.py`", "t-notest"), S(".")]),
+                 ("debug", [S("Every 10 steps it prints the step, the loss and the learning rate; the loss shown "
+                              "is the last micro-batch's, rescaled, not an average", "t-log"), S(".")]))},
+            {"id": "m-model", "type": "module", "path": "model.py", "role": "GPT, attention blocks",
+             "spans": [S(MAP_CLAIMS[12]["text"], "sdpa"), S(". "), S(MAP_CLAIMS[13]["text"], "kernel"),
+                       S(", so the repo has no attention kernel of its own to read.")],
+             "facts": _rows(
+                 ("responsibility", [S("The model: configuration, rotary attention and the GPT stack", "m-resp"),
+                                     S(".")]),
+                 ("key_symbols", [S("`ModelConfig`, `apply_rotary`, `Attention`, `GPT`", "m-syms"), S(".")]),
+                 ("interfaces", [S("`GPT.forward(idx, targets=None, cache=None)` returns logits, and a loss "
+                                   "when targets are given", "start-model"), S(".")]),
+                 ("io", [S("Token ids of shape `(B, T)` in; logits of shape `(B, T, 50304)` out", "m-io"),
+                         S(".")]),
+                 ("tests", [S("`tests/test_model.py` checks that the head and the embedding share one weight",
+                              "tied"), S(".")]))},
+            {"id": "m-data", "type": "module", "path": "data.py", "role": "the sharded token loader",
+             "spans": [S(MAP_CLAIMS[14]["text"], "shuffle"), S(", so "),
+                       S("two runs with the same shards see them in the same order", "d-order"), S(". "),
+                       S("Only the open shard is memory-mapped", "c-data"), S(", and a batch copies just the tokens "
+                         "it needs.")],
+             "facts": _rows(
+                 ("responsibility", [S("Serves `(x, y)` batches of token ids from the `.bin` shards in a "
+                                       "directory", "d-resp"), S(".")]))},
+            {"id": "m-engine", "type": "module", "path": "engine.py", "role": "sampling with a KV cache",
+             "spans": [S(MAP_CLAIMS[15]["text"], "kv"), S(". The buffer outlives the call: "),
+                       S("the next call rewinds and reuses it", "kept"), S(".")],
+             "facts": _rows(
+                 ("responsibility", [S("Turns a prompt into text, one sampled token at a time", "e-resp"),
+                                     S(".")]),
+                 ("callers", [S("No script in the repo calls it", "nocaller"), S(".")]),
+                 ("errors", [S("The prompt plus `max_tokens` must fit in `block_size`: the cache is allocated "
+                               "once and never grows", "e-fit"), S(".")]))},
+            {"id": "m-optim", "type": "module", "path": "optim.py", "role": "AdamW and the schedule",
+             "spans": [S(MAP_CLAIMS[16]["text"], "groups"), S(". "), S(MAP_CLAIMS[17]["text"], "sched"),
+                       S(", and a test checks both ends of it.")],
+             "facts": _rows(
+                 ("responsibility", [S("Builds the optimizer and computes the learning rate for a step", "o-resp"),
+                                     S(".")]))},
+            {"id": "m-tok", "type": "module", "path": "tokenizer.py", "role": "tiktoken's gpt2 encoding",
+             "spans": [S(MAP_CLAIMS[18]["text"], "tok"), S(". "),
+                       S("The encoder is created once, when the module is first imported", "k-once"),
+                       S(", and only `encode` and `decode` are exposed.")],
+             "facts": _rows(
+                 ("responsibility", [S("Turns text into token ids and back", "k-resp"), S(".")]))},
+        ]},
+        DOCUMENT["sections"][2],
+    ],
+    "flows": FLOWS,
+}
+
 # -- answers --------------------------------------------------------------------------------------------------------
 
 ANSWER_CACHE = {
@@ -541,10 +759,10 @@ def git(root: Path, *args: str) -> str:
                           text=True).stdout
 
 
-def make_repo(root: Path) -> str:
+def make_repo(root: Path, extra: dict | None = None) -> str:
     root.mkdir(parents=True, exist_ok=True)
     git(root, "init", "-q")
-    for path, text in FILES.items():
+    for path, text in {**FILES, **(extra or {})}.items():
         (root / path).parent.mkdir(parents=True, exist_ok=True)
         (root / path).write_text(text)
     git(root, "add", "-A")
@@ -603,7 +821,8 @@ def build(out: Path, variant: str) -> dict:
         raise SystemExit(f"variant must be one of {', '.join(VARIANTS)}")
     base = out / variant
     root, home = base / "repo", base / "home"
-    sha = make_repo(root)
+    v2 = variant == "v2"
+    sha = make_repo(root, V2_FILES if v2 else None)
     repo = Repo.open(root)
     identity = identify(repo).to_dict()
     st = Store(identity["id"], root=home)
@@ -615,8 +834,9 @@ def build(out: Path, variant: str) -> dict:
     t0 = now - timedelta(hours=3)
     ids = info["ids"]
     with clock(t0):
-        saved = claims_mod.save_claims(st, repo, {"target": "map", "mode": "replace", "claims": MAP_CLAIMS,
-                                                  "document": DOCUMENT})
+        saved = claims_mod.save_claims(st, repo, {"target": "map", "mode": "replace",
+                                                  "claims": MAP_CLAIMS + (V2_CLAIMS if v2 else []),
+                                                  "document": DOCUMENT_V2 if v2 else DOCUMENT})
         check_all(st)
         doc = st.load("map")["document"]
         rev = doc["revision"]
@@ -666,6 +886,12 @@ def build(out: Path, variant: str) -> dict:
                r3=r3["id"], q3a=q3a["id"], r3a=r3a["id"], r1c=r1c["id"], saved=len(saved["saved"]))
     info["visits"] = {"previous": iso(t0 + timedelta(hours=1)), "last": iso(t0 + timedelta(hours=2))}
     set_visits(st, **info["visits"])
+
+    if v2:
+        with clock(now - timedelta(minutes=5)):
+            qf = ask(st, "Is the logged loss comparable across grad_accum settings?",
+                     map_anchor(doc, rev, "the loss shown is the last micro-batch's"))
+        ids.update(qfact=qf["id"])
 
     if variant == "working":
         with clock(now - timedelta(seconds=40)):

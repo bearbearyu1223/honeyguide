@@ -27,7 +27,7 @@ READ_ONLY_TOOLS = {"Read", "Grep", "Glob", "Bash"}
 # The commands each file must name: the contract's loop, pinned so a rewrite can't silently drop a step.
 MUST_NAME = {
     "cartographer": {"anchor resolve", "map validate", "claims save", "refresh-plan", "claims list",
-                     "activity update"},
+                     "activity update", "map draft-dir", "map check", "map ingest"},
     "investigator": {"anchor resolve", "answer record", "activity update"},
     "tracer": {"anchor resolve", "answer record", "activity update"},
     "checker": {"claims list", "preview", "verdict set"},
@@ -120,8 +120,13 @@ def test_agent_frontmatter(path):
     assert meta["name"] in AGENTS, "agent name must be one the contract accepts"
     assert "Use " in meta["description"], "the description must tell the Guide when to use it"
     tools = {t.strip() for t in meta["tools"].split(",")}
-    # No subagent may write files: only the CLI writes, so none can edit the target repo by accident.
-    assert tools <= READ_ONLY_TOOLS, f"{path.name}: tools beyond the minimum: {tools - READ_ONLY_TOOLS}"
+    # Only the CLI writes, so no subagent can edit the target repo by accident. One exception (T7.13): the
+    # Cartographer writes its draft map with Write, into the drafts directory only (its brief says so, and
+    # map check / ingest refuse any other directory).
+    allowed = READ_ONLY_TOOLS | ({"Write"} if meta["name"] == "cartographer" else set())
+    assert tools <= allowed, f"{path.name}: tools beyond the minimum: {tools - allowed}"
+    if "Write" in tools:
+        assert "only** place you may write" in body and "map draft-dir" in body
     assert len(body.strip()) > 1000
 
 
