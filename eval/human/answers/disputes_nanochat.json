@@ -1,0 +1,111 @@
+{
+ "chore": "T6b callers disputes",
+ "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+ "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "questions": {
+  "nc-cal-01": {
+   "disputes": [
+    {
+     "caller": "main",
+     "decision": "caller",
+     "file": "scripts/infer_bench.py",
+     "index": 0,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      173,
+      221
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] `model` comes from load_model(), which builds a GPT (checkpoint_manager.py:100), so model.estimate_decode_flops(...) is GPT.estimate_decode_flops."
+    }
+   ],
+   "target": "GPT.estimate_decode_flops"
+  },
+  "nc-cal-02": {
+   "disputes": [],
+   "target": "get_peak_bandwidth"
+  },
+  "nc-cal-03": {
+   "disputes": [],
+   "target": "load_hub_dataset"
+  },
+  "nc-cal-04": {
+   "disputes": [],
+   "target": "KVCache.prefill"
+  },
+  "nc-cal-05": {
+   "disputes": [],
+   "target": "sample_next_token"
+  },
+  "nc-cal-06": {
+   "disputes": [
+    {
+     "caller": "muon_step_fused",
+     "decision": "not",
+     "file": "nanochat/optim.py",
+     "index": 0,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      139,
+      140,
+      144,
+      160
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] X.float().norm(...) is torch Tensor.norm, not nanochat's norm() in gpt.py:42."
+    }
+   ],
+   "target": "norm"
+  },
+  "nc-cal-07": {
+   "disputes": [
+    {
+     "caller": "<module>",
+     "decision": "not",
+     "file": "nanochat/flash_attention.py",
+     "index": 0,
+     "kinds": [
+      "reference"
+     ],
+     "lines": [
+      194
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 194 stores the function in the flash_attn SimpleNamespace; it is not called there."
+    },
+    {
+     "caller": "flash_attn_with_kvcache",
+     "decision": "not",
+     "file": "nanochat/flash_attention.py",
+     "index": 1,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      158
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] _fa3.flash_attn_with_kvcache is the external FlashAttention-3 kernel (_fa3 = _load_flash_attention_3(), line 49), not this repo's function calling itself."
+    }
+   ],
+   "target": "flash_attn_with_kvcache"
+  },
+  "nc-cal-08": {
+   "disputes": [],
+   "target": "GPT._precompute_rotary_embeddings"
+  },
+  "nc-cal-09": {
+   "disputes": [],
+   "target": "compute_init"
+  },
+  "nc-cal-10": {
+   "disputes": [],
+   "target": "use_calculator"
+  }
+ },
+ "questions_json_sha256": "98e5b0cba25db9608d6aa6886773b133b57d32035b7993aaa80c56469e848937",
+ "repo": "nanochat",
+ "saved_at": "2026-11-16T17:20:40Z",
+ "schema": 1,
+ "url": "https://github.com/karpathy/nanochat"
+}

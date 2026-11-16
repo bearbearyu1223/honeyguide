@@ -1,0 +1,13 @@
+{"note": "Han's T6 caller annotations as pasted in chat 2026-11-16, kept verbatim in substance: 11 self-selected caller cases (9 caller, 2 unresolved), unpinned links; per Han's own notes these are not the analyzer's disputes. Full text is in the session transcript; summary here.",
+ "cases": [
+  ["nanochat","scripts.base_train","model.setup_optimizer","caller"],
+  ["nanochat","scripts.base_train","evaluate_bpb","caller"],
+  ["nanochat","scripts.base_train","evaluate_core","caller"],
+  ["nanochat","scripts.base_train","save_checkpoint","caller"],
+  ["nanochat","scripts.base_train","Engine.generate_batch","caller"],
+  ["waku-agent","run_loop","tools.schemas","caller"],
+  ["waku-agent","run_loop","tools.execute","caller"],
+  ["waku-agent","run_loop","client.messages.create","caller"],
+  ["waku-agent","run_loop","client.messages.stream","caller"],
+  ["waku-agent","run_loop","individual registered tool function","unresolved"],
+  ["nanochat","scripts.base_train","GPT.forward","unresolved"]]}

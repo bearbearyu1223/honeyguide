@@ -1,0 +1,198 @@
+{
+ "chore": "T6b callers disputes",
+ "commit": "2c7e7e68d3d65ac19d428bdde7820844d87dfa19",
+ "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
+ "questions": {
+  "wk-cal-01": {
+   "disputes": [],
+   "target": "Memory.gated_retrieve"
+  },
+  "wk-cal-02": {
+   "disputes": [],
+   "target": "run_loop"
+  },
+  "wk-cal-03": {
+   "disputes": [
+    {
+     "caller": "main",
+     "decision": "caller",
+     "file": "waku/gateway/cli.py",
+     "index": 0,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      91
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (cli.py:62), so waku.respond is Waku.respond."
+    },
+    {
+     "caller": "GatewayAgentRunner._respond",
+     "decision": "caller",
+     "file": "waku/gateway/runner.py",
+     "index": 1,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      71
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] self._agent comes from agent_factory: Waku itself (telegram.py:47) or _build_agent returning Waku (discord.py:128), so it is Waku.respond."
+    },
+    {
+     "caller": "run_gateway_turn",
+     "decision": "not",
+     "file": "waku/gateway/runner.py",
+     "index": 2,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      120
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] runner is a GatewayAgentRunner (runner.py:111); runner.respond is GatewayAgentRunner.respond (runner.py:80), which in turn calls Waku.respond (case 6)."
+    },
+    {
+     "caller": "main",
+     "decision": "caller",
+     "file": "waku/gateway/voice.py",
+     "index": 3,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      353
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (voice.py:316)."
+    },
+    {
+     "caller": "wake_loop",
+     "decision": "caller",
+     "file": "waku/gateway/voice.py",
+     "index": 4,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      298
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] wake_loop's parameter is annotated waku: Waku (voice.py:228)."
+    },
+    {
+     "caller": "_build_handler.<locals>.Handler.do_POST",
+     "decision": "caller",
+     "file": "waku/gateway/whatsapp.py",
+     "index": 5,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      225
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku(settings=..., conn=...) (whatsapp.py:142)."
+    },
+    {
+     "caller": "compare_stream.<locals>.run",
+     "decision": "caller",
+     "file": "waku/ops/arena.py",
+     "index": 6,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      117
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=settings) (arena.py:111)."
+    },
+    {
+     "caller": "main",
+     "decision": "caller",
+     "file": "waku/ops/brief.py",
+     "index": 7,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      27
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (brief.py:24)."
+    },
+    {
+     "caller": "chat_stream",
+     "decision": "caller",
+     "file": "waku/ops/dashboard.py",
+     "index": 8,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      117
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] agent = get_agent() (dashboard.py:114), which returns a Waku (browser_agent.py:83-97)."
+    },
+    {
+     "caller": "run_arena.<locals>.one",
+     "decision": "caller",
+     "file": "waku/ops/memory_arena.py",
+     "index": 9,
+     "kinds": [
+      "attr"
+     ],
+     "lines": [
+      484,
+      554
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=...) (memory_arena.py:472); both lines 484 and 554 call app.respond."
+    }
+   ],
+   "target": "Waku.respond"
+  },
+  "wk-cal-04": {
+   "disputes": [
+    {
+     "caller": "Waku._run_full_turn",
+     "decision": "not",
+     "file": "waku/app.py",
+     "index": 0,
+     "kinds": [
+      "reference"
+     ],
+     "lines": [
+      429
+     ],
+     "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 429 passes trim.shrink_seen into trim.chain(...) as a reference; it is called later by the loop's trim step, not here."
+    }
+   ],
+   "target": "shrink_seen"
+  },
+  "wk-cal-05": {
+   "disputes": [],
+   "target": "kept_if_due"
+  },
+  "wk-cal-06": {
+   "disputes": [],
+   "target": "ToolRegistry.schemas"
+  },
+  "wk-cal-07": {
+   "disputes": [],
+   "target": "run_graph"
+  },
+  "wk-cal-08": {
+   "disputes": [],
+   "target": "clip"
+  },
+  "wk-cal-09": {
+   "disputes": [],
+   "target": "resolve_home"
+  },
+  "wk-cal-10": {
+   "disputes": [],
+   "target": "Memory.maybe_consolidate"
+  }
+ },
+ "questions_json_sha256": "7ac8799c8429b0e4b01d685854b2d91108d6fa827976c20bdd5d101b62bbfae4",
+ "repo": "waku-agent",
+ "saved_at": "2026-11-16T17:20:40Z",
+ "schema": 1,
+ "url": "https://github.com/ShenSeanChen/waku-agent"
+}
