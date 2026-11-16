@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Honeyguide logo concepts</title>
 <!-- Comparison sheet for the three logo concepts. Open with ?theme=dark and/or ?view=context.
-     ?set=refined shows only the refined A (../logo.svg, ../icon.svg, ../favicon.svg) beside A original, the owl and the rabbit,
+     ?set=refined shows only the refined A (bird-refined/logo.svg, bird-refined/icon.svg, bird-refined/favicon.svg) beside A original, the owl and the rabbit,
      and in the context view adds a browser-tab mock with the 16px favicon.
      The sidebar header copies the mockup's .side/.brand/.repo rules (mockup/index.html, v3) at their real size. -->
 <style>
@@ -57,11 +57,11 @@ if(q.get("view")==="context"){
   h+=card("Today: honey dot",9,"<i></i>");
   if(refined){
     h+=card("A original at 18px",18,`<img src="a/logo${sfx}.svg" alt="">`);
-    h+=card("A refined at 18px",18,`<img src="../icon${sfx}.svg" alt="">`);
+    h+=card("A refined at 18px",18,`<img src="bird-refined/icon${sfx}.svg" alt="">`);
     h+=card("Owl at 18px",18,`<img src="${owl}" alt="">`);
     const tab=(on,fav,t)=>`<div class="tab${on?" on":""}"><img src="${fav}" alt="">${t}</div>`;
     h+=`</div><div class="cards"><div><div class="cap" style="font-size:11px;color:var(--muted);margin:20px 0 0;text-transform:uppercase;letter-spacing:.1em;font-weight:650">Browser tabs, favicons at 16px</div><div class="tabs">`+
-      tab(true,"../favicon.svg","Honeyguide · tinytrain")+
+      tab(true,"bird-refined/favicon.svg","Honeyguide · tinytrain")+
       tab(false,"../../../research-content-assistant/assets/favicon.svg","Review · post 8")+
       tab(false,"a/logo"+sfx+".svg","A original (as favicon)")+"</div></div>";
   }else for(const [k,,src] of concepts) for(const s of [18,16]) h+=card(`${k} at ${s}px`,s,`<img src="${src}" alt="">`);
@@ -74,12 +74,12 @@ if(q.get("view")==="context"){
   row("Rabbit",dark?"repo-rabbit (no dark variant exists)":"repo-rabbit",rabbit);
   if(refined){
     row("A original","Perched bird, hexagon eye","a/logo"+sfx+".svg");
-    row("A refined","logo"+sfx+".svg","../logo"+sfx+".svg");
-    row("A refined icon","icon"+sfx+".svg (small sizes)","../icon"+sfx+".svg");
-    row("A refined favicon","favicon.svg (follows OS theme)","../favicon.svg");
+    row("A refined","logo"+sfx+".svg","bird-refined/logo"+sfx+".svg");
+    row("A refined icon","icon"+sfx+".svg (small sizes)","bird-refined/icon"+sfx+".svg");
+    row("A refined favicon","favicon.svg (follows OS theme)","bird-refined/favicon.svg");
   }else{
     for(const [k,d,src] of concepts) row("Concept "+k,d,src);
-    row("A refined","Chosen concept, refined","../logo"+sfx+".svg");
+    row("A refined","Chosen concept, refined","bird-refined/logo"+sfx+".svg");
   }
   out.innerHTML=h+"</table>";
 }
