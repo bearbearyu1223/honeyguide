@@ -21,13 +21,13 @@
   "trace": "waku/",
   "scoring": {
    "locate": "file + function; a function nested inside the key function also counts",
-   "callers": "the set of direct callers (file + function, or file + <module> for top-level code), under waku/",
-   "flow": "the required hops Han marks, recalled, in order (LCS); hops in neither the trace nor the AST count as invented"
+   "callers": "the set of direct callers (file + function, or file + <module> for top-level code), under waku/; a caller in a class body (a field default) may be named by its class (the key's also_accept)",
+   "flow": "the required hops Han marks, recalled, in order (LCS); hops in neither the trace nor the AST count as invented; hops on different worker threads of one wave (same wave id) run at the same time in the real code: no order between them"
   }
  },
  "trace": {
   "path": "outputs/trace_waku-agent.json",
-  "sha256": "737abf2e7bae505e46d8c961a556c719f7dcbdd9f01bfcb2a4a5fe7999cc66e1"
+  "sha256": "2d82a0185e520bd84c1f13f0898218c33bae4f07f7acf0157dfc4276a89b3843"
  },
  "flow_rules": [
   "keep: the subtree under the question's entry call(s), repo",
@@ -46,7 +46,7 @@
   "      call (layers, loop iterations, decode steps)"
  ],
  "ast_resolution": {
-  "name": "plain name: same-module function, nested function or import",
+  "name": "plain name: a def or import in the function or an enclosing one, else a same-module function or import",
   "class": "class called by name -> its __init__ (found up the repo bases)",
   "self": "self.m() / cls.m() -> m on the class or its repo bases",
   "override": "self.m() -> an override of m in a repo subclass (class hierarchy analysis)",
@@ -407,7 +407,8 @@
       "trace_lines": [
        130
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -459,7 +460,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/graph/nodes.py",
@@ -471,7 +473,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -672,7 +675,8 @@
       "trace_lines": [
        62
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -730,7 +734,8 @@
       ],
       "ast_via": [
        "module"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/memory/consolidation.py",
@@ -742,7 +747,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -782,7 +788,8 @@
       "trace_lines": [
        214
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      },
      {
       "file": "waku/loop/agent.py",
@@ -792,7 +799,8 @@
       "trace_lines": [
        155
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -858,7 +866,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/ops/gather.py",
@@ -870,7 +879,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -914,7 +924,8 @@
       ],
       "ast_via": [
        "module"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/runtime/session.py",
@@ -926,7 +937,8 @@
       "trace_lines": [],
       "ast_via": [
        "module"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -968,6 +980,9 @@
       "trace_lines": [],
       "ast_via": [
        "name"
+      ],
+      "also_accept": [
+       "Settings"
       ]
      },
      {
@@ -980,7 +995,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/config.py",
@@ -992,7 +1008,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/config.py",
@@ -1004,7 +1021,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/integrations.py",
@@ -1016,7 +1034,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/key_locations.py",
@@ -1028,7 +1047,8 @@
       "trace_lines": [],
       "ast_via": [
        "module"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "waku/loop/models.py",
@@ -1040,7 +1060,8 @@
       "trace_lines": [],
       "ast_via": [
        "module"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -1080,7 +1101,8 @@
       "trace_lines": [
        253
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -1144,6 +1166,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1158,6 +1181,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1172,6 +1196,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1186,6 +1211,7 @@
       "calls": 1,
       "first_caller": "connect",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1200,6 +1226,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1214,6 +1241,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1228,6 +1256,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1242,6 +1271,7 @@
       "calls": 4,
       "first_caller": "remember_via",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1256,6 +1286,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1270,6 +1301,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1284,6 +1316,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1298,6 +1331,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1312,6 +1346,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1326,6 +1361,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1340,6 +1376,7 @@
       "calls": 1,
       "first_caller": "Waku.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1354,6 +1391,7 @@
       "calls": 1,
       "first_caller": "enabled",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1368,6 +1406,7 @@
       "calls": 1,
       "first_caller": "read",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1431,6 +1470,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1445,6 +1485,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1459,6 +1500,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1473,6 +1515,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1487,6 +1530,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1501,6 +1545,7 @@
       "calls": 2,
       "first_caller": "kept_body",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1515,6 +1560,7 @@
       "calls": 2,
       "first_caller": "kept_body",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1529,6 +1575,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1543,6 +1590,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1557,6 +1605,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1571,6 +1620,7 @@
       "calls": 1,
       "first_caller": "Session.add_exchange",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1585,6 +1635,7 @@
       "calls": 2,
       "first_caller": "note",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1599,6 +1650,7 @@
       "calls": 1,
       "first_caller": "Session.add_exchange",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1613,6 +1665,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1627,6 +1680,7 @@
       "calls": 4,
       "first_caller": "Waku._recalled",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1641,6 +1695,7 @@
       "calls": 4,
       "first_caller": "tool_name",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1655,6 +1710,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1669,6 +1725,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1683,6 +1740,7 @@
       "calls": 1,
       "first_caller": "Memory.export_markdown",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1697,6 +1755,7 @@
       "calls": 1,
       "first_caller": "Memory.export_fact_files",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1711,6 +1770,7 @@
       "calls": 3,
       "first_caller": "_fact_file_text",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1725,6 +1785,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1739,6 +1800,7 @@
       "calls": 1,
       "first_caller": "Waku.respond",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1799,6 +1861,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1813,6 +1876,7 @@
       "calls": 1,
       "first_caller": "Session.build_system",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1827,6 +1891,7 @@
       "calls": 1,
       "first_caller": "Session.build_system",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1841,6 +1906,7 @@
       "calls": 1,
       "first_caller": "unavailable",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1855,6 +1921,7 @@
       "calls": 1,
       "first_caller": "Session.build_system",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1869,6 +1936,7 @@
       "calls": 1,
       "first_caller": "Memory.gated_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1883,6 +1951,7 @@
       "calls": 1,
       "first_caller": "metered.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1897,6 +1966,7 @@
       "calls": 1,
       "first_caller": "Memory.gated_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1911,6 +1981,7 @@
       "calls": 1,
       "first_caller": "should_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1925,6 +1996,7 @@
       "calls": 1,
       "first_caller": "Memory.gated_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1939,6 +2011,7 @@
       "calls": 2,
       "first_caller": "SqliteFactStore.search",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1953,6 +2026,7 @@
       "calls": 1,
       "first_caller": "Memory.gated_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1967,6 +2041,7 @@
       "calls": 1,
       "first_caller": "Memory.gated_retrieve",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1981,6 +2056,7 @@
       "calls": 1,
       "first_caller": "Session.build_system",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1995,6 +2071,7 @@
       "calls": 1,
       "first_caller": "Memory.matching_skills",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2009,6 +2086,7 @@
       "calls": 1,
       "first_caller": "SkillLoader.match",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2067,6 +2145,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2081,6 +2160,7 @@
       "calls": 2,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2095,6 +2175,7 @@
       "calls": 1,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2109,6 +2190,7 @@
       "calls": 1,
       "first_caller": "ToolRegistry.execute",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2123,6 +2205,7 @@
       "calls": 1,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2137,6 +2220,7 @@
       "calls": 1,
       "first_caller": "chain.<locals>.run",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2151,6 +2235,7 @@
       "calls": 1,
       "first_caller": "chain.<locals>.run",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2214,6 +2299,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2228,6 +2314,7 @@
       "calls": 3,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2242,6 +2329,7 @@
       "calls": 2,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -2256,6 +2344,7 @@
       "calls": 2,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2270,6 +2359,7 @@
       "calls": 2,
       "first_caller": "chain.<locals>.run",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2284,6 +2374,7 @@
       "calls": 2,
       "first_caller": "chain.<locals>.run",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2298,6 +2389,7 @@
       "calls": 1,
       "first_caller": "run_loop",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2358,6 +2450,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2372,6 +2465,7 @@
       "calls": 1,
       "first_caller": "Memory.maybe_consolidate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2386,6 +2480,7 @@
       "calls": 1,
       "first_caller": "metered.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2400,6 +2495,7 @@
       "calls": 1,
       "first_caller": "Memory.maybe_consolidate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2414,6 +2510,7 @@
       "calls": 6,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2428,6 +2525,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2442,6 +2540,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2456,6 +2555,7 @@
       "calls": 2,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2470,6 +2570,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2484,6 +2585,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2498,6 +2600,7 @@
       "calls": 1,
       "first_caller": "keep",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2512,6 +2615,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2526,6 +2630,7 @@
       "calls": 1,
       "first_caller": "kept_if_due",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2585,6 +2690,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2599,6 +2705,7 @@
       "calls": 1,
       "first_caller": "Waku._respond_via_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2613,6 +2720,7 @@
       "calls": 5,
       "first_caller": "build_triage_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2627,6 +2735,7 @@
       "calls": 6,
       "first_caller": "build_triage_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2641,6 +2750,7 @@
       "calls": 1,
       "first_caller": "build_triage_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2655,6 +2765,7 @@
       "calls": 1,
       "first_caller": "build_triage_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2669,6 +2780,7 @@
       "calls": 1,
       "first_caller": "Waku._respond_via_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2683,6 +2795,7 @@
       "calls": 4,
       "first_caller": "run_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2697,6 +2810,7 @@
       "calls": 4,
       "first_caller": "run_graph",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2711,6 +2825,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2725,6 +2840,7 @@
       "calls": 2,
       "first_caller": "build_triage_graph.<locals>.classify",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2739,6 +2855,7 @@
       "calls": 2,
       "first_caller": "metered.__init__",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2753,6 +2870,7 @@
       "calls": 1,
       "first_caller": "build_triage_graph.<locals>.classify",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2767,6 +2885,7 @@
       "calls": 2,
       "first_caller": "classify_message",
       "thread": "worker-1",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2781,6 +2900,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "worker-2",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2795,6 +2915,7 @@
       "calls": 1,
       "first_caller": "run_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2809,6 +2930,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2823,6 +2945,7 @@
       "calls": 1,
       "first_caller": "Waku._respond_via_graph.<locals>.quick_reply",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2884,6 +3007,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2898,6 +3022,7 @@
       "calls": 1,
       "first_caller": "Waku._respond_via_graph",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -2912,6 +3037,7 @@
       "calls": 1,
       "first_caller": "Waku._respond_via_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2926,6 +3052,7 @@
       "calls": 4,
       "first_caller": "run_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -2940,6 +3067,7 @@
       "calls": 4,
       "first_caller": "run_graph",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2954,6 +3082,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2968,6 +3097,7 @@
       "calls": 1,
       "first_caller": "build_triage_graph.<locals>.classify",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2982,6 +3112,7 @@
       "calls": 1,
       "first_caller": "metered.__init__",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -2996,6 +3127,7 @@
       "calls": 1,
       "first_caller": "build_triage_graph.<locals>.classify",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -3010,6 +3142,7 @@
       "calls": 1,
       "first_caller": "classify_message",
       "thread": "worker-3",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -3024,6 +3157,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "worker-4",
+      "wave": "wave-1",
       "folded": false,
       "cached": false,
       "mark": null
@@ -3038,6 +3172,7 @@
       "calls": 1,
       "first_caller": "run_graph",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -3052,6 +3187,7 @@
       "calls": 1,
       "first_caller": "run_graph.<locals>.run_one",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null

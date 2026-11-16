@@ -244,6 +244,11 @@ class Store:
             raise KeyError(claim_id)
 
 
+def is_shared(note: dict) -> bool:
+    """The one rule for "share with agents": a real ``True``, nothing merely truthy."""
+    return note.get("share_with_agents") is True
+
+
 def make_claim(text: str, evidence: str, anchors: list[dict], **extra: Any) -> dict:
     claim = {"id": new_id("c"), "text": text, "evidence": evidence, "anchors": anchors,
              "check": "unchecked", "freshness": "current", "freshness_reason": "", **extra}
@@ -280,7 +285,7 @@ def all_claims(map_layer: dict, answers_layer: dict) -> Iterator[tuple[str | Non
 def export_bundle(store: Store, include_private_notes: bool = False) -> dict:
     notes = store.load("notes")
     if not include_private_notes:
-        notes["notes"] = [n for n in notes["notes"] if n.get("share_with_agents")]
+        notes["notes"] = [n for n in notes["notes"] if is_shared(n)]
     return {"schema": "honeyguide/export", "version": VERSION, "exported_at": now_iso(),
             "repo": store.identity(), "map": store.load("map"), "answers": store.load("answers"),
             "notes": notes}

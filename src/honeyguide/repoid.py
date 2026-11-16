@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from .gitio import Repo
 
 _SCHEMES = ("git+ssh://", "ssh+git://", "ssh://", "https://", "http://", "git://")
-_SCP = re.compile(r"^(?:[^@/]+@)?([^:/]+):(?!//)(.+)$")  # git@github.com:owner/repo(.git)
+_SCP = re.compile(r"^(?:[^/]*@)?([^@:/]+):(?!//)(.+)$")  # git@github.com:owner/repo(.git); userinfo to the last @
 _CASE_INSENSITIVE_HOSTS = {"github.com"}
 
 
@@ -17,7 +17,7 @@ def normalize_remote(url: str) -> str | None:
 
     Drops scheme, credentials, port, ``.git`` and trailing slashes; never returns a password or token.
     """
-    url = url.strip()
+    url = re.split(r"[?#]", url.strip(), maxsplit=1)[0]  # a query or fragment can carry a token
     if not url:
         return None
     lowered = url.lower()

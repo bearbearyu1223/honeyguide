@@ -27,7 +27,7 @@
  },
  "trace": {
   "path": "outputs/trace_nanochat.json",
-  "sha256": "4db4e84c764034941e3a853f1a51cc23bd8ea60c289c027b4a8876758f73fbb4"
+  "sha256": "f945e0469e1237410477dc14c80019ffcf093deb8eab3fc7b3a63804ad5b2aa6"
  },
  "flow_rules": [
   "keep: the subtree under the question's entry call(s), repo",
@@ -46,7 +46,7 @@
   "      call (layers, loop iterations, decode steps)"
  ],
  "ast_resolution": {
-  "name": "plain name: same-module function, nested function or import",
+  "name": "plain name: a def or import in the function or an enclosing one, else a same-module function or import",
   "class": "class called by name -> its __init__ (found up the repo bases)",
   "self": "self.m() / cls.m() -> m on the class or its repo bases",
   "override": "self.m() -> an override of m in a repo subclass (class hierarchy analysis)",
@@ -448,7 +448,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -490,7 +491,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "tasks/gsm8k.py",
@@ -502,7 +504,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "tasks/humaneval.py",
@@ -514,7 +517,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "tasks/mmlu.py",
@@ -526,7 +530,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "tasks/smoltalk.py",
@@ -538,7 +543,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -578,7 +584,8 @@
       "trace_lines": [
        217
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -630,7 +637,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -676,7 +684,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "nanochat/gpt.py",
@@ -690,7 +699,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "nanochat/gpt.py",
@@ -706,7 +716,8 @@
       ],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -763,7 +774,8 @@
       "trace_lines": [
        114
       ],
-      "ast_via": []
+      "ast_via": [],
+      "also_accept": []
      }
     ]
    },
@@ -842,7 +854,8 @@
       ],
       "ast_via": [
        "self"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "nanochat/gpt.py",
@@ -856,7 +869,8 @@
       ],
       "ast_via": [
        "self"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -898,7 +912,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/base_eval.py",
@@ -910,7 +925,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/base_train.py",
@@ -922,7 +938,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/chat_cli.py",
@@ -934,7 +951,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/chat_eval.py",
@@ -946,7 +964,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/chat_rl.py",
@@ -958,7 +977,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/chat_sft.py",
@@ -970,7 +990,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      },
      {
       "file": "scripts/infer_bench.py",
@@ -982,7 +1003,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -1024,7 +1046,8 @@
       "trace_lines": [],
       "ast_via": [
        "name"
-      ]
+      ],
+      "also_accept": []
      }
     ]
    },
@@ -1079,6 +1102,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1093,6 +1117,7 @@
       "calls": 1,
       "first_caller": "GPT.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1107,6 +1132,7 @@
       "calls": 2,
       "first_caller": "GPT.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1121,6 +1147,7 @@
       "calls": 2,
       "first_caller": "Block.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1135,6 +1162,7 @@
       "calls": 2,
       "first_caller": "Block.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1149,6 +1177,7 @@
       "calls": 2,
       "first_caller": "GPT.__init__",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1163,6 +1192,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1219,6 +1249,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1233,6 +1264,7 @@
       "calls": 10,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1247,6 +1279,7 @@
       "calls": 15,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1261,6 +1294,7 @@
       "calls": 2,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1275,6 +1309,7 @@
       "calls": 2,
       "first_caller": "Block.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1289,6 +1324,7 @@
       "calls": 4,
       "first_caller": "CausalSelfAttention.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1303,6 +1339,7 @@
       "calls": 2,
       "first_caller": "CausalSelfAttention.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1317,6 +1354,7 @@
       "calls": 2,
       "first_caller": "flash_attn_func",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1331,6 +1369,7 @@
       "calls": 2,
       "first_caller": "Block.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1385,6 +1424,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1399,6 +1439,7 @@
       "calls": 6,
       "first_caller": "MuonAdamW.step",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1413,6 +1454,7 @@
       "calls": 4,
       "first_caller": "MuonAdamW.step",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1427,6 +1469,7 @@
       "calls": 6,
       "first_caller": "MuonAdamW.step",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1441,6 +1484,7 @@
       "calls": 8,
       "first_caller": "MuonAdamW._compute_adamw",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1455,6 +1499,7 @@
       "calls": 4,
       "first_caller": "MuonAdamW.step",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1469,6 +1514,7 @@
       "calls": 4,
       "first_caller": "MuonAdamW._compute_muon",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1483,6 +1529,7 @@
       "calls": 1,
       "first_caller": "MuonAdamW.step",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1543,6 +1590,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1557,6 +1605,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1571,6 +1620,7 @@
       "calls": 5,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": true,
       "mark": null
@@ -1585,6 +1635,7 @@
       "calls": 2,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1599,6 +1650,7 @@
       "calls": 5,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": true,
       "cached": false,
       "mark": null
@@ -1613,6 +1665,7 @@
       "calls": 1,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1627,6 +1680,7 @@
       "calls": 1,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1641,6 +1695,7 @@
       "calls": 4,
       "first_caller": "Engine.generate",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1698,6 +1753,7 @@
       "calls": 1,
       "first_caller": "",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1712,6 +1768,7 @@
       "calls": 10,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1726,6 +1783,7 @@
       "calls": 15,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1740,6 +1798,7 @@
       "calls": 2,
       "first_caller": "GPT.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1754,6 +1813,7 @@
       "calls": 2,
       "first_caller": "Block.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1768,6 +1828,7 @@
       "calls": 4,
       "first_caller": "CausalSelfAttention.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1782,6 +1843,7 @@
       "calls": 2,
       "first_caller": "CausalSelfAttention.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1796,6 +1858,7 @@
       "calls": 2,
       "first_caller": "flash_attn_with_kvcache",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1810,6 +1873,7 @@
       "calls": 2,
       "first_caller": "Block.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null
@@ -1824,6 +1888,7 @@
       "calls": 1,
       "first_caller": "CausalSelfAttention.forward",
       "thread": "main",
+      "wave": null,
       "folded": false,
       "cached": false,
       "mark": null

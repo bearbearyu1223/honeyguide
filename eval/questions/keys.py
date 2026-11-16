@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import ast
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 CACHE_DECORATORS = {"lru_cache", "cache", "cached_property"}
 PROPERTY_DECORATORS = {"property", "cached_property", "setter", "getter", "deleter"}
@@ -176,26 +176,53 @@ def _resolve_relative(module, level, target, is_package):
     return base
 
 
+def _scope_bindings(body):
+    """The defs and imports that bind names in one scope: its statements at
+    any depth of if/try/with/for/while, not inside a nested def or class (a
+    class body binds class attributes, not names its methods can see).
+    Returns ({name: def node}, [import nodes in source order])."""
+    defs, imports = {}, []
+    todo = list(body)
+    while todo:
+        n = todo.pop(0)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            defs[n.name] = n
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            imports.append(n)
+        elif not isinstance(n, ast.ClassDef):
+            todo.extend(c for c in ast.iter_child_nodes(n)
+                        if isinstance(c, (ast.stmt, ast.excepthandler, ast.match_case)))
+    imports.sort(key=lambda n: (n.lineno, n.col_offset))
+    return defs, imports
+
+
+def _import_bindings(node, module, is_package):
+    """{local name: (source module, imported name or None)} for one import."""
+    out = {}
+    if isinstance(node, ast.Import):
+        for a in node.names:
+            if a.asname:
+                out[a.asname] = (a.name, None)
+            else:
+                top = a.name.split(".")[0]
+                out[top] = (top, None)
+    else:
+        src = _resolve_relative(module, node.level, node.module, is_package)
+        for a in node.names:
+            out[a.asname or a.name] = (src, a.name)
+    return out
+
+
 def module_info(source, path, package_roots=("",)):
     tree = ast.parse(source)
     mod = module_name(path, package_roots)
     info = ModuleInfo(path=path, module=mod, tree=tree)
     is_package = path.endswith("__init__.py")
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            info.funcs[node.name] = node.name
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for a in node.names:
-                if a.asname:
-                    info.imports[a.asname] = (a.name, None)
-                else:
-                    top = a.name.split(".")[0]
-                    info.imports[top] = (top, None)
-        elif isinstance(node, ast.ImportFrom):
-            src = _resolve_relative(mod, node.level, node.module, is_package)
-            for a in node.names:
-                info.imports[a.asname or a.name] = (src, a.name)
+    defs, imports = _scope_bindings(tree.body)
+    for name in defs:
+        info.funcs[name] = name
+    for node in imports:
+        info.imports.update(_import_bindings(node, mod, is_package))
 
     def visit_classes(node, prefix):
         for child in ast.iter_child_nodes(node):
@@ -240,7 +267,8 @@ class Dispute:
 
 
 RESOLUTION = {
-    "name": "plain name: same-module function, nested function or import",
+    "name": "plain name: a def or import in the function or an enclosing "
+            "one, else a same-module function or import",
     "class": "class called by name -> its __init__ (found up the repo bases)",
     "self": "self.m() / cls.m() -> m on the class or its repo bases",
     "override": "self.m() -> an override of m in a repo subclass (class "
@@ -285,17 +313,22 @@ class Project:
         if name in module.classes:
             return ("class", module.path, name)
         if name in module.imports:
-            src, sym = module.imports[name]
-            target = self.by_module.get(src)
-            if sym is None:
-                return ("module", target.path, "") if target else None
-            if target is not None:
-                hit = self.lookup(target, sym, depth + 1)
-                if hit:
-                    return hit
-            sub = self.by_module.get(src + "." + sym)
-            if sub is not None:
-                return ("module", sub.path, "")
+            return self.resolve_import(*module.imports[name], depth=depth)
+        return None
+
+    def resolve_import(self, src, sym, depth=0):
+        """What `import src` (sym None) or `from src import sym` binds:
+        ('func'|'class'|'module', path, qual), or None if not repo code."""
+        target = self.by_module.get(src)
+        if sym is None:
+            return ("module", target.path, "") if target else None
+        if target is not None:
+            hit = self.lookup(target, sym, depth + 1)
+            if hit:
+                return hit
+        sub = self.by_module.get(src + "." + sym)
+        if sub is not None:
+            return ("module", sub.path, "")
         return None
 
     def is_external(self, module, name):
@@ -303,7 +336,9 @@ class Project:
         (json, torch, np): its attributes are never repo functions."""
         if name not in module.imports:
             return False
-        src, sym = module.imports[name]
+        return self.import_is_external(*module.imports[name])
+
+    def import_is_external(self, src, sym):
         if sym is not None:
             return False         # from x import y: y may be any object
         return not any(m == src or m.startswith(src + ".") for m in self.by_module)
@@ -356,27 +391,57 @@ class Project:
         return out
 
 
-def _scopes(tree):
-    """(qual, self_class, node) for every function, and ("<module>", None,
-    module) for top-level code. self_class is the class whose `self` the
-    function sees: its own class for a method, the enclosing method's class
-    for a function nested in a method (closures over self). A scope's calls
-    are the Call nodes inside it but not inside a nested def or class."""
-    out = [("<module>", None, tree)]
+def _scopes(mod):
+    """(qual, self_class, node, local) for every function, and ("<module>",
+    None, module, {}) for top-level code. self_class is the class whose
+    `self` the function sees: its own class for a method, the enclosing
+    method's class for a function nested in a method (closures over self).
+    local maps the names the function can see from its own body and its
+    enclosing functions (not module level: Project.lookup does that) to
+    ("def", qual) or ("import", (module, name)); inner bindings shadow
+    outer ones. A scope's calls are the Call nodes inside it but not inside
+    a nested def or class."""
+    out = [("<module>", None, mod.tree, {})]
+    is_package = mod.path.endswith("__init__.py")
 
-    def visit(node, prefix, cls):
+    def visit(node, prefix, cls, outer):
         for child in ast.iter_child_nodes(node):
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 qual = prefix + child.name
-                out.append((qual, cls, child))
-                visit(child, qual + ".<locals>.", cls)
+                defs, imports = _scope_bindings(child.body)
+                local = dict(outer)
+                local.update((name, ("def", qual + ".<locals>." + name)) for name in defs)
+                for imp in imports:
+                    local.update((k, ("import", v))
+                                 for k, v in _import_bindings(imp, mod.module, is_package).items())
+                out.append((qual, cls, child, local))
+                visit(child, qual + ".<locals>.", cls, local)
             elif isinstance(child, ast.ClassDef):
-                visit(child, prefix + child.name + ".", prefix + child.name)
+                visit(child, prefix + child.name + ".", prefix + child.name, outer)
             else:
-                visit(child, prefix, cls)
+                visit(child, prefix, cls, outer)
 
-    visit(tree, "", None)
+    visit(mod.tree, "", None, {})
     return out
+
+
+def _lookup(project, mod, local, name):
+    """Project.lookup, seeing the scope's own and enclosing functions'
+    defs and imports first."""
+    bound = local.get(name)
+    if bound is None:
+        return project.lookup(mod, name)
+    kind, value = bound
+    if kind == "def":
+        return ("func", mod.path, value)
+    return project.resolve_import(*value)
+
+
+def _is_external(project, mod, local, name):
+    bound = local.get(name)
+    if bound is None:
+        return project.is_external(mod, name)
+    return bound[0] == "import" and project.import_is_external(*bound[1])
 
 
 def _own_nodes(scope_node):
@@ -412,19 +477,14 @@ def call_graph(project):
     edges, sites = set(), set()
     for path in sorted(project.modules):
         mod = project.modules[path]
-        for qual, cls, node in _scopes(mod.tree):
+        for qual, cls, node, local in _scopes(mod):
             cls_key = (path, cls) if cls and (path, cls) in project.classes else None
-            nested = {}
-            if qual != "<module>":
-                for c in node.body:
-                    if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        nested[c.name] = qual + ".<locals>." + c.name
             called_funcs = set()
             for n in _own_nodes(node):
                 if not isinstance(n, ast.Call):
                     continue
                 called_funcs.add(id(n.func))
-                for e in _resolve_call(project, mod, path, qual, cls_key, nested, n):
+                for e in _resolve_call(project, mod, path, qual, cls_key, local, n):
                     if isinstance(e, Edge):
                         edges.add(e)
                     else:
@@ -435,11 +495,11 @@ def call_graph(project):
                 if id(n) in called_funcs:
                     continue
                 if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load):
-                    hit = project.lookup(mod, n.id)
-                    if n.id in nested or (hit and hit[0] == "func"):
+                    hit = _lookup(project, mod, local, n.id)
+                    if hit and hit[0] == "func":
                         sites.add((path, qual, n.lineno, n.id, "reference"))
                 elif isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Load):
-                    if isinstance(n.value, ast.Name) and project.is_external(mod, n.value.id):
+                    if isinstance(n.value, ast.Name) and _is_external(project, mod, local, n.value.id):
                         continue
                     sites.add((path, qual, n.lineno, n.attr, "reference"))
     return sorted(edges, key=_edge_sort), sorted(sites)
@@ -453,7 +513,7 @@ def _init_of(project, cls_key):
     return project.method(cls_key, "__init__")
 
 
-def _resolve_call(project, mod, path, qual, cls_key, nested, call):
+def _resolve_call(project, mod, path, qual, cls_key, local, call):
     f = call.func
     line = call.lineno
     out = []
@@ -466,10 +526,7 @@ def _resolve_call(project, mod, path, qual, cls_key, nested, call):
                 and isinstance(call.args[1].value, str):
             out.append((path, qual, line, call.args[1].value, "getattr"))
             return out
-        if f.id in nested:
-            edge((path, nested[f.id]), "name")
-            return out
-        hit = project.lookup(mod, f.id)
+        hit = _lookup(project, mod, local, f.id)
         if hit and hit[0] == "func":
             edge((hit[1], hit[2]), "name")
         elif hit and hit[0] == "class":
@@ -499,7 +556,7 @@ def _resolve_call(project, mod, path, qual, cls_key, nested, call):
             edge(hit, "super")
         return out
     if isinstance(base, ast.Name):
-        hit = project.lookup(mod, base.id)
+        hit = _lookup(project, mod, local, base.id)
         if hit and hit[0] == "module":
             target = project.modules[hit[1]]
             h2 = project.lookup(target, attr)
@@ -515,9 +572,48 @@ def _resolve_call(project, mod, path, qual, cls_key, nested, call):
             if m:
                 edge(m, "classattr")
                 return out
-        if project.is_external(mod, base.id):
+        if _is_external(project, mod, local, base.id):
             return out           # json.dumps, torch.cat: not repo code
     out.append((path, qual, line, attr, "attr"))
+    return out
+
+
+def class_body_aliases(tree, scope_qual, lines):
+    """Classes whose body holds one of a caller's call lines, defined
+    directly in that caller's scope: a call in a field default (``home:
+    Path = field(default_factory=lambda: resolve_home())``) is keyed to the
+    scope the class is defined in, but runs when the class is used, so an
+    answer naming the class is right too. Innermost class per line; sorted
+    class qualnames."""
+    out = set()
+    lines = set(lines)
+
+    def visit(node, prefix, scope):
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                qual = prefix + child.name
+                visit(child, qual + ".<locals>.", qual)
+            elif isinstance(child, ast.ClassDef):
+                qual = prefix + child.name
+                body = {n for n in lines if child.lineno <= n <= child.end_lineno}
+                if body and scope == scope_qual:
+                    hit = body - _in_nested_classes_or_defs(child)
+                    if hit:
+                        out.add(qual)
+                visit(child, qual + ".", scope)
+            else:
+                visit(child, prefix, scope)
+
+    visit(tree, "", "<module>")
+    return sorted(out)
+
+
+def _in_nested_classes_or_defs(cls):
+    """Lines inside the methods and nested classes of a class body."""
+    out = set()
+    for n in ast.walk(cls):
+        if n is not cls and isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out.update(range(n.lineno, n.end_lineno + 1))
     return out
 
 
@@ -643,6 +739,11 @@ class Hop:
     thread: str
     cached: bool
     folded: bool
+    wave: str | None = None   # same id on two worker threads = ran concurrently
+
+    @property
+    def key(self):
+        return (self.file, self.qual)
 
 
 def entry_subtree(events, phase, entry_qual, entry_index=0):
@@ -686,6 +787,8 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
     later work stays dropped and a kept one's later callees get it as
     their caller."""
     dropped, hops, order, raw = {}, {}, [], 0
+    first_block = {}             # hop key -> wave block of its first call
+    blocks = {}                  # block number -> worker threads seen in it
     fold = set(fold)
 
     def count(reason):
@@ -697,10 +800,18 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
         cut = {}                 # thread -> (depth, reason) of a dropped subtree
         kept_stack = {}          # thread -> [(depth, qual)] of kept frames
         worker_top = {}          # worker thread -> (top depth, cut reason or None)
+        block = None             # current run of worker events, see wave_blocks
         for e in sub:
             th, d = e["thread"], e["depth"]
             is_call = e["kind"] == "call"
             raw += is_call
+            if th == root["thread"]:
+                block = None
+            else:
+                if block is None:
+                    block = len(blocks)
+                    blocks[block] = set()
+                blocks[block].add(th)
             if cut.get(th) and d <= cut[th][0]:
                 cut[th] = None
             # a worker thread runs while the thread that started it waits:
@@ -748,7 +859,7 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
                 count(reason)
                 continue
             caller = stack[-1][1] if stack else (
-                _main_caller(kept_stack, th) if th != "main" else "")
+                _starting_caller(kept_stack, root["thread"], d) if th != root["thread"] else "")
             stack.append((d, e["qual"]))
             k = (e["file"], e["qual"])
             if k in hops:
@@ -760,14 +871,39 @@ def flow_hops(events, phase, entries, funcs, rules, fold=(), max_depth=None):
                 hops[k] = Hop(e["file"], e["qual"], e["line"], 1, caller, th,
                               bool(f and f.is_cached), folded)
                 order.append(k)
+                if th != root["thread"]:
+                    first_block[k] = block
             if folded:
                 cut[th] = (d, "fold")
-    return [hops[k] for k in order], dict(sorted(dropped.items())), raw
+    waves = wave_ids(blocks)
+    out = [hops[k] for k in order]
+    out = [replace(h, wave=waves.get(first_block.get(h.key))) for h in out]
+    return out, dict(sorted(dropped.items())), raw
 
 
-def _main_caller(kept_stack, thread):
-    main = kept_stack.get("main") or []
-    return main[-1][1] if main else ""
+def wave_ids(blocks):
+    """{block number: "wave-N"} for the blocks that ran two or more worker
+    threads. A block is a run of worker-thread events with no event of the
+    starting thread between them: the starting thread was waiting on a pool
+    the whole time, so those threads were one wave of concurrent tasks (the
+    trace's stand-in pool runs them one after another; the real one does
+    not). N counts such blocks from 1 in the question."""
+    out = {}
+    for b in sorted(blocks):
+        if len(blocks[b]) >= 2:
+            out[b] = "wave-%d" % (len(out) + 1)
+    return out
+
+
+def _starting_caller(kept_stack, start_thread, depth):
+    """Caller of a worker thread's top kept frame: the nearest kept frame on
+    the starting thread that is still open. A worker's depth is offset by the
+    starting thread's open frames when it started (the tracer's rule), so the
+    frames below that depth are the open ones; deeper entries are frames that
+    already returned and were not yet popped (nothing on that thread has run
+    since)."""
+    open_ = [q for dd, q in kept_stack.get(start_thread) or [] if dd < depth]
+    return open_[-1] if open_ else ""
 
 
 # --------------------------------------------------------------------------

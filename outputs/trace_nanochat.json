@@ -1,6 +1,5 @@
 {
  "python": "3.10.18",
- "platform": "macOS-15.6.1-arm64-arm-64bit",
  "versions": {
   "torch": "2.9.1"
  },
@@ -91,37 +90,30 @@
   "      module and class bodies",
   "drop: C functions (only Python 'call' events are seen)"
  ],
- "setup_seconds": 0.004851416917517781,
  "phases": [
   {
    "name": "build",
-   "description": "GPT(config) on meta -> to_empty(cpu) -> init_weights()",
-   "seconds": 0.022225582972168922
+   "description": "GPT(config) on meta -> to_empty(cpu) -> init_weights()"
   },
   {
    "name": "optimizer_setup",
-   "description": "model.setup_optimizer()",
-   "seconds": 0.0035557078663259745
+   "description": "model.setup_optimizer()"
   },
   {
    "name": "forward_loss",
-   "description": "loss = model(x, y)",
-   "seconds": 0.003037709044292569
+   "description": "loss = model(x, y)"
   },
   {
    "name": "backward",
-   "description": "loss.backward()",
-   "seconds": 0.00975108309648931
+   "description": "loss.backward()"
   },
   {
    "name": "optimizer_step",
-   "description": "optimizer.step(); model.zero_grad()",
-   "seconds": 0.0072193751111626625
+   "description": "optimizer.step(); model.zero_grad()"
   },
   {
    "name": "engine_generate",
-   "description": "Engine(model, tok).generate(...), 4 tokens",
-   "seconds": 0.00798129104077816
+   "description": "Engine(model, tok).generate(...), 4 tokens"
   }
  ],
  "counts": {

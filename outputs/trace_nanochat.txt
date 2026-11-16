@@ -67,7 +67,7 @@ Reproducibility (fresh process per run)
   kept path, run 1 vs control, PYTHONHASHSEED=1:
     identical (336 events)
   raw calls, runs then control: 9748 / 9748 / 9877
-  wall time, runs then control: 1.1 s / 1.1 s / 1.1 s
+  wall time, runs then control: 1.3 s / 1.1 s / 1.1 s
 
 Coverage of the files the trace touched
 --------------------------------------------------------------------------

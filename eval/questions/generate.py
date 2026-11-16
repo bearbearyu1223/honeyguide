@@ -32,8 +32,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from keys import (  # noqa: E402
-    DISPUTE_KINDS, RESOLUTION, Project, call_graph, callers_of, disputes_for,
-    flow_hops, leaks, loose_leaks, tag_lines, trace_callers,
+    DISPUTE_KINDS, RESOLUTION, Project, call_graph, callers_of, class_body_aliases,
+    disputes_for, flow_hops, leaks, loose_leaks, tag_lines, trace_callers,
 )
 from repo import REPOS, Repo  # noqa: E402
 from specs import SPECS  # noqa: E402
@@ -41,6 +41,7 @@ from specs import SPECS  # noqa: E402
 GENERATOR_VERSION = "1"
 WIDTH = 74
 DEFAULT_CUTOFF = "2026-06-30"
+CALLERS_BASIS = "key callers and open disputes"
 # Printed for comparison only; the JSON's tags use --cutoff
 OTHER_CUTOFFS = ("2025-12-31", "2026-03-31")
 OUTPUTS = HERE.parent.parent / "outputs"
@@ -52,16 +53,31 @@ SCOPE = {
     "flow": "the required hops Han marks, recalled, in order (LCS); hops in "
             "neither the trace nor the AST count as invented",
 }
+# Appended to the scoring scope only when a question set needs it, so a set
+# without class-body callers or worker waves keeps its text
+ALIAS_SCOPE = ("; a caller in a class body (a field default) may be named "
+               "by its class (the key's also_accept)")
+WAVE_SCOPE = ("; hops on different worker threads of one wave (same wave "
+              "id) run at the same time in the real code: no order between "
+              "them")
 
 
-def scoring_scope(repo):
+def scoring_scope(repo, questions=()):
     """SCOPE, with the callers line naming the repo's code dirs if it has
-    them (nanochat's set predates code_dirs and keeps its text)."""
-    if not repo.code_dirs:
-        return SCOPE
-    dirs = ", ".join(d + "/" for d in repo.code_dirs)
-    return dict(SCOPE, callers="the set of direct callers (file + function, or "
-                               f"file + <module> for top-level code), under {dirs}")
+    them (nanochat's set predates code_dirs and keeps its text), and the
+    alias and wave rules added when some key uses them."""
+    scope = dict(SCOPE)
+    if repo.code_dirs:
+        dirs = ", ".join(d + "/" for d in repo.code_dirs)
+        scope["callers"] = ("the set of direct callers (file + function, or "
+                            f"file + <module> for top-level code), under {dirs}")
+    if any(c["also_accept"] for q in questions if q["type"] == "callers"
+           for c in q["key"]["callers"]):
+        scope["callers"] += ALIAS_SCOPE
+    if any(h["wave"] for q in questions if q["type"] == "flow"
+           for h in q["key"]["candidate_hops"]):
+        scope["flow"] += WAVE_SCOPE
+    return scope
 
 
 BLAME_RULE = [
@@ -113,13 +129,20 @@ class Tagger:
             after, total, after_c = after + a, total + n, after_c + ac
             newest = max([newest] + [fp.get(i, 0) for i in lines if i in nb])
         return {
-            "subset": "after" if total and 2 * after >= total else "before",
+            "subset": subset(after, total),
             "lines_after": after,
             "lines_counted": total,
             "newest_change": iso_day(newest) if newest else None,
-            "subset_by_authored_commit": (
-                "after" if total and 2 * after_c >= total else "before"),
+            "subset_by_authored_commit": subset(after_c, total),
         }
+
+
+def subset(after, total):
+    """'after' when at least half the counted key lines changed after the
+    cutoff, 'before' otherwise, 'none' when there is no line to count."""
+    if not total:
+        return "none"
+    return "after" if 2 * after >= total else "before"
 
 
 def func_lines(f):
@@ -138,17 +161,18 @@ def build_locate(spec, repo, tagger):
             raise SystemExit(f"locate: {path}:{qual} not found at the commit")
         nested = sorted(q for (p, q) in funcs if p == path and q.startswith(qual + ".<locals>."))
         symbols = [f.name] + ([f.cls.split(".")[-1]] if f.cls else [])
-        out.append({
+        q = {
             "id": f"{spec['prefix']}-loc-{i:02d}",
             "type": "locate",
             "text": text,
             "phrasing": "hand",
             "key": {"file": path, "qual": qual, "lines": [f.start, f.end],
                     "also_accept": nested},
-            "cutoff": tagger.tag({path: func_lines(f)}),
-            "leaks": leaks(text, symbols, [path]),
-            "loose_leaks": loose_leaks(text, symbols),
-        })
+        }
+        q["cutoff"] = tagger.tag(key_ranges(q, funcs))
+        q["leaks"] = leaks(text, symbols, [path])
+        q["loose_leaks"] = loose_leaks(text, symbols)
+        out.append(q)
     return out
 
 
@@ -156,7 +180,7 @@ def qual_is_unique(funcs, qual):
     return sum(1 for (_, q) in funcs if q == qual) == 1
 
 
-def build_callers(spec, repo, tagger, edges, sites, events):
+def build_callers(spec, repo, tagger, edges, sites, events, project):
     funcs = repo.functions()
     out, disputes = [], []
     for i, (path, qual) in enumerate(spec["callers"], 1):
@@ -178,16 +202,16 @@ def build_callers(spec, repo, tagger, edges, sites, events):
                 tr_c[(cf, cq)] = lines
         keyset = sorted(set(ast_c) | set(tr_c))
         callers = []
-        ranges = {}
         for k in keyset:
             src = "both" if k in ast_c and k in tr_c else ("ast" if k in ast_c else "trace")
             lines = sorted(set(ast_c.get(k, [])) | set(tr_c.get(k, [])))
+            mod = project.modules.get(k[0])
             callers.append({
                 "file": k[0], "qual": k[1], "source": src,
                 "ast_lines": ast_c.get(k, []), "trace_lines": tr_c.get(k, []),
                 "ast_via": sorted(via.get(k, [])),
+                "also_accept": class_body_aliases(mod.tree, k[1], lines) if mod else [],
             })
-            ranges.setdefault(k[0], set()).update(lines)
         site_list = disputes_for(sites, f.name)
         in_key = [d for d in site_list if (d.caller_file, d.caller) in set(keyset)]
         open_ = group_disputes(
@@ -195,7 +219,6 @@ def build_callers(spec, repo, tagger, edges, sites, events):
             unique=sum(1 for (_, q) in funcs if q.split(".")[-1] == f.name) == 1)
         for g in open_:
             disputes.append((qid, qual, g))
-            ranges.setdefault(g["file"], set()).update(g["lines"])
         name = qual if qual_is_unique(funcs, qual) else f"{qual} in {path}"
         text = (f"What calls `{name}` directly? List every caller "
                 f"{repo.callers_scope}.")
@@ -204,7 +227,7 @@ def build_callers(spec, repo, tagger, edges, sites, events):
                           | {c["qual"].split(".")[0] for c in callers if "." in c["qual"]})
                          - {"<module>"} - named)
         files = sorted({c["file"] for c in callers} - {path})
-        out.append({
+        q = {
             "id": qid,
             "type": "callers",
             "text": text,
@@ -213,10 +236,11 @@ def build_callers(spec, repo, tagger, edges, sites, events):
             "key": {"callers": callers},
             "disputes_for_han": open_,
             "unresolved_sites_already_in_key": [_dispute_json(d) for d in in_key],
-            "cutoff": dict(tagger.tag(ranges), basis="key callers and open disputes"),
-            "names_target": bool(leaks(text, [f.name], [])),
-            "leaks": leaks(text, symbols, files),
-        })
+        }
+        q["cutoff"] = dict(tagger.tag(key_ranges(q, funcs)), basis=CALLERS_BASIS)
+        q["names_target"] = bool(leaks(text, [f.name], []))
+        q["leaks"] = leaks(text, symbols, files)
+        out.append(q)
     return out, disputes
 
 
@@ -246,23 +270,21 @@ def build_flow(spec, repo, tagger, events, trace_config):
             raise SystemExit("flow: backward has no repo calls in the trace")
         hops, dropped, raw = flow_hops(events, q["phase"], q["entries"], funcs,
                                        rules, fold=q["fold"])
-        ranges = {}
         hop_json = []
         for h in hops:
             f = funcs.get((h.file, h.qual))
-            ranges.setdefault(h.file, set()).update(func_lines(f) if f else {h.line})
             hop_json.append({
                 "file": h.file, "qual": h.qual,
                 "lines": [f.start, f.end] if f else [h.line, h.line],
                 "calls": h.calls, "first_caller": h.caller, "thread": h.thread,
-                "folded": h.folded, "cached": h.cached, "mark": None,
+                "wave": h.wave, "folded": h.folded, "cached": h.cached, "mark": None,
             })
         entry_quals = {e[0] for e in q["entries"]}
         named = {part for e in entry_quals for part in e.replace(".<locals>.", ".").split(".")}
         others = [h for h in hops if h.qual not in entry_quals]
         # function names only: class names in the config are named by design
         symbols = sorted({h.qual.split(".")[-1] for h in others} - named)
-        out.append({
+        item = {
             "id": f"{spec['prefix']}-flo-{i:02d}",
             "type": "flow",
             "text": q["text"],
@@ -273,9 +295,10 @@ def build_flow(spec, repo, tagger, events, trace_config):
             "key": {"candidate_hops": hop_json, "raw_calls": raw,
                     "dropped": dropped,
                     "status": "candidates; Han marks each hop required or optional"},
-            "cutoff": tagger.tag(ranges),
-            "leaks": leaks(q["text"], symbols, []),
-        })
+        }
+        item["cutoff"] = tagger.tag(key_ranges(item, funcs))
+        item["leaks"] = leaks(q["text"], symbols, [])
+        out.append(item)
     return out
 
 
@@ -283,13 +306,19 @@ def build_flow(spec, repo, tagger, events, trace_config):
 # Sheets for Han
 
 def flow_sheet(name, repo, flows):
+    waves = any(h["wave"] for q in flows for h in q["key"]["candidate_hops"])
+    wave_note = (" [worker-1, wave-1] = runs on a thread the code starts, in a wave "
+                 "of tasks the real code runs at the same time: the trace ran them "
+                 "one after another, so hops on different threads of one wave have "
+                 "no order between them (the scorer does not penalise either "
+                 "order).") if waves else ""
     lines = [f"# {name}: flow hops to mark", "",
              f"Commit {repo.commit[:7]}. For each question, tick one box per hop: "
              "**required** (an answer that misses it is incomplete) or **optional** "
              "(fine to mention, fine to skip). Hops are in first-call order; xN = "
              "times called; (fold) = counts as one step, inside is another question; "
              "(cached) = lru_cache, later calls may not show; [worker-1] = runs on a "
-             "thread the code starts.", ""]
+             "thread the code starts." + wave_note, ""]
     for q in flows:
         lines += [f"## {q['id']} ({q['trace_phase']})", "", q["text"], ""]
         for h in q["key"]["candidate_hops"]:
@@ -301,7 +330,8 @@ def flow_sheet(name, repo, flows):
             if h["cached"]:
                 tags.append("(cached)")
             if h["thread"] != "main":
-                tags.append(f"[{h['thread']}]")
+                tags.append(f"[{h['thread']}, {h['wave']}]" if h["wave"]
+                            else f"[{h['thread']}]")
             extra = (" " + " ".join(tags)) if tags else ""
             lines.append(f"- [ ] required [ ] optional: `{h['qual']}` "
                          f"{h['file']}:{h['lines'][0]}{extra}")
@@ -327,7 +357,9 @@ def disputes_sheet(name, repo, callers, disputes):
                      f"({n_key} callers in the key, {len(ds)} to decide)")
         lines.append("")
         for c in q["key"]["callers"]:
-            lines.append(f"- in key ({c['source']}): `{c['qual']}` {c['file']}")
+            alias = "".join(f" (also accepted: `{a}`, the class whose body holds the call)"
+                            for a in c["also_accept"])
+            lines.append(f"- in key ({c['source']}): `{c['qual']}` {c['file']}{alias}")
         for d in ds:
             at = ", ".join(str(n) for n in d["lines"])
             hint = "; only repo def named so" if d["only_repo_def_with_this_name"] else ""
@@ -438,6 +470,12 @@ def report(name, repo, args, data, trace_sha, alt):
             out.append(" " * 43 + r)
     out.append("  raw = repo calls in the entry's subtree (T3 filter); hops =")
     out.append("  candidates Han marks")
+    waved = [q for q in flo if any(h["wave"] for h in q["key"]["candidate_hops"])]
+    if waved:
+        n = sum(bool(h["wave"]) for q in waved for h in q["key"]["candidate_hops"])
+        out += wrap(f"wave: {n} hops in {', '.join(q['id'] for q in waved)} run on "
+                    "worker threads the real code runs at the same time (the trace "
+                    "ran them in turn): no order between threads of one wave", 2, 2)
 
     out += rule("Examples")
     for t in types:
@@ -503,18 +541,18 @@ def generate(name, args):
 
     status(f"{name}: building questions and blaming key lines")
     locate = build_locate(spec, repo, tagger)
-    callers, disputes = build_callers(spec, repo, tagger, edges, sites, events)
+    callers, disputes = build_callers(spec, repo, tagger, edges, sites, events, project)
     flow = build_flow(spec, repo, tagger, events, trace["config"])
     questions = locate + callers + flow
     order = [q["id"] for q in questions]
     random.Random(args.seed).shuffle(order)
 
     alt = []
+    funcs = repo.functions()
     for day in OTHER_CUTOFFS:
         counts = {"locate": 0, "callers": 0, "flow": 0}
         for q in questions:
-            rng = _key_ranges(q, repo)
-            if rng and tagger.tag(rng, day)["subset"] == "after":
+            if tagger.tag(key_ranges(q, funcs), day)["subset"] == "after":
                 counts[q["type"]] += 1
         counts["all"] = sum(counts.values())
         alt.append((day, counts))
@@ -529,7 +567,7 @@ def generate(name, args):
         "cutoff": args.cutoff,
         "blame_rule": BLAME_RULE,
         "scope": {"code": repo.scope_text,
-                  "trace": repo.trace_root, "scoring": scoring_scope(repo)},
+                  "trace": repo.trace_root, "scoring": scoring_scope(repo, questions)},
         "trace": {"path": f"outputs/trace_{name}.json", "sha256": sha256(trace_path)},
         "flow_rules": spec["flow_rules"].describe(),
         "ast_resolution": RESOLUTION,
@@ -550,22 +588,34 @@ def generate(name, args):
     return text
 
 
-def _key_ranges(q, repo):
-    funcs = repo.functions()
+def key_ranges(q, funcs):
+    """{file: set of lines} the cutoff tag blames, for any question type.
+
+    The one builder: the JSON's tag and the other-cutoffs table both call
+    it. locate = the key function; callers = the call lines of the key
+    callers and of every dispute not marked 'not' (open or marked
+    'caller'); flow = every candidate hop's function (its def line if the
+    function is not in the index)."""
+    r = {}
     if q["type"] == "locate":
         k = q["key"]
-        return {k["file"]: set(range(k["lines"][0], k["lines"][1] + 1))}
-    if q["type"] == "callers":
-        r = {}
+        r[k["file"]] = set(range(k["lines"][0], k["lines"][1] + 1))
+    elif q["type"] == "callers":
         for c in q["key"]["callers"]:
             r.setdefault(c["file"], set()).update(c["ast_lines"] + c["trace_lines"])
-        return r
-    r = {}
-    for h in q["key"]["candidate_hops"]:
-        f = funcs.get((h["file"], h["qual"]))
-        r.setdefault(h["file"], set()).update(
-            range(f.start, f.end + 1) if f else [h["lines"][0]])
+        for g in q["disputes_for_han"]:
+            if g.get("mark") != "not":
+                r.setdefault(g["file"], set()).update(g["lines"])
+    else:
+        for h in q["key"]["candidate_hops"]:
+            f = funcs.get((h["file"], h["qual"]))
+            r.setdefault(h["file"], set()).update(
+                func_lines(f) if f else {h["lines"][0]})
     return r
+
+
+def _key_ranges(q, repo):
+    return key_ranges(q, repo.functions())
 
 
 def main(argv=None):

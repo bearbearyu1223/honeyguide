@@ -1,6 +1,6 @@
 # waku-agent: flow hops to mark
 
-Commit 2c7e7e6. For each question, tick one box per hop: **required** (an answer that misses it is incomplete) or **optional** (fine to mention, fine to skip). Hops are in first-call order; xN = times called; (fold) = counts as one step, inside is another question; (cached) = lru_cache, later calls may not show; [worker-1] = runs on a thread the code starts.
+Commit 2c7e7e6. For each question, tick one box per hop: **required** (an answer that misses it is incomplete) or **optional** (fine to mention, fine to skip). Hops are in first-call order; xN = times called; (fold) = counts as one step, inside is another question; (cached) = lru_cache, later calls may not show; [worker-1] = runs on a thread the code starts. [worker-1, wave-1] = runs on a thread the code starts, in a wave of tasks the real code runs at the same time: the trace ran them one after another, so hops on different threads of one wave have no order between them (the scorer does not penalise either order).
 
 ## wk-flo-01 (init)
 
@@ -127,13 +127,13 @@ The fourth turn, with settings.graph_workflows=True: waku.respond('thanks!'), wh
 - [ ] required [ ] optional: `Graph.add_router` waku/graph/engine.py:84
 - [ ] required [ ] optional: `run_graph` waku/graph/engine.py:106
 - [ ] required [ ] optional: `run_graph.<locals>.next_wave` waku/graph/engine.py:128 x4
-- [ ] required [ ] optional: `run_graph.<locals>.run_one` waku/graph/engine.py:141 x4 [worker-1]
-- [ ] required [ ] optional: `build_triage_graph.<locals>.classify` waku/graph/workflows/triage.py:97 [worker-1]
-- [ ] required [ ] optional: `metered.__init__` waku/ops/tracing.py:249 x2 [worker-1]
-- [ ] required [ ] optional: `_MeteredMessages.__init__` waku/ops/tracing.py:227 x2 [worker-1]
-- [ ] required [ ] optional: `classify_message` waku/graph/workflows/triage.py:52 [worker-1]
-- [ ] required [ ] optional: `_MeteredMessages.create` waku/ops/tracing.py:230 x2 [worker-1]
-- [ ] required [ ] optional: `todays_events` waku/graph/workflows/triage.py:73 [worker-2]
+- [ ] required [ ] optional: `run_graph.<locals>.run_one` waku/graph/engine.py:141 x4 [worker-1, wave-1]
+- [ ] required [ ] optional: `build_triage_graph.<locals>.classify` waku/graph/workflows/triage.py:97 [worker-1, wave-1]
+- [ ] required [ ] optional: `metered.__init__` waku/ops/tracing.py:249 x2 [worker-1, wave-1]
+- [ ] required [ ] optional: `_MeteredMessages.__init__` waku/ops/tracing.py:227 x2 [worker-1, wave-1]
+- [ ] required [ ] optional: `classify_message` waku/graph/workflows/triage.py:52 [worker-1, wave-1]
+- [ ] required [ ] optional: `_MeteredMessages.create` waku/ops/tracing.py:230 x2 [worker-1, wave-1]
+- [ ] required [ ] optional: `todays_events` waku/graph/workflows/triage.py:73 [worker-2, wave-1]
 - [ ] required [ ] optional: `key_router.<locals>.route` waku/graph/nodes.py:69
 - [ ] required [ ] optional: `Waku._respond_via_graph.<locals>.quick_reply` waku/app.py:448
 - [ ] required [ ] optional: `with_context` waku/app.py:50
@@ -146,13 +146,13 @@ The fifth turn, graph_workflows still on: a question about Alex, where the triag
 - [ ] required [ ] optional: `build_triage_graph` waku/graph/workflows/triage.py:89 (fold)
 - [ ] required [ ] optional: `run_graph` waku/graph/engine.py:106
 - [ ] required [ ] optional: `run_graph.<locals>.next_wave` waku/graph/engine.py:128 x4
-- [ ] required [ ] optional: `run_graph.<locals>.run_one` waku/graph/engine.py:141 x4 [worker-3]
-- [ ] required [ ] optional: `build_triage_graph.<locals>.classify` waku/graph/workflows/triage.py:97 [worker-3]
-- [ ] required [ ] optional: `metered.__init__` waku/ops/tracing.py:249 [worker-3]
-- [ ] required [ ] optional: `_MeteredMessages.__init__` waku/ops/tracing.py:227 [worker-3]
-- [ ] required [ ] optional: `classify_message` waku/graph/workflows/triage.py:52 [worker-3]
-- [ ] required [ ] optional: `_MeteredMessages.create` waku/ops/tracing.py:230 [worker-3]
-- [ ] required [ ] optional: `todays_events` waku/graph/workflows/triage.py:73 [worker-4]
+- [ ] required [ ] optional: `run_graph.<locals>.run_one` waku/graph/engine.py:141 x4 [worker-3, wave-1]
+- [ ] required [ ] optional: `build_triage_graph.<locals>.classify` waku/graph/workflows/triage.py:97 [worker-3, wave-1]
+- [ ] required [ ] optional: `metered.__init__` waku/ops/tracing.py:249 [worker-3, wave-1]
+- [ ] required [ ] optional: `_MeteredMessages.__init__` waku/ops/tracing.py:227 [worker-3, wave-1]
+- [ ] required [ ] optional: `classify_message` waku/graph/workflows/triage.py:52 [worker-3, wave-1]
+- [ ] required [ ] optional: `_MeteredMessages.create` waku/ops/tracing.py:230 [worker-3, wave-1]
+- [ ] required [ ] optional: `todays_events` waku/graph/workflows/triage.py:73 [worker-4, wave-1]
 - [ ] required [ ] optional: `key_router.<locals>.route` waku/graph/nodes.py:69
 - [ ] required [ ] optional: `Waku._run_full_turn` waku/app.py:392 (fold)
 

@@ -6,7 +6,7 @@ Eval questions and keys: waku-agent
   generator      v1, seed 0
   cutoff         2026-06-30 (a parameter until verified)
   trace          outputs/trace_waku-agent.json
-                 sha256 737abf2e7bae505e...
+                 sha256 2d82a0185e520bd8...
 
 Questions by type and subset (cutoff 2026-06-30)
 --------------------------------------------------------------------------
@@ -32,8 +32,8 @@ Blame rule
 After-cutoff counts at other cutoffs (same questions)
 --------------------------------------------------------------------------
   cutoff         locate  callers     flow    all
-  2025-12-31         12        9        8     29
-  2026-03-31         12        9        8     29
+  2025-12-31         12       10        8     30
+  2026-03-31         12       10        8     30
 
 Leakage (key names or file names verbatim in the text)
 --------------------------------------------------------------------------
@@ -61,7 +61,8 @@ Callers keys: where each key caller came from
   han = call sites the AST can't resolve and the trace didn't
   confirm (getattr, obj.m() on an unknown type, callbacks)
   AST resolution rules:
-    name: plain name: same-module function, nested function or import
+    name: plain name: a def or import in the function or an enclosing one,
+      else a same-module function or import
     class: class called by name -> its __init__ (found up the repo bases)
     self: self.m() / cls.m() -> m on the class or its repo bases
     override: self.m() -> an override of m in a repo subclass (class
@@ -106,6 +107,9 @@ Flow keys: trace pre-filter
                                            fold 70, under logging 68
   raw = repo calls in the entry's subtree (T3 filter); hops =
   candidates Han marks
+  wave: 14 hops in wk-flo-07, wk-flo-08 run on worker threads the real
+  code runs at the same time (the trace ran them in turn): no order
+  between threads of one wave
 
 Examples
 --------------------------------------------------------------------------

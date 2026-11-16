@@ -192,13 +192,14 @@ def find_uncovered(repo: Repo, base: str, target: str, results: list[ClaimResult
         if not units and any(line.strip() for line in lines):
             unoutlined.append(path)
             continue
-        before = {}
+        before: dict[str, set[str]] = {}   # qualname -> hashes: a qualname can name several units
         if letter != "A":
             old_lines = repo.lines_at(base, old)
-            before = {u.qualname: u.hash for u in (python_units(old_lines) if old_lines else [])}
+            for u in (python_units(old_lines) if old_lines else []):
+                before.setdefault(u.qualname, set()).add(u.hash)
         cited = covered.get(path, set())
         for unit in units:
-            if before.get(unit.qualname) == unit.hash:
+            if unit.hash in before.get(unit.qualname, ()):
                 continue
             own = _own_lines(unit, units)
             if own & cited:
@@ -243,20 +244,38 @@ def apply_result(claim: dict, result: ClaimResult, target: str) -> dict:
     return out
 
 
-def apply_plan(store, plan: RefreshPlan) -> None:
-    """Save the plan's outcome: anchors updated, stale and retired claims marked, the map's commit advanced."""
+def apply_plan(store, plan: RefreshPlan) -> list[str]:
+    """Save the plan's outcome: anchors updated, stale and retired claims marked, the map's commit advanced.
+
+    One hold of the lock for both files. ``plan`` may be older than the store: a claim whose anchors changed
+    since it was planned (re-anchored by the Checker, say), or that was retired meanwhile, is left as it is and
+    its id returned; the map's commit advances only if no map claim was skipped. Re-plan to cover those.
+    """
     by_id = {r.claim_id: r for r in plan.claims}
+    skipped: list[str] = []
 
     def fix(claims: list[dict]) -> list[dict]:
-        return [apply_result(c, by_id[c["id"]], plan.target) if c["id"] in by_id else c for c in claims]
+        out = []
+        for claim in claims:
+            result = by_id.get(claim["id"])
+            if result is None:
+                out.append(claim)
+            elif (claim.get("freshness") == "retired"
+                  or [CodeAnchor.from_dict(a) for a in claim.get("anchors", [])] != [a.old for a in result.anchors]):
+                skipped.append(claim["id"])
+                out.append(claim)
+            else:
+                out.append(apply_result(claim, result, plan.target))
+        return out
 
-    def change_map(data: dict) -> None:
-        data["claims"] = fix(data["claims"])
-        data["commit"] = plan.target
-
-    def change_answers(data: dict) -> None:
-        for response in data["responses"]:
+    with store.locked():
+        map_layer, answers = store.load("map"), store.load("answers")
+        map_layer["claims"] = fix(map_layer["claims"])
+        map_skipped = bool(skipped)
+        for response in answers["responses"]:
             response["claims"] = fix(response["claims"])
-
-    store.update("map", change_map)
-    store.update("answers", change_answers)
+        if not map_skipped:
+            map_layer["commit"] = plan.target
+        store.write_held("answers", answers)
+        store.write_held("map", map_layer)
+    return skipped

@@ -83,6 +83,17 @@ def coverage(events, sources):
     return rows
 
 
+def stable_json(run):
+    """A run's record for outputs/trace_<repo>.json: everything but what
+    changes when nothing about the trace does (the OS platform string, wall
+    times), so a rerun on the same code is byte-identical and the question
+    sets' recorded checksum of it holds. Those stay in the .txt capture."""
+    keep = {k: v for k, v in run.items() if k not in ("platform", "setup_seconds")}
+    keep["phases"] = [{k: v for k, v in p.items() if k != "seconds"}
+                      for p in run["phases"]]
+    return keep
+
+
 def kv_lines(key, value, width=WIDTH, key_width=14):
     """'key   value' wrapped to width with a hanging indent."""
     first = ("  %-*s " % (key_width, key))
@@ -292,7 +303,7 @@ def main():
             seconds.append(s)
     runs, control = runs[:-1], runs[-1]
     json_out = Path(args.json_out or OUTPUTS / ("trace_%s.json" % args.repo))
-    keep = {k: v for k, v in runs[0].items()}
+    keep = stable_json(runs[0])
     keep["commit"] = git(repo, "rev-parse", "HEAD")
     json_out.write_text(json.dumps(keep, indent=1) + "\n", encoding="utf-8")
     lines = report(args.repo, cfg, repo, runs, control, seconds)

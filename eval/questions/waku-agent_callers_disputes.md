@@ -56,7 +56,7 @@ Kinds:
 
 ## wk-cal-09: resolve_home (7 callers in the key, 0 to decide)
 
-- in key (ast): `<module>` waku/config.py
+- in key (ast): `<module>` waku/config.py (also accepted: `Settings`, the class whose body holds the call)
 - in key (ast): `_load_home_env` waku/config.py
 - in key (ast): `env_write_target` waku/config.py
 - in key (ast): `home_notice` waku/config.py

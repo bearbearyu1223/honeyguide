@@ -6,7 +6,7 @@ Eval questions and keys: nanochat
   generator      v1, seed 0
   cutoff         2026-06-30 (a parameter until verified)
   trace          outputs/trace_nanochat.json
-                 sha256 4db4e84c76403494...
+                 sha256 f945e0469e123741...
 
 Questions by type and subset (cutoff 2026-06-30)
 --------------------------------------------------------------------------
@@ -32,8 +32,8 @@ Blame rule
 After-cutoff counts at other cutoffs (same questions)
 --------------------------------------------------------------------------
   cutoff         locate  callers     flow    all
-  2025-12-31          7        3        4     14
-  2026-03-31          6        2        0      8
+  2025-12-31          7        5        4     16
+  2026-03-31          6        3        0      9
 
 Leakage (key names or file names verbatim in the text)
 --------------------------------------------------------------------------
@@ -60,7 +60,8 @@ Callers keys: where each key caller came from
   han = call sites the AST can't resolve and the trace didn't
   confirm (getattr, obj.m() on an unknown type, callbacks)
   AST resolution rules:
-    name: plain name: same-module function, nested function or import
+    name: plain name: a def or import in the function or an enclosing one,
+      else a same-module function or import
     class: class called by name -> its __init__ (found up the repo bases)
     self: self.m() / cls.m() -> m on the class or its repo bases
     override: self.m() -> an override of m in a repo subclass (class

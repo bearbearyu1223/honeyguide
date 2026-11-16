@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from .store import is_shared
+
 SCORE_LINES, SCORE_SYMBOL, SCORE_FILE = 3, 2, 1
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
 _STOP = {"what", "when", "where", "which", "does", "this", "that", "with", "from", "into", "there", "their",
@@ -67,7 +69,7 @@ def anchor_score(claim: dict, ctx: Context) -> tuple[int, list[str]]:
         for c in ctx.anchors:
             if c["path"] == a["path"] and c["start"] <= a["end"] and a["start"] <= c["end"]:
                 score, why = SCORE_LINES, f"same lines {a['path']}:{a['start']}-{a['end']}"
-            elif c.get("symbol") and c.get("symbol") == a.get("symbol"):
+            elif c.get("symbol") and c.get("symbol") == a.get("symbol") and c["path"] == a["path"]:
                 score, why = SCORE_SYMBOL, f"same symbol {a['symbol']}"
             elif c["path"] == a["path"]:
                 score, why = SCORE_FILE, f"same file {a['path']}"
@@ -137,7 +139,7 @@ def retrieve(map_layer: dict, answers_layer: dict, notes_layer: dict, ctx: Conte
     words = keywords(ctx.text)
     notes = []
     for note in notes_layer["notes"]:
-        if note.get("share_with_agents") is not True:
+        if not is_shared(note):
             continue  # personal: never handed to an agent
         anchor = note.get("anchor") or {}
         if (set(note.get("claim_ids", [])) & hit_claims or anchor.get("doc") in hit_docs

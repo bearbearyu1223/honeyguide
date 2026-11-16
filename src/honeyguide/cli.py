@@ -15,7 +15,7 @@ from .gitio import GitError, Repo
 from .preview import preview
 from .refresh import plan_refresh
 from .repoid import identify
-from .store import Store, StoreError, all_claims, export_bundle, import_bundle
+from .store import Store, StoreError, all_claims, export_bundle, import_bundle, is_shared
 
 
 def _open(args) -> tuple[Repo, dict, Store]:
@@ -40,8 +40,8 @@ def cmd_status(args) -> int:
             "questions": len(answers["questions"]), "answers": len(answers["responses"]),
             "freshness": dict(Counter(c["freshness"] for c in claims)),
             "checks": dict(Counter(c["check"] for c in claims)),
-            "notes": {"shared": sum(1 for n in notes["notes"] if n.get("share_with_agents")),
-                      "private": sum(1 for n in notes["notes"] if not n.get("share_with_agents"))},
+            "notes": {"shared": sum(1 for n in notes["notes"] if is_shared(n)),
+                      "private": sum(1 for n in notes["notes"] if not is_shared(n))},
             "memory_state": memory.memory_state(repo, store),
         }
     if args.json:

@@ -1,6 +1,5 @@
 {
  "python": "3.12.11",
- "platform": "macOS-15.6.1-arm64-arm-64bit",
  "versions": {
   "waku-agent": "0.1.12",
   "anthropic": "0.116.0"
@@ -111,37 +110,30 @@
   "      module and class bodies",
   "drop: C functions (only Python 'call' events are seen)"
  ],
- "setup_seconds": 1.391698606312275e-05,
  "phases": [
   {
    "name": "init",
-   "description": "Waku(settings, client=ScriptedClient())",
-   "seconds": 0.03547845804132521
+   "description": "Waku(settings, client=ScriptedClient())"
   },
   {
    "name": "turn_tool",
-   "description": "waku.respond(...): gate, save_note, reply",
-   "seconds": 0.016985916066914797
+   "description": "waku.respond(...): gate, save_note, reply"
   },
   {
    "name": "turn_limit",
-   "description": "waku.respond(...) with max_iterations=2: two tool calls, then the tools-off final call",
-   "seconds": 0.005596499890089035
+   "description": "waku.respond(...) with max_iterations=2: two tool calls, then the tools-off final call"
   },
   {
    "name": "turn_consolidate",
-   "description": "waku.respond(...): reply, then consolidation",
-   "seconds": 0.004830625141039491
+   "description": "waku.respond(...): reply, then consolidation"
   },
   {
    "name": "graph_quick",
-   "description": "waku.respond('thanks!') with graph_workflows on: quick route",
-   "seconds": 0.009255167096853256
+   "description": "waku.respond('thanks!') with graph_workflows on: quick route"
   },
   {
    "name": "graph_full",
-   "description": "waku.respond(...) with graph_workflows on: full route",
-   "seconds": 0.0061452919617295265
+   "description": "waku.respond(...) with graph_workflows on: full route"
   }
  ],
  "counts": {

@@ -18,17 +18,22 @@ synthetic frames such as lambdas and comprehensions are dropped), with:
 
 Generators: Python reports every resume of a suspended generator as a new
 "call" event. The tracer marks those as ``resume`` (detected by the frame
-having last stopped on a YIELD_VALUE), so they are never mistaken for calls.
+having last stopped on a yield: YIELD_VALUE, or on 3.10 also YIELD_FROM,
+where ``yield from`` and ``await`` suspend), so they are never mistaken for
+calls.
 
 Threads: ``threading.setprofile`` covers threads started while tracing. A
 worker thread's depth is offset by the kept depth of the main thread's stack
-at the moment the worker first runs repo code (the main thread is blocked
-waiting for it), and its top kept frame's caller is the nearest kept frame on
-the main thread's stack, with no call line (which line the main thread is on
-when the worker starts is a race). Threads are labelled main, worker-1, worker-2, ... in
-order of first kept event, so labels compare across runs. Labels and
-offsets are keyed by the Thread object, not its ident: the OS reuses a
-finished thread's ident, and a new thread must not inherit the old label.
+at the moment the worker's task first runs repo code (the main thread is
+blocked waiting for it), and its top kept frame's caller is the nearest kept
+frame on the main thread's stack, with no call line (which line the main
+thread is on when the worker starts is a race). Both are read again at every
+top kept frame of the thread, so a pool thread reused for a later task gets
+that task's caller, not its first one's. Threads are labelled main,
+worker-1, worker-2, ... in order of first kept event, so labels compare
+across runs. Labels and offsets are keyed by the Thread object, not its
+ident: the OS reuses a finished thread's ident, and a new thread must not
+inherit the old label.
 """
 
 from __future__ import annotations
@@ -42,7 +47,8 @@ import threading
 from dataclasses import dataclass
 
 GEN_FLAGS = inspect.CO_GENERATOR | inspect.CO_COROUTINE | inspect.CO_ASYNC_GENERATOR
-YIELD_OP = dis.opmap["YIELD_VALUE"]
+YIELD_VALUE = dis.opmap["YIELD_VALUE"]
+YIELD_FROM = dis.opmap.get("YIELD_FROM")   # up to 3.10; 3.11+ yields on YIELD_VALUE
 DEFAULT_EXCLUDE_PARTS = ("tests", "test", "site-packages", "dist-packages")
 
 
@@ -90,6 +96,20 @@ def path_kept(filename, rules):
             return False
         return path.endswith(".py")
     return False
+
+
+def stopped_on_yield(co_code, lasti, yield_from=YIELD_FROM):
+    """True if a generator frame that just returned to its caller is
+    suspended, not finished. It stopped on YIELD_VALUE; or, on 3.10, inside
+    `yield from` / `await`, where CPython leaves f_lasti on the instruction
+    before YIELD_FROM so that resuming runs YIELD_FROM again (f_lasti on
+    YIELD_FROM itself means the delegate raised: finished)."""
+    if lasti < 0:
+        return False
+    if co_code[lasti] == YIELD_VALUE:
+        return True
+    return (yield_from is not None and lasti + 2 < len(co_code)
+            and co_code[lasti + 2] == yield_from)
 
 
 def is_synthetic(co_name, co_flags=inspect.CO_NEWLOCALS):
@@ -197,12 +217,16 @@ class Tracer:
             f = f.f_back
         return depth, caller, line
 
-    def _thread_context(self, thread):
-        """Offset depth and caller for a thread's top kept frame."""
+    def _thread_context(self, thread, top=False):
+        """Offset depth and caller for a thread's kept frames. ``top``: the
+        frame has no kept frame below it on its own thread, so it starts a
+        task (the first, or a later one on a reused pool thread): read the
+        main thread's stack afresh. Deeper frames reuse what their top frame
+        read."""
         if thread is self._main_thread:
             return 0, None, None
         ctx = self._thread_offsets.get(thread)
-        if ctx is None:
+        if ctx is None or top:
             main = sys._current_frames().get(self._main_ident)
             ctx = self._kept_ancestors(main) if main is not None else (0, None, None)
             self._thread_offsets[thread] = ctx
@@ -231,7 +255,7 @@ class Tracer:
             if code.co_flags & GEN_FLAGS and isinstance(self._info(code), tuple):
                 with self._lock:
                     lasti = frame.f_lasti
-                    if lasti >= 0 and code.co_code[lasti] == YIELD_OP:
+                    if stopped_on_yield(code.co_code, lasti):
                         self._suspended[id(frame)] = frame
                     else:
                         self._suspended.pop(id(frame), None)
@@ -255,7 +279,7 @@ class Tracer:
             # but the line the main thread is on is a race (it may still be
             # in executor.submit or already waiting in future.result), so
             # no call line is recorded for this hop.
-            offset, caller, _racy_line = self._thread_context(thread)
+            offset, caller, _racy_line = self._thread_context(thread, top=True)
             call_line = None
             depth += offset
         else:
