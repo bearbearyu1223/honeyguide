@@ -1,4 +1,5 @@
-/* Honeyguide agent avatars: honey-drop creatures, one prop each.
+/* Honeyguide agent avatars: honey-drop creatures, one prop each. The Guide is Honey, the mascot: a drop-shaped
+   honeyguide bird (tuft, beak, one wing) with an amber honeycomb satchel.
    Markup: <svg class="hg-av hg-av-<agent> hg-av-<state> hg-av-<size>"> from hg-avatars.js (or the .svg files inline).
    States: hg-av-idle | hg-av-working | hg-av-done | hg-av-failed | hg-av-waiting. (Prefixed on purpose: page.css has
    bare .done / .failed / .working rules that would otherwise hit the svg.)
@@ -12,7 +13,7 @@
   --hg-av-amber:#B8862A; --hg-av-gold:#E2A33C; --hg-av-sw:2;
   display:inline-block; flex:none; vertical-align:middle; overflow:visible;
 }
-.hg-av-guide{--hg-av-skin:#FFEDD2}
+.hg-av-guide{--hg-av-skin:#FFEDD2; --hg-av-wing:#F4D3A2}
 .hg-av-cartographer{--hg-av-skin:#F7F1DA}
 .hg-av-investigator{--hg-av-skin:#FFF2CC}
 .hg-av-tracer{--hg-av-skin:#FFEADF}
@@ -20,7 +21,7 @@
 
 /* dark: dimmer, warmer bodies so they do not glow on charcoal; a lighter honey outline keeps the edge */
 :root[data-theme="dark"] .hg-av{--hg-av-line:#C98348; --hg-av-ink:#1E1610; --hg-av-blush:#D98A7C; --hg-av-shine-o:.45}
-:root[data-theme="dark"] .hg-av-guide{--hg-av-skin:#DCC4A2}
+:root[data-theme="dark"] .hg-av-guide{--hg-av-skin:#DCC4A2; --hg-av-wing:#C9A57C}
 :root[data-theme="dark"] .hg-av-cartographer{--hg-av-skin:#D3CAA8}
 :root[data-theme="dark"] .hg-av-investigator{--hg-av-skin:#DBC79A}
 :root[data-theme="dark"] .hg-av-tracer{--hg-av-skin:#D9BFB2}
@@ -33,7 +34,9 @@
 .hg-av-eyes-happy path,.hg-av-eyes-sleepy path,.hg-av-mouth{stroke:var(--hg-av-ink)}
 .hg-av-mouth-grin,.hg-av-mouth-tiny{fill:var(--hg-av-ink); stroke:none}
 .hg-av-blush ellipse{fill:var(--hg-av-blush)}
-.hg-av-prop [stroke="#8F5A24"],.hg-av-prop2 [stroke="#8F5A24"],.hg-av-bubble circle{stroke:var(--hg-av-line)}
+.hg-av-prop [stroke="#8F5A24"],.hg-av-prop2 [stroke="#8F5A24"],.hg-av-bubble circle,.hg-av-bubble path,
+.hg-av-wing path,.hg-av-beak path{stroke:var(--hg-av-line)}
+.hg-av-wing path{fill:var(--hg-av-wing)}
 .hg-av-dot{fill:var(--hg-av-amber)}
 :root[data-theme="dark"] .hg-av-dot{fill:#E2C25C}
 :root[data-theme="dark"] .hg-av-map-l path,:root[data-theme="dark"] .hg-av-map-r path{fill:#B3C7B6}
@@ -47,14 +50,19 @@
 .hg-av-20 .hg-av-glint,.hg-av-20 .hg-av-shine,.hg-av-20 .hg-av-glare,
 .hg-av-22 .hg-av-glint,.hg-av-22 .hg-av-shine,.hg-av-22 .hg-av-glare,
 .hg-av-24 .hg-av-glint,.hg-av-24 .hg-av-shine,.hg-av-28 .hg-av-glint{display:none}
+/* Honey: the z inside the sleep hexagon is fuzz below 28px; the hexagon alone still says "dozing" */
+.hg-av-20 .hg-av-hexz-z,.hg-av-22 .hg-av-hexz-z,.hg-av-24 .hg-av-hexz-z{display:none}
 
 /* parts animate around their own box */
 .hg-av g,.hg-av path,.hg-av circle,.hg-av ellipse,.hg-av rect{transform-box:fill-box}
 .hg-av-all,.hg-av-char{transform-origin:50% 100%}
 .hg-av-eyes-open,.hg-av-eyes{transform-origin:50% 50%}
+.hg-av-wing{transform-origin:100% 20%} .hg-av-beak{transform-origin:0% 50%}
 
 /* variant parts: which face shows in which state */
-.hg-av-eyes-happy,.hg-av-eyes-sleepy,.hg-av-mouth-grin,.hg-av-mouth-frown,.hg-av-mouth-tiny,.hg-av-sparkle,.hg-av-bubble{opacity:0}
+.hg-av-eyes-happy,.hg-av-eyes-sleepy,.hg-av-mouth-grin,.hg-av-mouth-frown,.hg-av-mouth-tiny,.hg-av-sparkle,.hg-av-bubble,
+.hg-av-honeytrail,.hg-av-honeydrop{opacity:0}
+.hg-av-guide.hg-av-working .hg-av-honeytrail,.hg-av-guide.hg-av-done .hg-av-honeydrop{opacity:1}
 .hg-av-done .hg-av-eyes-open,.hg-av-waiting .hg-av-eyes-open,
 .hg-av-done .hg-av-mouth-smile,.hg-av-failed .hg-av-mouth-smile,.hg-av-waiting .hg-av-mouth-smile{opacity:0}
 .hg-av-done .hg-av-eyes-happy,.hg-av-done .hg-av-mouth-grin,
@@ -70,15 +78,27 @@
 .hg-av-checker.hg-av-idle .hg-av-char{animation-duration:3.5s} .hg-av-checker.hg-av-idle .hg-av-eyes-open{animation-duration:6.6s}
 @keyframes hg-av-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.025,.965)}}
 @keyframes hg-av-blink{0%,91%,97%,100%{transform:scaleY(1)}94%{transform:scaleY(.1)}}
+/* Honey also ruffles its wing now and then */
+.hg-av-guide.hg-av-idle .hg-av-wing{animation:hg-av-ruffle 7s ease-in-out infinite}
+@keyframes hg-av-ruffle{0%,86%,100%{transform:rotate(0)}89%{transform:rotate(-26deg)}92%{transform:rotate(6deg)}95%{transform:rotate(-14deg)}98%{transform:rotate(0)}}
 
 /* ---------- working: each agent shows its job */
 .hg-av-working .hg-av-eyes-open{animation:hg-av-blink 3.4s infinite}
 
-/* Guide: hops and waves its pennant forward, leading the way */
-.hg-av-guide.hg-av-working .hg-av-all{animation:hg-av-hop 1s cubic-bezier(.3,0,.5,1) infinite}
-.hg-av-guide.hg-av-working .hg-av-flag{transform-origin:0% 100%; animation:hg-av-wave 1s ease-in-out infinite}
-@keyframes hg-av-hop{0%,100%{transform:translateY(0) scale(1.04,.95)}15%{transform:translateY(0) scale(1,1)}45%{transform:translateY(-12%) scale(.97,1.04)}75%{transform:translateY(0) scale(1,1)}}
-@keyframes hg-av-wave{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(12deg)}}
+/* Guide (Honey): flutters forward, leaning in, wing beating; the logo's dotted trail fills in behind it, and halfway
+   through it glances back over its shoulder ("this way") */
+.hg-av-guide.hg-av-working .hg-av-all{animation:hg-av-flutter 2.4s ease-in-out infinite}
+.hg-av-guide.hg-av-working .hg-av-wing{animation:hg-av-flap .3s ease-in-out infinite}
+.hg-av-guide.hg-av-working .hg-av-eyes{animation:hg-av-glance 2.4s ease-in-out infinite}
+.hg-av-guide.hg-av-working .hg-av-tr2{animation:hg-av-tr2 2.4s linear infinite}
+.hg-av-guide.hg-av-working .hg-av-tr3{animation:hg-av-tr3 2.4s linear infinite}
+.hg-av-guide.hg-av-working .hg-av-tr4{animation:hg-av-tr4 2.4s linear infinite}
+@keyframes hg-av-flutter{0%,50%,100%{transform:translate(1px,-2.6px) rotate(6deg)}25%,75%{transform:translate(1.6px,-4.4px) rotate(7deg)}}
+@keyframes hg-av-flap{0%,100%{transform:rotate(-38deg)}50%{transform:rotate(14deg)}}
+@keyframes hg-av-glance{0%,50%,90%,100%{transform:translateX(.8px)}58%,82%{transform:translateX(-1.8px)}}
+@keyframes hg-av-tr2{0%,10%{opacity:0}18%,88%{opacity:1}97%,100%{opacity:0}}
+@keyframes hg-av-tr3{0%,22%{opacity:0}30%,88%{opacity:1}97%,100%{opacity:0}}
+@keyframes hg-av-tr4{0%,34%{opacity:0}42%,88%{opacity:1}97%,100%{opacity:0}}
 
 /* Cartographer: unfolds its map, looks it over, folds it back */
 .hg-av-cartographer.hg-av-working .hg-av-map-l{transform-origin:100% 50%; animation:hg-av-fold 2.4s ease-in-out infinite}
@@ -120,17 +140,34 @@
 .hg-av-done .hg-av-spark2{animation-delay:.12s!important} .hg-av-done .hg-av-spark3{animation-delay:.24s!important}
 @keyframes hg-av-sparkle{0%{opacity:0}15%,60%{opacity:1}100%{opacity:0}}
 @keyframes hg-av-twinkle{0%{transform:scale(0) rotate(0)}40%{transform:scale(1.15) rotate(30deg)}100%{transform:scale(.6) rotate(45deg)}}
+@keyframes hg-av-hop{0%,100%{transform:translateY(0) scale(1.04,.95)}15%{transform:translateY(0) scale(1,1)}45%{transform:translateY(-12%) scale(.97,1.04)}75%{transform:translateY(0) scale(1,1)}}
+/* Honey: lands (wing settling), one small happy hop, then a honey drop pops up in its satchel with the sparkles */
+.hg-av-guide.hg-av-done .hg-av-all{animation:hg-av-land 1.1s cubic-bezier(.3,0,.5,1) 1 both}
+.hg-av-guide.hg-av-done .hg-av-wing{animation:hg-av-settle 1.1s ease-out 1 both}
+.hg-av-guide.hg-av-done .hg-av-honeydrop{transform-origin:50% 100%; animation:hg-av-drop-pop 1.8s ease-out 1 both}
+.hg-av-guide.hg-av-done .hg-av-sparkle{animation:hg-av-sparkle-late 2.2s ease-out 1 both}
+.hg-av-guide.hg-av-done .hg-av-sparkle path,.hg-av-guide.hg-av-done .hg-av-dropspark{transform-origin:50% 50%; animation:hg-av-twinkle-late 2.2s ease-out 1 both}
+@keyframes hg-av-land{0%{transform:translateY(-16%) rotate(5deg)}30%{transform:translateY(0) scale(1.06,.92)}42%{transform:translateY(0) scale(1)}62%{transform:translateY(-9%) scale(.97,1.04)}82%{transform:translateY(0) scale(1.03,.97)}100%{transform:translateY(0) scale(1)}}
+@keyframes hg-av-settle{0%{transform:rotate(-36deg)}12%{transform:rotate(12deg)}26%{transform:rotate(-20deg)}42%,100%{transform:rotate(0)}}
+@keyframes hg-av-drop-pop{0%,52%{transform:scale(0);opacity:0}68%{transform:scale(1.3);opacity:1}82%,100%{transform:scale(1);opacity:1}}
+@keyframes hg-av-sparkle-late{0%,45%{opacity:0}58%,80%{opacity:1}100%{opacity:0}}
+@keyframes hg-av-twinkle-late{0%,45%{transform:scale(0) rotate(0)}65%{transform:scale(1.15) rotate(30deg)}100%{transform:scale(.6) rotate(45deg)}}
 
 /* ---------- failed: droops, greys, prop lowered; no motion */
 .hg-av-failed{filter:grayscale(.85); opacity:.72}
 .hg-av-failed .hg-av-char{transform:translateY(1px) scale(1.04,.93)}
 .hg-av-failed .hg-av-eyes{transform:translateY(1.4px) scale(.85)}
 .hg-av-failed .hg-av-prop,.hg-av-failed .hg-av-prop2{transform-origin:0% 100%; transform:translate(1px,2px) rotate(14deg)}
+.hg-av-guide.hg-av-failed .hg-av-wing{transform:rotate(24deg)} .hg-av-guide.hg-av-failed .hg-av-beak{transform:rotate(16deg)}
 
 /* ---------- waiting for the reader: sleepy eyes, slow deep breath, a drifting dream bubble */
 .hg-av-waiting .hg-av-char{animation:hg-av-breathe 5s ease-in-out infinite}
 .hg-av-waiting .hg-av-bubble{transform-origin:0% 100%; animation:hg-av-bubble 5s ease-in-out infinite}
 @keyframes hg-av-bubble{0%,100%{transform:scale(.7);opacity:.35}50%{transform:scale(1) translateY(-1px);opacity:1}}
+/* Honey dozes with its head tucked: face lowered, beak tucked down, wing folded; the bubble is a hexagon "z" */
+.hg-av-guide.hg-av-waiting .hg-av-face{transform:translateY(1.2px)}
+.hg-av-guide.hg-av-waiting .hg-av-beak{transform:translate(-.6px,.6px) rotate(32deg)}
+.hg-av-guide.hg-av-waiting .hg-av-wing{transform:rotate(14deg)}
 
 /* ---------- static: avatars inside running prose ("the [Guide] Guide sends it...") keep their pose but never move */
 .hg-av-static,.hg-av-static *{animation:none!important}
@@ -139,12 +176,16 @@
 @media (prefers-reduced-motion: reduce){
   .hg-av,.hg-av *{animation:none!important}
   .hg-av-done .hg-av-sparkle,.hg-av-waiting .hg-av-bubble{opacity:1}
-  .hg-av-guide.hg-av-working .hg-av-flag{transform-origin:0% 100%; transform:rotate(10deg)}
+  .hg-av-guide.hg-av-working .hg-av-all{transform:translate(1px,-3px) rotate(6deg)}
+  .hg-av-guide.hg-av-working .hg-av-wing{transform:rotate(-34deg)}
+  .hg-av-guide.hg-av-working .hg-av-eyes{transform:translateX(-1.6px)}
   .hg-av-investigator.hg-av-working .hg-av-lens{transform:translate(-9px,-6px) rotate(-8deg)}
   .hg-av-checker.hg-av-working .hg-av-stamp{transform:translate(0,1px) scale(1.06,.92)}
 }
 .rm .hg-av,.rm .hg-av *{animation:none!important}
 .rm .hg-av-done .hg-av-sparkle,.rm .hg-av-waiting .hg-av-bubble{opacity:1}
-.rm .hg-av-guide.hg-av-working .hg-av-flag{transform-origin:0% 100%; transform:rotate(10deg)}
+.rm .hg-av-guide.hg-av-working .hg-av-all{transform:translate(1px,-3px) rotate(6deg)}
+.rm .hg-av-guide.hg-av-working .hg-av-wing{transform:rotate(-34deg)}
+.rm .hg-av-guide.hg-av-working .hg-av-eyes{transform:translateX(-1.6px)}
 .rm .hg-av-investigator.hg-av-working .hg-av-lens{transform:translate(-9px,-6px) rotate(-8deg)}
 .rm .hg-av-checker.hg-av-working .hg-av-stamp{transform:translate(0,1px) scale(1.06,.92)}

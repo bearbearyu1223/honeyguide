@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Honeyguide agents · avatar sheet</title>
-<!-- Params: ?theme=dark · &strip=<agent>&ts=0,0.25,... (one row, frozen at each time; for frames and GIFs)
+<!-- Params: ?theme=dark · &strip=<agent>&ts=0,0.25,... (one row, frozen at each time; for frames and GIFs;
+     &state=<state> picks the state, &cols=N wraps the cells into rows of N)
      · · &motion=reduce · &view=context (only the page-context strip)
      · &frame=<agent>&t=<seconds> (one 96px avatar, working, frozen at t; used for frames/*.png) -->
 <link rel="stylesheet" href="avatars.css">
@@ -44,7 +45,7 @@ code{font:12px ui-monospace,Menlo,monospace;background:color-mix(in srgb,var(--l
 /* frame mode: freeze every animation at t */
 .frame main{padding:8px}
 .strip body,.strip main{padding:0;margin:0;background:var(--surface)}
-.strip main{display:flex}
+.strip main{display:flex;flex-wrap:wrap}
 .strip .cell{width:112px;height:112px;display:flex;align-items:center;justify-content:center;flex:none}
 .frame .hg-av,.frame .hg-av *{animation-play-state:paused!important;animation-delay:var(--t)!important}
 </style>
@@ -58,7 +59,7 @@ const root = document.documentElement;
 root.dataset.theme = P.get("theme") === "dark" ? "dark" : "light";
 if (P.get("motion") === "reduce") root.classList.add("rm");
 const AG = ["guide", "cartographer", "investigator", "tracer", "checker"];
-const NM = { guide: "Guide", cartographer: "Cartographer", investigator: "Investigator", tracer: "Tracer", checker: "Checker" };
+const NM = { guide: "Honey · Guide", cartographer: "Cartographer", investigator: "Investigator", tracer: "Tracer", checker: "Checker" };
 const ST = ["idle", "working", "done", "failed", "waiting"];
 const m = document.getElementById("m");
 
@@ -90,6 +91,7 @@ if (P.get("strip")) {
   /* a row of 112px cells, one agent frozen at each time in ts (seconds); split into frames by ffmpeg untile */
   root.classList.add("frame", "strip");
   const ts = (P.get("ts") || "0").split(",");
+  if (P.get("cols")) m.style.width = `${112 * +P.get("cols")}px`;
   m.innerHTML = ts.map(t => `<div class="cell" style="--t:-${t}s">${hgAv(P.get("strip"), P.get("state") || "working", 96)}</div>`).join("");
 } else if (P.get("frame")) {
   root.classList.add("frame");

@@ -1,7 +1,9 @@
 # Swapping the agent emoji for the avatars
 
 This is the mechanical swap of today's emoji-in-a-tinted-circle (`AG` and `avHTML` in `page.js`, the `.av` rules in
-`page.css`) for the honey-drop avatars in this folder. The line numbers below are from the 2026-11-15 working tree.
+`page.css`) for the honey-drop avatars in this folder. The Guide is **Honey**, the Honeyguide mascot: a plump honeyguide bird
+built from the same drop (its tip swept back into a tuft, plus a beak, one wing and an amber honeycomb satchel). The
+other four are drops with one prop each. The line numbers below are from the 2026-11-15 working tree.
 T7.4 is editing those files, so find each spot by its code, not its number.
 
 ## 1. Files to bring in
@@ -15,7 +17,7 @@ The page has to own copies, because `assets/` is not served. After changing a de
 `python3 assets/avatars/tools/build_avatars.py` (SVGs and `hg-avatars.js`) and
 `sh assets/avatars/tools/render_pngs.sh` (PNGs, frames, GIF and APNG), then copy them over again.
 
-`hgAv(agent, state, size)` returns one inline `<svg>` (about 3 KB, no ids, `aria-hidden`), so any number can share
+`hgAv(agent, state, size)` returns one inline `<svg>` (3 to 5 KB; Honey is the largest; no ids, `aria-hidden`), so any number can share
 a page.
 - **state** is `idle | working | done | failed | waiting`. Add ` static` for an avatar that must never move,
   e.g. `"idle static"`.
@@ -52,7 +54,7 @@ In `page.css`:
 | Answer header `.by` in `nodeHTML` (`avHTML(r.agent, false)`) | 20 → **28** | `idle`. `done` only on the first render after the answer arrives (see the note below) |
 | Panel work row `workHTML` / `.work` (`avHTML(w.agent, true)`) | 28 → **40** | `working` |
 | Thread "is working on it" (`avHTML(q.agent…, true)`) | 28 → **40** | `working` |
-| Waiting for the Guide (`avHTML("guide", false)` before "Waiting for the 🧭 Guide") | 28 → 28 | **`waiting`** (sleepy eyes, dream bubble) |
+| Waiting for the Guide (`avHTML("guide", false)` before "Waiting for the 🧭 Guide") | 28 → 28 | **`waiting`** (Honey dozes, head tucked, under a hexagon "z") |
 | Failed reply (`q.status === "failed"`, has no avatar today) | (none) → **20** | **`failed`**: add `avHTML(q.agent || "investigator", false, "", 20, "failed")` before "Couldn't answer" |
 | Top bar "N at work" `.top .mini` | 24 → 24 | `working` |
 | "Also at work" `.elsewhere` | 22 → 22 | `working` |
@@ -72,15 +74,15 @@ reads as content.
 - **Reduced motion:** `avatars.css` stops all avatar motion under `@media (prefers-reduced-motion: reduce)` and under
   an `.rm` ancestor, the page's existing switch (`setMotion` toggles `.rm` on `<html>`). Each state gets a still
   pose:
-  - working: the Guide's flag raised, the Investigator's lens over an eye, the Checker's badge pressed down, the map
-    open.
-  - done: sparkles shown.
-  - waiting: dream bubble shown.
+  - working: Honey mid-flutter, wing up, its dotted trail behind it and eyes glancing back; the Investigator's lens
+    over an eye; the Checker's badge pressed down; the map open.
+  - done: sparkles shown (Honey: plus the honey drop in its satchel).
+  - waiting: dream bubble shown (Honey: the hexagon "z").
 
   The page's own `.rm *{animation:none!important}` already agrees with this. The `.rm .av.working` ring and "…"
   badge stay as they are.
 - **Dark:** keyed off `:root[data-theme="dark"]`, which `setTheme` already sets. In dark the bodies are dimmer and
-  warmer, the outline turns honey `#C98348`, and the trail dots turn `#E2C25C`.
+  warmer, the outline turns honey `#C98348`, and the trail dots turn `#E2C25C`. Honey's wing dims with its body.
 
 ## 5. The emoji inside text strings
 
@@ -116,3 +118,40 @@ answer".
 - `#state=working&motion=reduce`: still poses plus the ring and "…" badge.
 - A 20px avatar in prose has to sit on the text baseline. `.inl .hg-av{vertical-align:-4px}` worked in
   `sheet.html` at 15px/1.7. Tune it for the page's 15px body.
+
+## 7. Honey, the Guide
+
+Honey replaces the old drop Guide with its pennant; that one is kept as `sketches/guide-drop.svg`. The three
+directions tried are in `sketches/honey-compare.png` (`honey-a-tuft.svg`, chosen; `honey-b-tilt.svg`;
+`honey-c-round.svg`). In code it is still agent `"guide"`, so `hgAv("guide", …)` and every call site above stay as
+they are.
+
+| State | What Honey does |
+|---|---|
+| idle | breathes and blinks; every 7 s a little wing ruffle |
+| working | flutters forward, leaning in, wing beating; the logo's dotted amber trail (start dot, then dots turning up) fills in behind it; halfway through each 2.4 s loop it glances back, "this way" |
+| done | lands, one small happy hop, then a honey drop pops up in its satchel with the sparkles; holds the happy face and the drop |
+| waiting | dozes with its head tucked (face lowered, beak tucked, wing folded) under a drifting hexagon "z" (below 28px the z is dropped and the hexagon stays) |
+| failed | greyed and droopy like the family: wing, beak and satchel lowered |
+
+Files: `honey.svg` (the mascot, idle, 96px; it carries its own breathe/blink/ruffle style, so it moves as a plain
+`<img>` and stays still under reduced motion), `honey-badge.svg` (static, below), `anim/guide-working.gif|.png`,
+`anim/honey-done.gif|.png`, `anim/honey-waiting.gif|.png`, `frames/guide-1..4.png`.
+
+**Its trail and the Tracer's.** Both leave amber dots at the lower left. Honey's start with the logo's big dot and turn
+upward, and appear only while it works; the Tracer's are always there, on the ground, beside its spool.
+
+## 8. The research plugin's review page: Honey as the `honeyguide` job avatar
+
+`honey-badge.svg` is the mascot cropped to fit a circle (viewBox `0.5 3.5 48 48`), with no ids, no classes, no
+style and no motion, so it can be pasted inline anywhere. In
+`research-content-assistant/plugins/research/skills/review/scripts/review_page.html`, the `AV.honeyguide.face` entry
+holds an inline copy of the logo at 28px. To use Honey instead:
+
+1. Replace that `face` string with the contents of `honey-badge.svg`, changing `width="44" height="44"` to
+   `width="36" height="36"`. The `.av` circle is 44px; at 40px the tuft and wing touch its rim, at 36px they clear it.
+2. Keep `bg:"#f5ead9"`: the cream circle suits the cream bird in light and in dark (the light fills are baked in).
+3. Keep `.av.a-honeyguide .face svg{display:block}` and the `hgpulse` working animation. A gentle scale-and-tilt
+   reads as Honey bobbing along, and the page's own reduced-motion rule already slows it.
+
+That is a change in the research plugin, not in Honeyguide, so it belongs to whoever edits the review page.
