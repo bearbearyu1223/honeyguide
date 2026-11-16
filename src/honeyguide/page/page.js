@@ -165,11 +165,18 @@ const unsupported = c => !!c && c.check === "not_supported" && !["stale", "stale
 const NS_DEFAULT = "The Checker re-read the cited lines and they don't show all of this.";
 const nsTip = c => `<b class="tflag">Not supported</b> · ${inlineCode(c.check_note || NS_DEFAULT)}`;
 let NSN = 0;   // ids for the hidden descriptions, unique per render
+/* T7.16: where one span ends a sentence and the next starts a word with nothing between them ("window_sizes." +
+   "The quarter"), an answer recorded before answer record spaced them shows a space. It is not a leaf, so the
+   answer's offsets (and every anchor into it) are unchanged. mapdoc.space_sentences is the same rule. */
+const SENT_END = /[.!?]["')\]`*]*$/, SENT_START = /^[\p{L}\p{N}_"'(\[`*]/u;
+const sentGap = (prev, t) => !!prev && !!t && SENT_END.test(prev) && SENT_START.test(t);
 /* spans (with claims) to HTML, offsets from o; ctx: "map" or "answer" */
 function spansHTML(spans, o, ctx, byId) {
-  let html = "", pos = o;
+  let html = "", pos = o, prev = "";
   for (const s of spans) {
     const t = s.text || "";
+    if (ctx === "answer" && sentGap(prev, t)) html += `<span class="sgap" aria-hidden="true"> </span>`;
+    prev = t;
     if (s.claim) {
       const c = byId.get(s.claim);
       const st = claimState(c);
@@ -443,12 +450,21 @@ function shownEv(c, panel) {
 /* what a hop hands on: [name, shape], the same words on the rail and on the diagram's pill */
 const hopEdge = h => (h.returns && h.data ? [h.returns, h.data] : h.returns ? ["returns", h.returns] : h.data ? ["data", h.data] : null);
 const hopAnchor = c => (!c ? "" : c.evidence === "searched_not_found" ? "searched" : (c.anchors || [])[0] ? anchorText(c.anchors[0]) : c.evidence === "general_knowledge" ? "general knowledge" : "");
-function hopNote(h, style) {
-  if (h.trace === "blind_spot") return ["Trace blind spot:", h.note || "the runtime trace can't see inside this call"];
+/* T7.16: a path was run only if a runtime trace saw some hop (the contract's `trace: "seen"`). Without one, nothing
+   was run: hops are "read in source, not run", and a blind spot is code a Python trace can't see, not something a
+   trace missed. "Trace blind spot" and "not in the runtime trace" are kept for paths that were traced. */
+const traced = p => (p?.hops || []).some(h => h.trace === "seen");
+const trWord = (h, isTraced) => h.trace === "seen" ? "seen at runtime"
+  : !isTraced ? "read in source, not run"
+  : h.trace === "blind_spot" ? "trace blind spot" : "not in the runtime trace";
+function hopNote(h, style, isTraced = true) {
+  if (h.trace === "blind_spot") return isTraced ? ["Trace blind spot:", h.note || "the runtime trace can't see inside this call"]
+    : ["Not traceable:", h.note || "a Python trace can't see inside this call (C/C++, compiled or autograd code)"];
   if (style === "dashed") return ["Inferred.", h.note || h.label || "neither read in source nor seen at runtime"];
   return h.note ? ["", h.note] : null;
 }
 function pathHTML(p, byId, panel) {
+  const isTraced = traced(p);
   const lanes = new Map((p.lanes || []).map(l => [l.id, l]));
   const loops = new Map((p.loops || []).map(l => [l.id, l]));
   const counts = {};
@@ -456,12 +472,12 @@ function pathHTML(p, byId, panel) {
     const c = byId.get(h.claim);
     const ev = c ? c.evidence : "inferred";
     const st = claimState(c);
-    const shown = shownEv(c, panel), style = hopStyle(h, c), note = hopNote(h, style);
+    const shown = shownEv(c, panel), style = hopStyle(h, c), note = hopNote(h, style, isTraced);
     counts[ev] = (counts[ev] || 0) + 1;
     const tag = i === 0 ? "entry" : i === p.hops.length - 1 ? "end" : "";
     const to = lanes.get(h.to);
     const loop = h.loop && loops.get(h.loop);
-    const tr = h.trace === "unseen" ? `<span class="tr">not in the runtime trace</span>` : h.trace === "blind_spot" ? `<span class="tr">trace blind spot</span>` : "";
+    const tr = h.trace === "seen" ? "" : `<span class="tr">${trWord(h, isTraced)}</span>`;
     const quiet = !panel && unsupported(c);
     const ok = panel && c?.check === "supported" && st !== "stale" ? `<span class="ok" data-tip="<b>Checked</b> · the Checker re-read the cited lines: supported">✓</span>`
       : quiet ? `<span class="sr">Not supported: ${esc(c.check_note || NS_DEFAULT)}</span>`
@@ -497,6 +513,7 @@ function components(doc) {
   return out;
 }
 function diagramModel(p, byId, panel, key) {
+  const isTraced = traced(p);
   const compOf = HGD.resolver(components(D.map?.document));
   const lanes = {};
   for (const l of p.lanes || []) lanes[l.id] = { name: l.label, sub: (l.path && compOf(l.path)?.role) || "", file: l.path || null };
@@ -504,7 +521,7 @@ function diagramModel(p, byId, panel, key) {
   for (const l of p.loops || []) loops[l.id] = l.label;
   const hops = (p.hops || []).map(h => {
     const c = byId.get(h.claim), style = hopStyle(h, c);
-    return { fn: h.call, a: hopAnchor(c), ev: shownEv(c, panel), style, note: hopNote(h, style), d: h.label || "", trace: h.trace,
+    return { fn: h.call, a: hopAnchor(c), ev: shownEv(c, panel), style, note: hopNote(h, style, isTraced), d: h.label || "", trace: h.trace, tr: trWord(h, isTraced),
       from: h.from, to: h.to, edge: hopEdge(h), loop: h.loop || null, claim: h.claim,
       chip: c && (c.anchors || []).length ? 0 : null, search: c?.evidence === "searched_not_found",
       ns: unsupported(c) ? c.check_note || NS_DEFAULT : null };
@@ -513,7 +530,7 @@ function diagramModel(p, byId, panel, key) {
   const l0 = (p.lanes || []).find(l => l.id === p.hops?.[0]?.from);
   const fileName = l0?.path ? [l0.path, l0.path.split("/").pop()].find(x => l0.label.startsWith(x)) : null;
   const startLabel = l0 ? (fileName ? l0.label.slice(fileName.length).replace(/^[\s·:]+/, "") || l0.label : l0.label) : "";
-  return { key, id: p.id, title: p.title, lanes, loops, hops, evNames: EVNAMES, startLabel };
+  return { key, id: p.id, title: p.title, lanes, loops, hops, evNames: EVNAMES, startLabel, traced: isTraced };
 }
 function buildFigures(doc, byId) {
   for (const k of [...FIGS.keys()]) if (!k.startsWith("resp:")) FIGS.delete(k);
@@ -547,6 +564,16 @@ function figSVG(key, w) {
 /* Han's v3.1 choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
    (readable text over a shrunken picture); "Show the diagram" or View as diagram overrides that for the flow. */
 const MIN_SCALE = 0.85;
+/* T7.16: the overlay is as wide as its diagram, up to its own width (the map area beside the panel) less margins,
+   not the reading column's 1000px; the diagram then scales down to MIN_SCALE at most, and scrolls past that */
+const OV_MARGIN = 32;
+function ovWidth(key) {
+  const m = FIGS.get(key), ov = $("#dgov");
+  if (!m || !ov) return figWidth();
+  const avail = Math.max(320, ov.clientWidth - 2 * OV_MARGIN);
+  const natural = key === "graph" ? HGD.layoutGraph(m, 1).natural : HGD.layoutSeq(m, 1).natural;
+  return Math.round(Math.min(avail, Math.max(natural + 2, Math.min(560, avail))));
+}
 function tooNarrow(key, w) { const m = FIGS.get(key); return !!m && UI.open && w / HGD.layoutSeq(m, w).natural < MIN_SCALE; }
 function renderFigs(force) {
   const w = figWidth();
@@ -559,14 +586,16 @@ function renderFigs(force) {
   }
   for (const fig of [...$$(".fig[data-key]", COL), $("#dgovfig")]) {
     if (!fig || !fig.dataset.key || (!force && fig.offsetParent === null)) continue;
-    if (!force && +fig.dataset.w === w) continue;
+    const ov = fig.id === "dgovfig", fw = ov ? ovWidth(fig.dataset.key) : w;
+    if (ov) { $("#dgov").style.setProperty("--ovw", fw + "px"); $("#dgov").style.setProperty("--ovm", OV_MARGIN + "px"); }
+    if (!force && +fig.dataset.w === fw) continue;
     if (pinned && fig.contains(pinned)) unpin();
-    fig.dataset.w = w;
-    $(".dgwrap", fig).innerHTML = figSVG(fig.dataset.key, w - 2);
+    fig.dataset.w = fw;
+    $(".dgwrap", fig).innerHTML = figSVG(fig.dataset.key, fw - 2);
     /* a sequence diagram shown anyway in too little room (the overlay, or "Show the diagram") keeps 0.85 and
        scrolls sideways rather than shrinking its text further */
     const svg = $("svg.dg-seq", fig);
-    const floored = !!svg && (w - 2) / +svg.dataset.natural < MIN_SCALE;
+    const floored = !!svg && (fw - 2) / +svg.dataset.natural < MIN_SCALE;
     if (floored) svg.style.width = Math.round(+svg.dataset.natural * MIN_SCALE) + "px";
     fig.classList.toggle("scrolls", floored);
   }
@@ -650,7 +679,7 @@ function hopCtxHTML(g) {
   if (!h) return "";
   const what = k === "call" ? `<code>${esc(h.fn)}</code>` : `${k === "ret" ? "returns" : "hands on"} <code>${esc(h.edge.filter(Boolean).join(" "))}</code>`;
   const ev = h.ev ? EVNAMES[h.ev] : h.ns ? "not supported" : "not checked yet";
-  const tr = h.trace === "seen" ? "seen at runtime" : h.trace === "blind_spot" ? "trace blind spot" : "not in the runtime trace";
+  const tr = h.tr || trWord(h, m.traced !== false);
   const evw = h.ev === "seen_at_runtime" && h.trace === "seen" ? ev : `${ev} · ${tr}`;
   return `<div class="snip-ctx"><div class="sc-h">${h.ev ? `<span class="dot ev-${esc(h.ev)}"></span>` : ""}<b>Hop ${i + 1} of ${m.hops.length}</b><span>·</span>${what}<span>·</span><span>${esc(evw)}</span></div>`
     + `${h.d || h.note ? `<div class="sc-d">${h.d ? inlineCode(h.d) : ""}${h.note && h.note[0] !== "Inferred." ? `${h.d ? "<br>" : ""}${h.note[0] ? `<b>${esc(h.note[0])}</b> ` : ""}${esc(h.note[1])}` : ""}</div>` : ""}`
@@ -802,6 +831,16 @@ function layout() {
   let last = -99, shift = 0;
   for (const [el, top] of items) { shift = Math.abs(top - last) < 20 ? shift + 24 : 0; el.style.top = top + "px"; el.style.marginLeft = shift + "px"; last = top; }
 }
+/* an anchor in an answer: as asked while the answer's text is unchanged; after a repair narrowed one of its spans
+   (T7.16), re-found by its quote, as on a regenerated map (several hits or none: unmarked, never guessed) */
+function resolveAnswerAnchor(a, r) {
+  if (!r) return null;
+  if (!a.revision || !r.revision || a.revision === r.revision) return [a.start, a.end];
+  const t = r.text || "", i = a.quote ? t.indexOf(a.quote) : -1;
+  if (i < 0 || t.indexOf(a.quote, i + 1) >= 0) return null;
+  const s = cpLen(t.slice(0, i));
+  return [s, s + cpLen(a.quote)];
+}
 function answerOverlays() {
   /* follow-up marks and notes inside rendered answers */
   for (const host of $$(".ans[data-doc]", PBODY)) {
@@ -811,9 +850,13 @@ function answerOverlays() {
     for (const kid of IDX.kids.get(r?.parent) || []) {
       const a = IDX.Q.get(kid).anchor;
       if (!a || a.doc !== host.dataset.doc || (a.start === 0 && a.end >= len)) continue;
-      highlight(host, a.start, a.end, mk("fmk", { go: kid }));
+      const at = resolveAnswerAnchor(a, r);
+      if (at) highlight(host, at[0], at[1], mk("fmk", { go: kid }));
     }
-    for (const n of D.notes.notes) if (n.anchor && n.anchor.doc === host.dataset.doc) highlight(host, n.anchor.start, n.anchor.end, mk("nt", { n: n.id }));
+    for (const n of D.notes.notes) {
+      const at = n.anchor && n.anchor.doc === host.dataset.doc && resolveAnswerAnchor(n.anchor, r);
+      if (at) highlight(host, at[0], at[1], mk("nt", { n: n.id }));
+    }
     if (UI.compose && UI.compose.doc === host.dataset.doc) highlight(host, UI.compose.start, UI.compose.end, mk("fmk pend", {}));
   }
 }

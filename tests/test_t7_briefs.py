@@ -28,8 +28,10 @@ READ_ONLY_TOOLS = {"Read", "Grep", "Glob", "Bash"}
 MUST_NAME = {
     "cartographer": {"anchor resolve", "map validate", "claims save", "refresh-plan", "claims list",
                      "activity update", "map draft-dir", "map check", "map ingest", "drafts dir", "claims repair"},
-    "investigator": {"anchor resolve", "answer record", "activity update", "drafts dir"},
-    "tracer": {"anchor resolve", "answer record", "activity update", "drafts dir"},
+    "investigator": {"anchor resolve", "answer record", "activity update", "drafts dir", "claims list", "claims repair",
+                     "preview"},
+    "tracer": {"anchor resolve", "answer record", "activity update", "drafts dir", "claims list", "claims repair",
+               "preview"},
     "checker": {"claims list", "preview", "verdict set", "drafts dir"},
     # refresh apply logs the refresh itself (T7.5), so the skill no longer names refresh-log add.
     "honeyguide": {"status", "inbox", "question release", "question claim", "question show", "question fail",
@@ -256,3 +258,93 @@ def test_the_pipe_check_catches_a_heredoc():
     bad = "```bash\nhoneyguide verdict set --repo R <<'JSON'\n{}\nJSON\n```\n"
     assert any(p in bad for p in PIPED)
     assert any(p in "echo '{\"id\": 1}' | honeyguide activity update" for p in PIPED)
+
+
+# -- T7.16 -------------------------------------------------------------------------------------------------------------
+
+COMPOUND = re.compile(r"&&|\|\||(?<![<>&0-9])\|(?!\|)|;")
+
+
+@pytest.mark.parametrize("path", AGENT_FILES + SKILL_FILES + [ROOT / "README.md"],
+                         ids=lambda p: p.stem if p.name != "SKILL.md" else "skill")
+def test_no_command_example_chains_commands(path):
+    """One honeyguide command per Bash call: a line of code that runs honeyguide never chains another command with
+    ``&&``, ``;`` or ``|`` (the permission rules refuse compound commands; the Guide was refused live)."""
+    body = path.read_text(encoding="utf-8")
+    bad = [t for t in code_texts(body) if INVOCATION.search(t) and COMPOUND.search(t.replace("2>&1", ""))]
+    assert not bad, f"{path.name}: chained command(s) in an example: {bad}"
+
+
+def test_the_chain_check_catches_and_and():
+    for bad in ("honeyguide status --repo R && honeyguide inbox --repo R", "honeyguide inbox --repo R; ls",
+                "honeyguide claims list --repo R | head"):
+        md = f"run `{bad}`\n"
+        assert [t for t in code_texts(md) if INVOCATION.search(t) and COMPOUND.search(t.replace("2>&1", ""))], bad
+    ok = "`honeyguide watch --follow --repo R 2>&1`"
+    assert not [t for t in code_texts(ok) if INVOCATION.search(t) and COMPOUND.search(t.replace("2>&1", ""))]
+
+
+@pytest.mark.parametrize("path", AGENT_FILES + SKILL_FILES,
+                         ids=lambda p: p.stem if p.name != "SKILL.md" else "skill")
+def test_every_brief_says_one_command_per_bash_call(path):
+    flat = " ".join(path.read_text(encoding="utf-8").split())
+    assert "One `honeyguide` command per Bash call" in flat or "One command per Bash call" in flat
+    assert "`&&`, `;` or `|`" in flat
+
+
+def checker_flat() -> str:
+    return " ".join((ROOT / "agents" / "checker.md").read_text(encoding="utf-8").split())
+
+
+def test_checker_computes_values_and_never_trusts_a_comment():
+    flat = checker_flat()
+    assert "**Compute, don't quote.**" in flat and "### Worked example: compute, don't quote" in flat
+    assert "only if the cited **code** produces that value" in flat
+    assert "A comment or docstring that states the value is not evidence for it, except for a claim labelled `docs`" in flat
+    assert "When the code and a comment disagree, the claim must follow the code" in flat
+    assert "naming the line that computes the value" in flat
+    # the worked example is a made-up repo, and its arithmetic is right: the stale comment says 24, the code gives 8
+    body = (ROOT / "agents" / "checker.md").read_text(encoding="utf-8")
+    example = body.split("### Worked example: compute, don't quote", 1)[1].split("\n## ", 1)[0]
+    assert "pool/config.py" in example and "nanochat" not in example
+    max_jobs, workers = 1536, 64
+    assert max(-(-max_jobs // workers // 3), 8) == 8 and max_jobs // workers == 24
+    assert "-(-1536 // 64 // 3) = 8" in " ".join(example.split())
+
+
+def test_checker_reads_anchors_through_preview_only():
+    flat = checker_flat()
+    assert "**This is how you read a cited anchor, always**: not the Read tool, not `git show`" in flat
+    assert "hash_matches" in flat
+    assert "git -C REPO show" not in flat           # the old "for a range too long, git show" escape hatch is gone
+    assert "never for reading a cited anchor (use `preview`)" in flat
+
+
+def test_checker_status_count_comes_from_claims_list():
+    flat = checker_flat()
+    assert "`claims list`'s `count` for your `SCOPE`" in flat
+    skill = " ".join(SKILL_FILES[0].read_text(encoding="utf-8").split())
+    step = skill.split("6. **Check**", 1)[1].split("7. **Repair**", 1)[0]
+    assert "`N` = the `count` of `honeyguide claims list --repo REPO --responses <response id> --check unchecked --freshness current`" in step
+    assert step.index("claims list") < step.index('"Checking N claims"')
+
+
+def test_answers_get_the_repair_pass():
+    skill = " ".join(SKILL_FILES[0].read_text(encoding="utf-8").split())
+    assert "## 8. Repair pass on an answer" in skill
+    sec = skill.split("## 8. Repair pass on an answer", 1)[1].split("## Never", 1)[0]
+    for must in ("`MODE: repair`", "`RESPONSE: <response id>`", "`ROUND: R`", "--responses <response id> --check not_supported",
+                 "claims repair --response <response id>", "Re-check** only the changed claims", "Stop after round 2"):
+        assert must in sec, must
+    assert "the repair pass on an answer (section 8)" in skill
+    for stem in ("investigator", "tracer"):
+        flat = " ".join((ROOT / "agents" / f"{stem}.md").read_text(encoding="utf-8").split())
+        assert "## Repair (`MODE: repair`)" in flat and "`MODE`: `answer`" in flat
+        assert "honeyguide claims repair --repo REPO --response RESPONSE --input INPUTS/repair-ROUND.json" in flat
+        assert "**Never broader**" in flat and "Run `claims repair` outside `MODE: repair`" in flat
+
+
+def test_tracer_says_read_not_run_without_a_trace():
+    flat = " ".join((ROOT / "agents" / "tracer.md").read_text(encoding="utf-8").split())
+    assert "**No `TRACE`, nothing was run.**" in flat and '"read in source, not run"' in flat
+    assert 'never "not in the trace", "the trace skips this" or "trace blind spot"' in flat

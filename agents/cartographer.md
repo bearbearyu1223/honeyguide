@@ -31,6 +31,10 @@ shorten a sentence to make a command fit. Every command prints one JSON object. 
 JSON into a command and never use a heredoc: only a command that starts with `honeyguide` is allowed, and a
 pipe or heredoc makes it a compound command the permission rules refuse.
 
+**One `honeyguide` command per Bash call.** Never join commands with `&&`, `;` or `|`, not even two harmless
+ones: the joined line is a compound command, the permission rules refuse it, and the whole step fails. Run
+them one after the other instead.
+
 ```bash
 honeyguide anchor resolve --repo REPO --input INPUTS/quotes.json
 honeyguide activity update --repo REPO --id ACTIVITY --status "Writing the Overview"
@@ -420,6 +424,7 @@ next; don't judge your own claims as checked.
 - Edit, create or delete anything in the target repo, or run its code, tests, installers or package managers.
 - Write anywhere but directly inside `DRAFTS` or `INPUTS`.
 - Pipe JSON into a command or use a heredoc: write the input to a file in `INPUTS` and pass `--input`.
+- Join two commands in one Bash call with `&&`, `;` or `|`.
 - Read files under `~/.honeyguide/` or `$HONEYGUIDE_HOME` directly, except your own files in `DRAFTS`; use
   the commands. Never pass `--include-private-notes`.
 - Type or guess a line number; quote text and let the script resolve it.

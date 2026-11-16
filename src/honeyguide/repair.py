@@ -10,6 +10,10 @@
 - ``retire``: neither fix works (the claim is wrong or overstated past saving). ``reason`` says why; the claim stays
   on the page struck through, as any retired claim.
 
+T7.16: answers get the same pass. With ``response: r_...`` the call repairs that answer's claims (the answering agent,
+Investigator or Tracer, after the Checker), under the same rules; a ``rewrite`` then narrows the answer's spans that
+show the claim, and the answer's text and revision follow. Without it, map claims only.
+
 Claim ids never change, so questions and notes on them survive. Every anchored or rewritten claim goes back to
 ``check: unchecked`` (its old verdict and note move into its ``repairs`` history), so the Checker re-checks exactly
 the changed claims. A claim takes at most ``MAX_ROUNDS`` repairs; after that it stays flagged. Nothing is written
@@ -23,7 +27,7 @@ from typing import Any
 from .claims import commit_of, label_errors, resolve_one
 from .contract import ContractError
 from .gitio import Repo
-from .mapdoc import check_document, iter_spans, revision
+from .mapdoc import check_document, iter_spans, revision, space_sentences, spans_text, text_revision
 from .store import Store, now_iso
 
 ACTIONS = ("anchor", "rewrite", "retire")
@@ -62,12 +66,26 @@ def _resolve(repo: Repo, commit: str, specs: Any, at: str, errors: list[str]) ->
     return out, secret
 
 
+def _response_of(answers: dict, rid: str) -> dict:
+    for r in answers["responses"]:
+        if r["id"] == rid:
+            return r
+    raise ContractError("not_found", f"no answer {rid!r}", [f"response: {rid}: no such answer"])
+
+
 def repair(repo: Repo, store: Store, data: Any) -> dict:
     """``claims repair``: ``{repairs: [{claim, action: anchor|rewrite|retire, anchors?, text?, span?, reason?}],
-    commit?}``. Anchors resolve at ``commit`` (default: the map's commit)."""
+    response?, commit?}``. Without ``response``, map claims; with it, that answer's claims. Anchors resolve at
+    ``commit`` (default: the map's commit, or the answer's)."""
     items = _items(data)
-    map_layer = store.load("map")
-    commit = commit_of(repo, data.get("commit") or map_layer.get("commit"))
+    rid = data.get("response")
+    if rid is not None and (not isinstance(rid, str) or not rid.strip()):
+        raise ContractError("bad_input", "response must be an answer id (r_...)")
+    if rid is None:
+        default_commit = store.load("map").get("commit")
+    else:
+        default_commit = _response_of(store.load("answers"), rid).get("commit")
+    commit = commit_of(repo, data.get("commit") or default_commit)
     errors: list[str] = []
     secret = False
     plans: dict[str, dict] = {}
@@ -131,22 +149,31 @@ def repair(repo: Repo, store: Store, data: Any) -> dict:
             return label_errors(claim["evidence"], plan["anchors"], cid)
         return []
 
+    scope = "map" if rid is None else f"answer {rid}"
     with store.locked():
-        map_layer = store.load("map")
-        by_id = {c["id"]: c for c in map_layer["claims"]}
+        if rid is None:
+            layer = store.load("map")
+            claims, doc = layer["claims"], layer.get("document")
+            shown_spans = list(iter_spans(doc))
+        else:
+            layer = store.load("answers")
+            response = _response_of(layer, rid)
+            claims, doc = response["claims"], None
+            shown_spans = list(response.get("spans") or [])
+        by_id = {c["id"]: c for c in claims}
         missing = [cid for cid in plans if cid not in by_id]
-        errors = [f"{m}: no such map claim (repair takes map claims only)" for m in missing]
-        doc = map_layer.get("document")
+        errors = [f"{m}: no such map claim (repair takes map claims; give response for an answer's)" if rid is None
+                  else f"{m}: no such claim in answer {rid} (repair takes that answer's claims only)" for m in missing]
         shown = {}
-        for span in iter_spans(doc):
+        for span in shown_spans:
             if span.get("claim") in plans:
                 shown[span["claim"]] = shown.get(span["claim"], 0) + 1
         for cid, plan in plans.items():
             if cid in by_id:
                 errors += problems(by_id[cid], plan)
                 if plan["action"] == "rewrite" and shown.get(cid) and "span" not in plan:
-                    errors.append(f"{cid}: the map shows this claim in {shown[cid]} span(s); give span, the "
-                                  "narrower phrase the map shows, so the page never says more than the claim")
+                    errors.append(f"{cid}: the {scope} shows this claim in {shown[cid]} span(s); give span, the "
+                                  "narrower phrase it shows, so the page never says more than the claim")
         if errors:
             raise ContractError("not_found" if missing else "validation_failed",
                                 f"{len(errors)} problem(s); nothing was repaired", errors)
@@ -171,21 +198,30 @@ def repair(repo: Repo, store: Store, data: Any) -> dict:
             claim.update(check="unchecked", check_note="")
             claim.pop("checked_at", None)
             changed.append(cid)
-        if doc is not None:
-            for span in iter_spans(doc):
-                plan = plans.get(span.get("claim"))
-                if plan and "span" in plan and span["text"] != plan["span"]:
-                    span["text"] = plan["span"]
-                    spans_rewritten += 1
-            if spans_rewritten:
+        for span in shown_spans:
+            plan = plans.get(span.get("claim"))
+            if plan and "span" in plan and span["text"] != plan["span"]:
+                span["text"] = plan["span"]
+                spans_rewritten += 1
+        if rid is None:
+            if doc is not None and spans_rewritten:
                 doc_errors, _ = check_document(doc)
                 if doc_errors:
                     raise ContractError("validation_failed", "the rewritten spans break the document; nothing was "
                                         "repaired", doc_errors)
                 doc["revision"] = revision(doc)
-        store.write_held("map", map_layer)
-        left = [c["id"] for c in map_layer["claims"]
-                if c.get("check") == "not_supported" and c.get("freshness") == "current"]
-    return {"changed": changed, "retired": retired, "spans_rewritten": spans_rewritten,
-            "revision": (doc or {}).get("revision"), "still_not_supported": len(left),
-            "rounds": {cid: len(by_id[cid]["repairs"]) for cid in plans}}
+            rev = (doc or {}).get("revision")
+            store.write_held("map", layer)
+        else:
+            if spans_rewritten:
+                # the answer's text is its spans joined: a narrower span changes it (and its revision), so a follow-up
+                # anchored in the old text is re-found by its quote on the page, as on a regenerated map
+                response["spans"] = space_sentences(response["spans"])
+                response["text"] = spans_text(response["spans"])
+                response["revision"] = text_revision(response["text"])
+            rev = response.get("revision")
+            store.write_held("answers", layer)
+        left = [c["id"] for c in claims if c.get("check") == "not_supported" and c.get("freshness") == "current"]
+    return {"changed": changed, "retired": retired, "spans_rewritten": spans_rewritten, "revision": rev,
+            "still_not_supported": len(left), "rounds": {cid: len(by_id[cid]["repairs"]) for cid in plans},
+            **({"response": rid} if rid is not None else {})}

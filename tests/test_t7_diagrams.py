@@ -286,10 +286,14 @@ def expected_edges(flows, document):
     return want
 
 
-def check_graph(c, g):
+def check_graph(c, g, root="#ovgraph", crossings=None):
     """The module graph's T7.4 guarantees, by component: weights ordered like counts, no crossing lines, every count
-    label on its own line and nearer to it than to any other by a label height, no text touching a line or text."""
-    got = c.js("[...document.querySelectorAll('#ovgraph .dg-e')].map(e => [e.dataset.from, e.dataset.to, +e.dataset.n, +e.querySelector('.gdrop').getAttribute('stroke-width'), e.querySelector('.gcnt').textContent])")
+    label on its own line and nearer to it than to any other by a label height, no text touching a line or text.
+
+    T7.16: the same checks hold for the top-to-bottom layout, whose drops are vertical (a label then sits beside its
+    drop, within its length). With ``crossings`` a list, lines of different components that meet are appended to it
+    instead of failing (the layout reports how many it could not avoid)."""
+    got = c.js(f"[...document.querySelectorAll('{root} .dg-e')].map(e => [e.dataset.from, e.dataset.to, +e.dataset.n, +e.querySelector('.gdrop').getAttribute('stroke-width'), e.querySelector('.gcnt').textContent])")
     assert all(lab == f"{n} call{'s' if n > 1 else ''}" for _, _, n, _, lab in got)
     assert all((n1 < n2) == (w1 < w2) for (_, _, n1, w1, _), (_, _, n2, w2, _) in combinations(got, 2))
     segs = [s for s in g["segs"] if not s["key"]]
@@ -298,16 +302,20 @@ def check_graph(c, g):
         o = s["owner"] or {}
         return o.get("from") or s.get("from") or ("start", s["y1"])
     for s, t in combinations(segs, 2):
-        if source(s) != source(t):
-            assert not segs_cross(s, t), (s, t)
-    for e in c.js("""[...document.querySelectorAll('#ovgraph .dg-e')].map(e => { const b = e.querySelector('.gcnt').getBBox();
-        return {from: e.dataset.from, to: e.dataset.to, box: [b.x, b.y, b.width, b.height]}; })"""):
+        if source(s) != source(t) and segs_cross(s, t):
+            assert crossings is not None, (s, t)
+            crossings.append((source(s), source(t)))
+    for e in c.js("""[...document.querySelectorAll('%s .dg-e')].map(e => { const b = e.querySelector('.gcnt').getBBox();
+        return {from: e.dataset.from, to: e.dataset.to, box: [b.x, b.y, b.width, b.height]}; })""" % root):
         mine = [s for s in segs if (s["owner"] or {}).get("from") == e["from"] and (s["owner"] or {}).get("to") == e["to"]]
         assert len(mine) == 1
         own = mine[0]
         d_own = seg_box_distance(own, e["box"])
         assert d_own <= 6 and not seg_hits_box(own, e["box"])
-        assert min(own["x1"], own["x2"]) < e["box"][0] and e["box"][0] + e["box"][2] < max(own["x1"], own["x2"])
+        if own["y1"] == own["y2"]:     # left to right: the label sits above its drop, within its length
+            assert min(own["x1"], own["x2"]) < e["box"][0] and e["box"][0] + e["box"][2] < max(own["x1"], own["x2"])
+        else:                          # top to bottom: beside it, within its length
+            assert min(own["y1"], own["y2"]) < e["box"][1] and e["box"][1] + e["box"][3] < max(own["y1"], own["y2"])
         for s in segs:
             if s is own:
                 continue

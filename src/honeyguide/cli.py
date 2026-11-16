@@ -169,6 +169,7 @@ FLAGS: dict[tuple[str, str | None], list[tuple[str, str, object]]] = {
     ("claims", "list"): [("--scope", "scope", str), ("--check", "check", "list"), ("--freshness", "freshness", "list"),
                          ("--ids", "ids", "list"), ("--responses", "responses", "list"), ("--spans", "spans", "flag")],
     ("claims", "retire"): [("--id", "claims", "list"), ("--reason", "reason", str)],
+    ("claims", "repair"): [("--response", "response", str)],
     ("verdict", "set"): [("--id", "claim", str), ("--verdict", "verdict", str), ("--note", "note", str),
                          ("--note-file", "note", "file")],
     ("refresh", "apply"): [("--note", "note", str), ("--to", "to", str), ("--base", "base", str)],

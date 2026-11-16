@@ -16,8 +16,8 @@ from .claims import build_claims, build_path, commit_of
 from .contract import ContractError, check_agent, need
 from .docanchor import make_anchor
 from .gitio import Repo
-from .mapdoc import check_spans, claims_in, plain_text, rewrite_refs, span_ranges, spans_ranges, spans_text, \
-    text_revision
+from .mapdoc import check_spans, claims_in, plain_text, rewrite_refs, space_sentences, span_ranges, spans_ranges, \
+    spans_text, text_revision
 from .retrieve import Context, Hit, retrieve
 from .store import Store, new_id, now_iso
 
@@ -182,7 +182,7 @@ def record_answer(store: Store, repo: Repo, data: Any) -> dict:
         check_spans(data["spans"], "spans", errors)
         if errors:
             raise ContractError("validation_failed", "bad spans", errors)
-        spans = rewrite_refs(data["spans"], keys)
+        spans = space_sentences(rewrite_refs(data["spans"], keys))
         unknown = [s["claim"] for s in spans if s.get("claim") and s["claim"] not in keys.values()]
         if unknown:
             raise ContractError("validation_failed", "spans cite claims not in this answer",

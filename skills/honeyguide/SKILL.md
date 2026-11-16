@@ -26,6 +26,10 @@ The user asked: $ARGUMENTS
    with the Write tool into `honeyguide drafts dir --repo REPO --agent guide`. Never pipe JSON into a command
    (`echo ... |`) or use a heredoc: the permission rule allows a command that starts with `honeyguide`, and a pipe
    or heredoc makes it a compound command it refuses.
+
+   **One command per Bash call.** Never join `honeyguide` commands (or anything else) with `&&`, `;` or `|`,
+   even two read-only ones: the joined line is a compound command, the permission rules refuse it, and the step
+   fails. Run them one after the other. Tell every subagent the same (their briefs say it too).
 3. `honeyguide status --repo REPO --json`: the saved map's commit, HEAD, dirty tree, counts.
 4. `honeyguide inbox --repo REPO`: any question still `investigating` was left by a session that stopped.
    `honeyguide question release --repo REPO --id q_...` each one so it is answered again.
@@ -79,10 +83,13 @@ For each question id `Q` (several waiting: see step 5):
 5. **Close**: answered -> `honeyguide activity finish --repo REPO --id ACTIVITY --state done`. Not answered ->
    `honeyguide question fail --repo REPO --id Q --reason "<one line the user can act on>"`, then finish the
    activity with `--state failed`. The user can retry from the page; the watcher prints it again.
-6. **Check**: start a `checker` activity (`--question Q --status "Checking N claims"`), dispatch
-   `honeyguide:checker` with `SCOPE: <response id>`, finish the activity. Answers show at once; claims gain
-   their check mark when it finishes. Run it in the background if your Agent tool offers that; otherwise
+6. **Check**: `N` = the `count` of `honeyguide claims list --repo REPO --responses <response id> --check unchecked
+   --freshness current` (what the Checker will be handed; never the number of hops or sentences, or a count
+   from the subagent's report). Start a `checker` activity (`--question Q --status "Checking N claims"`),
+   dispatch `honeyguide:checker` with `SCOPE: <response id>`, finish the activity. Answers show at once; claims
+   gain their check mark when it finishes. Run it in the background if your Agent tool offers that; otherwise
    answer every waiting question first and check their answers together.
+7. **Repair** the answer's claims the Checker marked not_supported: the repair pass on an answer (section 8).
 
 **Routing.** `honeyguide:tracer` for flow questions: "what happens when ...", "walk me through ...", "trace
 ...", "how does X get from A to B", the steps of a run. `honeyguide:investigator` for everything else:
@@ -97,7 +104,9 @@ running this repo's code; otherwise it traces by reading. Running the target's c
 
 Claim and show each, then dispatch one subagent per question **in a single message** so they run in
 parallel, at most 4 at once; the rest wait for the next batch. Each gets its own activity entry. Then close
-each as in step 4.5 and run one Checker over all the new response ids.
+each as in step 4.5, run one Checker over all the new response ids (`N` from one `claims list --responses
+r_...,r_... --check unchecked --freshness current`), and repair each answer that has flagged claims (section 8);
+the repairs of different answers can run in parallel.
 
 ## 6. Refresh after code changes
 
@@ -148,6 +157,26 @@ Checker one look at each fix. It runs after the map check in Explore (step 5) an
 5. Tell the user, per round: repaired (anchors widened, claims rewritten), retired, re-checked supported, and
    still flagged.
 
+## 8. Repair pass on an answer (after its check)
+
+The same pass as section 7, run by the agent that wrote the answer (`honeyguide:tracer` for a Tracer answer, its
+`agent` is `tracer`; `honeyguide:investigator` otherwise), on that one answer.
+
+1. **Count**: `honeyguide claims list --repo REPO --responses <response id> --check not_supported --freshness
+   current`. `N` = its `count`. If `N` is 0, the pass is done.
+2. **Repair**, round `R` (1, then 2): `honeyguide activity start --repo REPO --agent <that agent> --question Q
+   --status "Repairing N claims"`, dispatch it with `MODE: repair`, `RESPONSE: <response id>`, `ROUND: R`,
+   `REPO`, `HG` and `ACTIVITY`. It widens anchors, narrows claims (and the answer's sentence that shows them) or
+   retires them with `honeyguide claims repair --response <response id> --input <file>`, ids kept, and reports
+   `changed`, `retired` and what it left. Finish the activity.
+3. **Re-check** only the changed claims: `M` = the number of `changed` ids; `honeyguide activity start --repo
+   REPO --agent checker --question Q --status "Re-checking M claims"`, dispatch `honeyguide:checker` with `SCOPE:`
+   those ids, finish the activity.
+4. **Again, once**: count as in step 1. If `R` is 1 and `N` > 0, run round 2 (steps 2-3). Stop after round 2;
+   what is still not_supported stays flagged on the answer.
+
+The answer stays answered throughout: the page shows each repaired claim unchecked until its re-check lands.
+
 ## Never
 
 - Edit the target repo, or run its code (beyond a `TRACE` command the user approved).
@@ -156,4 +185,5 @@ Checker one look at each fix. It runs after the map check in Explore (step 5) an
 - Read or edit files under `~/.honeyguide/` or `$HONEYGUIDE_HOME`; use the commands (an input file you write
   into `honeyguide drafts dir` is the one exception). Never export private notes.
 - Pipe JSON into a command (`echo ... |`) or use a heredoc: use the flags, or `--input FILE`.
+- Join two commands in one Bash call with `&&`, `;` or `|`.
 - Leave the watcher expired while the user is on the map.

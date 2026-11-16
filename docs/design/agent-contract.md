@@ -1,4 +1,4 @@
-# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13; repair and flags: T7.15)
+# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13; repair and flags: T7.15; answer repair: T7.16)
 
 What the agents (Guide, Cartographer, Investigator, Tracer, Checker) and the map page call, and the records they
 read and write. Built on the T7a foundation (`memory-and-anchors.md`); standard library only. Exact work is a
@@ -66,7 +66,7 @@ Rules, all checked before anything is written:
 | `claims save` | `{target: "map", mode: "replace"\|"add", commit?, document?, claims: [draft], retire?: [{claim, reason}]}` | `{saved: [{key, id}], revision, retired: [id], warnings}` |
 | `claims list` | `{scope?: "map"\|"answers"\|"all", responses?: [r_...], check?, freshness?, ids?}` | `{claims: [claim + response], count}` |
 | `claims retire` | `{claim \| claims: [id], reason}` | `{retired: [id], already_retired: [id]}` |
-| `claims repair` | `{repairs: [{claim, action: "anchor"\|"rewrite"\|"retire", anchors?, text?, span?, reason?}], commit?}` | `{changed: [id], retired: [id], spans_rewritten, revision, still_not_supported, rounds: {id: n}}` |
+| `claims repair` | `{repairs: [{claim, action: "anchor"\|"rewrite"\|"retire", anchors?, text?, span?, reason?}], response?, commit?}`; flag `--response r_...` | `{changed: [id], retired: [id], spans_rewritten, revision, still_not_supported, rounds: {id: n}, response?}` |
 | `drafts dir` | none; `--agent NAME [--name N] [--fresh]` | `{dir}`: `<memory>/drafts/<agent>/[<name>/]`, created, for `--input` files |
 | `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
 | `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
@@ -111,6 +111,16 @@ showing it (required when any span does; the document's revision is recomputed);
 check_note, text, anchors}]` (what it was before). A claim with 2 repairs is refused (`MAX_ROUNDS`). All items are
 checked before anything is written. `claims list` rows carry `repairs`, and `spans: true` adds `shown_as` (the
 span texts) to map claims.
+
+With `response: "r_..."` (T7.16) the same pass runs on that answer's claims instead (the answering agent, after the
+Checker flagged some): only claims of that answer are taken, anchors resolve at the answer's commit by default, and a
+`rewrite` with `span` replaces the text of the answer's spans showing the claim; the answer's `text` (its spans
+joined) and `revision` follow. A follow-up anchored in the old text keeps its quote, and the page re-finds it by the
+quote when the revision differs (as on a regenerated map); several hits or none leave it unmarked, never guessed.
+
+`answer record` (T7.16) inserts a one-space glue span wherever one span ends a sentence (`.`, `!` or `?`, maybe a
+closing quote or bracket after it) and the next starts a word, so two claim spans written as two sentences never
+read "self.window_sizes.The"; the stored `text` is the spans joined, so offsets stay exact.
 
 `claims retire` (and `claims save`'s `retire`, mode `add` only, so a rewritten claim and the retirement of the
 one it replaces land in one write): sets `freshness: "retired"`, `freshness_reason` = the reason,

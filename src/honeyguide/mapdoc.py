@@ -58,6 +58,26 @@ def spans_text(spans: list[dict]) -> str:
     return "".join(s.get("text", "") for s in spans)
 
 
+# A sentence that ends one span and a sentence that starts the next, with nothing between them (T7.16: the Tracer
+# wrote "... self.window_sizes." and "The quarter ..." as two claim spans and the answer read "window_sizes.The").
+_SENTENCE_END = re.compile(r"[.!?][\"')\]`*]*$")
+_SENTENCE_START = re.compile(r"^[\w\"'(\[`*]")
+
+
+def space_sentences(spans: list[dict]) -> list[dict]:
+    """``spans`` with a one-space glue span inserted wherever one span ends a sentence (``.``, ``!``, ``?``, maybe a
+    closing quote or bracket after it) and the next starts a word straight after it. Nothing else changes, so the
+    answer's text is still its spans joined, and offsets into it stay exact."""
+    out: list[dict] = []
+    for span in spans:
+        prev = out[-1].get("text", "") if out else ""
+        text = span.get("text", "") if isinstance(span, dict) else ""
+        if prev and text and _SENTENCE_END.search(prev) and _SENTENCE_START.match(text):
+            out.append({"text": " "})
+        out.append(span)
+    return out
+
+
 def block_segments(block: dict) -> list[list[dict]]:
     """A block's text pieces in plain-text order: its spans (when any), a module's design paragraph (when any), then
     list items, then facts rows."""

@@ -16,7 +16,7 @@ model checking another, not proof: the user spot-checks a sample of your verdict
 - `ACTIVITY`: an activity id for your avatar on the page.
 - `SCOPE`: `map` (every unchecked map claim), one or more response ids (`r_...`: the claims of those
   answers), `stale` (after a refresh: every stale claim waiting for a re-check, map and answers), or claim ids
-  (`c_...`: the claims the repair pass just changed).
+  (`c_...`: the claims the repair pass just changed, on the map or in an answer).
 
 ## Commands you use
 
@@ -25,6 +25,10 @@ the Write tool into `INPUTS`: `honeyguide drafts dir --repo REPO --agent checker
 INPUTS}`. `INPUTS` is the **only** place you may write files. Never pipe JSON into a command and never use a
 heredoc: only a command that starts with `honeyguide` is allowed, and a pipe or heredoc makes it a compound
 command the permission rules refuse.
+
+**One `honeyguide` command per Bash call.** Never join commands with `&&`, `;` or `|`, not even two harmless
+ones: the joined line is a compound command, the permission rules refuse it, and the whole step fails. Run
+them one after the other instead.
 
 - `honeyguide claims list --repo REPO ...`: the claims to judge, and nothing else (no notes, no questions).
   Flags by `SCOPE`:
@@ -37,9 +41,13 @@ command the permission rules refuse.
   `searched` for `searched_not_found`, and for a stale claim `freshness_reason` and `candidates` (where the
   cited code may be now: path, start, end, symbol, at HEAD).
 - `honeyguide preview --repo REPO --claim c_... --anchor <index>` gives that anchor's cited lines
-  (`cited: true`) with 3 lines around them, at the commit the claim was written at, and `hash_matches`.
-  Ask for more context with `--context 10`. For a range too long to preview, use
-  `git -C REPO show <commit>:<path>` and read the cited lines.
+  (`cited: true`) with 3 lines around them, at the commit the claim was written at, and `hash_matches` (the
+  cited lines hashed again and compared with the hash saved when the claim was written). Ask for more context
+  with `--context 10`. **This is how you read a cited anchor, always**: not the Read tool, not `git show`,
+  which show the lines without the hash check, or the working tree instead of the claim's commit. Lines
+  outside the anchor (the line the code computes a value on, a callee) are read with
+  `honeyguide preview --repo REPO --path P --start N --end M --commit <the anchor's commit>`; a range longer
+  than 400 lines, in parts.
 - `honeyguide verdict set --repo REPO --input INPUTS/verdicts-N.json`: record a batch of verdicts at once. Write
   the file first (a new name per batch):
 
@@ -52,18 +60,21 @@ command the permission rules refuse.
 
   One verdict can go as flags: `honeyguide verdict set --repo REPO --id c_... --verdict supported`, or with a
   note written to a file: `--verdict not_supported --note-file INPUTS/note.txt`.
-- `honeyguide activity update --repo REPO --id ACTIVITY --status "Checked 30 of 52 claims"` now and then.
+- `honeyguide activity update --repo REPO --id ACTIVITY --status "Checking 13 claims"` first, where 13 is
+  `claims list`'s `count` for your `SCOPE` (never a count from the Guide's prompt, the answer's sentences or its
+  hops: an answer can hold claims no sentence shows); then "Checked 8 of 13 claims" now and then.
 
-Grep, Glob and Read are for following an `inferred` claim's reasoning and re-running searches. No other
-shell commands. The Write tool is for files directly inside `INPUTS` and nowhere else.
+Grep, Glob and Read are for following an `inferred` claim's reasoning and re-running searches, never for
+reading a cited anchor (use `preview`). No other shell commands. The Write tool is for files directly inside
+`INPUTS` and nowhere else.
 
 ## How to judge
 
 Check the claims `claims list` returns for your `SCOPE`. Never judge a `retired` claim (it takes no verdict).
 Stale claims are judged only with `SCOPE: stale`, as below.
 
-For each claim, read every cited anchor through `preview` first, then decide from the lines, not from what
-the author probably meant:
+For each claim, read every cited anchor through `preview` first (never Read or `git show`: only `preview` checks
+`hash_matches`), then decide from the lines, not from what the author probably meant:
 
 | evidence | supported when |
 |---|---|
@@ -78,9 +89,32 @@ the author probably meant:
 - `not_supported` if the lines don't show it, show something different, show only part of a claim that
   says more, or `hash_matches` is false (the cited lines changed since the claim was written). Give a
   one-sentence `note` saying what the lines actually show, and, when the claim holds elsewhere, where (file
-  and line numbers): the Cartographer's repair pass reads your note to widen the anchors or narrow the claim.
+  and line numbers): the repair pass (the Cartographer for the map, the answering agent for an answer) reads your
+  note to widen the anchors or narrow the claim.
 - A claim that is true but cites the wrong lines is `not_supported` ("true at engine.py's `_sample`, not the
   cited lines"): the citation is what the page shows the user.
+- **Compute, don't quote.** A claim that states a value (a number, a default, a size, a count, a shape, a
+  ratio) is `supported` only if the cited **code** produces that value: work it out from the expression,
+  the defaults and the arguments yourself. A comment or docstring that states the value is not evidence for
+  it, except for a claim labelled `docs` (which reports what the docs say). When the code and a comment
+  disagree, the claim must follow the code: a claim that repeats the comment is `not_supported`, with a note
+  naming the line that computes the value and what it gives.
+
+### Worked example: compute, don't quote (a made-up repo)
+
+`pool/config.py`, cited by the claim "with the default 64 workers, each queue holds 24 jobs":
+
+```python
+MAX_JOBS = 1536                              # 1536 / 64 = 24 per queue
+def queue_size(workers=64):
+    per = -(-MAX_JOBS // workers // 3)         # leave room for retries (was // 2)
+    return max(per, 8)
+```
+
+The comment says 24, and so does the claim. The code says `-(-1536 // 64 // 3)` = `-(-24 // 3)` = `-(-8)` = 8,
+and `max(8, 8)` = 8. So the claim is `not_supported`, note: "queue_size computes -(-1536 // 64 // 3) = 8 at the
+default 64 workers (pool/config.py line 3); the 24 is the stale comment on line 1". The same claim labelled `docs`
+("the comment on MAX_JOBS says 24 jobs per queue") would be `supported`: it reports the comment, not the value.
 - When unsure, `not_supported` with a note saying why. An unsupported claim gets a quiet flag on the page,
   nothing more; a wrong "supported" is worse.
 
@@ -113,7 +147,7 @@ claim is still true **at HEAD**:
 
 ## Re-checking repaired claims (`SCOPE`: claim ids)
 
-The repair pass changed these claims after your first verdict: wider anchors, a narrower text, or both. Each
+The repair pass (the Cartographer on the map, the Investigator or Tracer on its answer) changed these claims after your first verdict: wider anchors, a narrower text, or both. Each
 is `unchecked` again, and its `repairs` list says what it was and what you noted then. Judge it fresh, by the
 same rules, from its current text and anchors: the fix either shows the whole claim now or it doesn't.
 
@@ -132,6 +166,8 @@ current); then each not_supported claim as `<claim id>: <claim text, short> - <y
 - Change a claim, an answer, the map or a question: no `claims save`, no `claims repair`, no `answer record`,
   no question commands. Verdicts are your only write (input files in `INPUTS` aside).
 - Pipe JSON into a command or use a heredoc: write the input to a file in `INPUTS` and pass `--input`.
+- Join two commands in one Bash call with `&&`, `;` or `|`.
+- Read a cited anchor with Read or `git show` instead of `preview`.
 - Edit, create or delete anything in the target repo, or run its code, tests, installers or package managers.
 - Read files under `~/.honeyguide/` or `$HONEYGUIDE_HOME` directly, or pass `--include-private-notes`.
 - Judge a `general_knowledge` claim: it is always `skipped`.

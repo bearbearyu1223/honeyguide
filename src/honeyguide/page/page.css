@@ -300,7 +300,8 @@ h2 + h3.topic{margin-top:4px}
   background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(2px)}
 body.popen .dgov{right:var(--pw)}
 .dgov.on{display:flex}
-.dgov-c{width:var(--fw)}
+/* T7.16: as wide as its diagram, up to the overlay's own width less its margins (page.js ovWidth) */
+.dgov-c{width:var(--ovw,var(--fw));max-width:calc(100% - 2 * var(--ovm,32px))}
 .dgov-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:8px}
 .dgov-t{font-weight:600;font-size:15px}
 .dgov-s{font-size:12.5px;color:var(--muted)}
@@ -480,6 +481,13 @@ body.resizing .main,body.resizing .panel{transition:none}
 .by .via{color:var(--faint)}
 .ans{border-left:2px solid var(--ai-line);padding-left:12px;margin-left:9px;color:var(--soft);white-space:pre-line}
 .ans .cite,.ans .stag,.ans .flag{white-space:nowrap}
+/* T7.16: in the panel a claim's cite may wrap between its marks (two long chips and a "not supported" flag ran past
+   the panel's right edge at 408px); each mark stays whole, and a chip longer than the line is cut with an ellipsis */
+.ans .cite{white-space:normal}
+.ans .cite>*{white-space:nowrap}
+.ans .chip{display:inline-block;max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;vertical-align:baseline}
+.ans .atext,.ans .ans-claims li{overflow-wrap:anywhere}
+.sgap{white-space:pre}
 .lf.pbr{display:block;height:8px;overflow:hidden;font-size:0;line-height:0}
 .ans .fmk{background:var(--mark);text-decoration:underline solid var(--amber);text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:2px}
 .ans .fmk.pend{text-decoration:none}
@@ -584,6 +592,7 @@ body.resizing .main,body.resizing .panel{transition:none}
 .panel .path{margin:8px 0 4px}
 .panel .hop{padding-left:28px}
 .panel .fn{font-size:12.5px}
+.panel .hop-t .fn,.panel .hop-b{min-width:0;overflow-wrap:anywhere}
 .panel .hop-d{font-size:12.5px}
 .panel .edge{padding-left:28px}
 .panel .edge span{font-size:11px}
