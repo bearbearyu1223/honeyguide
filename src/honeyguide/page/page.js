@@ -65,6 +65,7 @@ const ICON = {
   ok: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="m5.5 8 1.8 1.8L10.7 6.4"/></svg>`,
   info: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.6M8 5.2v.1"/></svg>`,
   rf: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5v3h-3"/><path d="M12.6 6.5A5 5 0 1 0 13 9"/></svg>`,
+  dg: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5v11M12 2.5v11M4 6h6.5M10.5 4.5 12 6l-1.5 1.5M12 10H5.5M5.5 8.5 4 10l1.5 1.5"/></svg>`,
   msg: `<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>`,
 };
 const LOGO = $(".brand .logo").outerHTML.replace('id="logo-eye"', 'id="logo-eye2"').replace("url(#logo-eye)", "url(#logo-eye2)");
@@ -156,10 +157,11 @@ function evTip(c, extra) {
   const [name, note] = EV[c.evidence] || [c.evidence, ""];
   return `<b>${esc(name)}</b>${note ? " · " + esc(note) : ""}${extra ? " · " + extra : ""}`;
 }
+const anchorText = a => `${a.path}:${a.start === a.end ? a.start : a.start + "–" + a.end}`;
 function chipsHTML(c, gone) {
   if (c.evidence === "searched_not_found") return `<button class="chip" data-claim="${esc(c.id)}" data-search="1">searched</button>`;
   return (c.anchors || []).map((a, i) => {
-    const label = `${a.path}:${a.start === a.end ? a.start : a.start + "–" + a.end}`;
+    const label = anchorText(a);
     return gone
       ? `<span class="chip gone" data-tip="The cited code is gone at <code>${esc(short(c.refreshed_to))}</code>">${esc(label)}</span>`
       : `<button class="chip" data-claim="${esc(c.id)}" data-i="${i}" aria-label="Show ${esc(label)}">${esc(label)}</button>`;
@@ -199,8 +201,11 @@ function renderMap() {
   MAPTEXT = mapText(doc);
   UI.mapRev = doc.revision;
   const flows = new Map((doc.flows || []).map(f => [f.id, f]));
+  /* flows stay open, in the view the reader chose, when the map is re-rendered */
+  const keepOpen = new Map($$(".flow.open", COL).map(f => [f.dataset.flow, f.classList.contains("view-list") ? "list" : "dg"]));
+  buildFigures(doc, byId);
   let html = `<header><h1>${esc(doc.title || "Map")}</h1><p class="sub" id="sub"></p><div class="mem" id="mem"></div><div id="refresh"></div><div id="mapnew"></div><p class="hint">Select any text to ask about it or annotate it.</p></header>`;
-  let bi = 0;
+  let bi = 0, graphShown = false;
   for (const sec of doc.sections || []) {
     html += `<section id="s-${esc(sec.id)}" data-sec="${esc(sec.id)}"><h2>${esc(sec.title)}</h2>`;
     for (const block of sec.blocks || []) {
@@ -211,25 +216,30 @@ function renderMap() {
       body = body.replace(/<span class="rwhy-at" data-why="[^"]*"><\/span>/g, "") + whys.map(w => `<span class="rwhy">Retired: ${w}.</span>`).join("");
       const allGone = (block.spans || []).filter(x => x.claim).every(x => byId.get(x.claim)?.freshness === "retired") && (block.spans || []).some(x => x.claim);
       if (block.type === "module") {
-        html += `<div class="mod" data-block="${esc(block.id)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code></div><p class="blk">${body}</p></div>`;
+        html += `<div class="mod" data-block="${esc(block.id)}" data-path="${esc(block.path)}"><div class="mod-h"><code${allGone ? ` class="gone" data-tip="Every claim about this file is retired"` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div><p class="blk">${body}</p></div>`;
       } else if (block.type === "flow") {
         const f = flows.get(block.flow);
         html += `<div class="flow" data-flow="${esc(block.flow)}" data-block="${esc(block.id)}"><button class="flow-h" aria-expanded="false"><span class="fq">${esc(f ? f.title : block.flow)}<span class="fcar">▸</span></span><span class="meta"><span class="em">🧵</span>Tracer · ${plural(f ? f.hops.length : 0, "hop")}</span></button>`
           + `<p class="cap blk">${body}</p><div class="fbody">`
-          + `<div class="slot" data-slot="swimlane" data-flow="${esc(block.flow)}"><b>Swimlane diagram</b> · drawn here in step 4 (T7.4)</div>`
-          + (f ? pathHTML(f, byId, false) : "") + `</div></div>`;
+          + (f ? `<div class="fbar"><span class="fhint">Hover or click an arrow for its code</span><span class="fviews" role="group" aria-label="View"><button data-fview="dg" class="on" aria-pressed="true">Diagram</button><button data-fview="list" aria-pressed="false">Steps</button></span></div>`
+            + `<div class="fnarrow">Shown as steps while the panel is open: the diagram would be too small to read beside it. <button data-fview="dg">Show the diagram</button></div>`
+            + `<figure class="fig wide" data-key="map:${esc(f.id)}"><div class="dgwrap"></div></figure><div class="rail">${pathHTML(f, byId, false)}</div>` : "") + `</div></div>`;
       } else html += `<p class="blk" data-block="${esc(block.id)}">${body}</p>`;
+      if (sec.kind === "overview" && !graphShown && FIGS.has("graph")) {
+        graphShown = true;
+        html += `<figure class="fig wide" id="ovgraph" data-key="graph"><div class="dgwrap"></div></figure><p class="figcap wide" id="ovcap">${graphCaption()}</p>`;
+      }
     }
-    if (sec.kind === "overview" && (doc.flows || []).length)
-      html += `<div class="slot" data-slot="module-graph"><b>Module graph</b> · files and the calls between them, drawn here in step 4 (T7.4)</div>`;
     html += `</section>`;
   }
   COL.innerHTML = html;
+  for (const [id, view] of keepOpen) if ($(`.flow[data-flow="${CSS.escape(id)}"]`, COL)) openFlow(id, view, false);
   document.body.classList.remove("nomap-on");
   renderToc();
   index();
   renderHeader();
   applyOverlays();
+  renderFigs();
 }
 function renderNoMap() {
   MAPTEXT = null; UI.mapRev = null;
@@ -254,6 +264,26 @@ function renderToc() {
 function blockAt(off) { return MAPTEXT?.blocks.find(b => off >= b.start && off < b.end) || MAPTEXT?.blocks.find(b => off <= b.end) || null; }
 
 /* ---------------------------------------------------------------- Tracer path (map flows and panel answers) */
+/* One rule for the rail and the diagram (Han's v3.1 choice 1): solid = read in source or seen at runtime (the
+   evidence shape says which), dashed = inferred (neither read nor seen), dotted = a trace blind spot. */
+const READ_OR_SEEN = new Set(["read_in_source", "asserted_by_test", "seen_at_runtime"]);
+const hopStyle = (h, c) => (h.trace === "blind_spot" ? "dotted" : h.trace === "seen" || READ_OR_SEEN.has(c?.evidence) ? "solid" : "dashed");
+/* the evidence shape a hop shows: none while its claim is stale, retired or missing, or (in the panel) unchecked */
+function shownEv(c, panel) {
+  if (!c) return null;
+  const st = claimState(c);
+  if (st === "retired" || st.startsWith("stale")) return null;
+  if (panel && (!c.check || c.check === "unchecked")) return null;
+  return c.evidence;
+}
+/* what a hop hands on: [name, shape], the same words on the rail and on the diagram's pill */
+const hopEdge = h => (h.returns && h.data ? [h.returns, h.data] : h.returns ? ["returns", h.returns] : h.data ? ["data", h.data] : null);
+const hopAnchor = c => (!c ? "" : c.evidence === "searched_not_found" ? "searched" : (c.anchors || [])[0] ? anchorText(c.anchors[0]) : c.evidence === "general_knowledge" ? "general knowledge" : "");
+function hopNote(h, style) {
+  if (h.trace === "blind_spot") return ["Trace blind spot:", h.note || "the runtime trace can't see inside this call"];
+  if (style === "dashed") return ["Inferred.", h.note || h.label || "neither read in source nor seen at runtime"];
+  return h.note ? ["", h.note] : null;
+}
 function pathHTML(p, byId, panel) {
   const lanes = new Map((p.lanes || []).map(l => [l.id, l]));
   const loops = new Map((p.loops || []).map(l => [l.id, l]));
@@ -262,7 +292,7 @@ function pathHTML(p, byId, panel) {
     const c = byId.get(h.claim);
     const ev = c ? c.evidence : "inferred";
     const st = claimState(c);
-    const checked = c && c.check && c.check !== "unchecked" && st !== "stale";
+    const shown = shownEv(c, panel), style = hopStyle(h, c), note = hopNote(h, style);
     counts[ev] = (counts[ev] || 0) + 1;
     const tag = i === 0 ? "entry" : i === p.hops.length - 1 ? "end" : "";
     const to = lanes.get(h.to);
@@ -270,16 +300,184 @@ function pathHTML(p, byId, panel) {
     const tr = h.trace === "unseen" ? `<span class="tr">not in the runtime trace</span>` : h.trace === "blind_spot" ? `<span class="tr">trace blind spot</span>` : "";
     const ok = panel && c?.check === "supported" && st !== "stale" ? `<span class="ok" data-tip="<b>Checked</b> · the Checker re-read the cited lines: supported">✓</span>`
       : c?.check === "not_supported" ? `<span class="flag" data-tip="<b>Not supported.</b> ${esc(c.check_note || "")}">not supported</span>` : "";
-    const edgeText = h.data || h.returns;
-    const edge = edgeText ? `<li class="edge"><span><b>${h.data ? "data" : "returns"}</b>${esc(edgeText)}</span></li>` : "";
-    return `<li class="hop ${esc(h.trace || "")}"><span class="node ${checked || !panel ? "ev-" + esc(ev) : "pending"}" data-tip="${c ? esc(evTip(c)) : ""}"></span><div class="hop-b">`
+    const e = hopEdge(h);
+    const edge = e ? `<li class="edge"><span><b>${esc(e[0])}</b>${esc(e[1])}</span></li>` : "";
+    return `<li class="hop s-${style}" data-hop="${i}"><span class="node ${shown ? "ev-" + esc(shown) : "pending"}" data-tip="${c ? esc(evTip(c)) : ""}"></span><div class="hop-b">`
       + `<div class="hop-t"><span class="fn">${esc(h.call)}</span>${tag ? `<span class="loop">${tag}</span>` : ""}${loop ? `<span class="loop" data-tip="Repeats: ${esc(loop.label)}">${esc(loop.label)}</span>` : ""}</div>`
       + (h.label ? `<div class="hop-d">${inlineCode(h.label)}</div>` : "")
+      + (note && h.trace === "blind_spot" ? `<div class="hop-blind"><b>${esc(note[0])}</b> ${esc(note[1])}</div>` : note && h.note ? `<div class="hop-blind">${note[0] ? `<b>${esc(note[0])}</b> ` : ""}${esc(note[1])}</div>` : "")
       + `<div class="hop-l">${to ? `<span class="lane">${esc(to.label)}</span>` : ""}<span class="lab ev-${esc(ev)}">${esc((EV[ev] || [ev])[0].toLowerCase())}</span>${tr}${c ? chipsHTML(c, st === "retired") : ""}${ok}</div>`
       + `</div></li>${edge}`;
   }).join("");
   const foot = `<div class="path-foot">${Object.entries(counts).map(([ev, n]) => `<span><span class="dot ev-${esc(ev)}"></span>${n} ${esc((EV[ev] || [ev])[0].toLowerCase())}</span>`).join("")}</div>`;
   return `<ol class="path">${hops}</ol>${foot}`;
+}
+
+/* ---------------------------------------------------------------- flow diagrams and the module graph (T7.4) */
+/* Models for diagrams.js, built from the contract's records: map flows ("map:<flow id>"), Tracer answers
+   ("resp:<response id>") and the module graph ("graph"). Re-rendered only when the width they get changes. */
+const FIGS = new Map();
+const EVNAMES = Object.fromEntries(Object.entries(EV).map(([k, [n]]) => [k, n.toLowerCase()]));
+/* the Modules section: path -> {role, entry, block} */
+function moduleIndex(doc) {
+  const m = new Map();
+  for (const sec of doc?.sections || []) for (const b of sec.blocks || []) if (b.type === "module" && !m.has(b.path)) m.set(b.path, { role: b.role || "", entry: !!b.entry, block: b.id });
+  return m;
+}
+function diagramModel(p, byId, panel, key) {
+  const mods = moduleIndex(D.map?.document);
+  const lanes = {};
+  for (const l of p.lanes || []) lanes[l.id] = { name: l.label, sub: (l.path && mods.get(l.path)?.role) || "", file: l.path || null };
+  const loops = {};
+  for (const l of p.loops || []) loops[l.id] = l.label;
+  const hops = (p.hops || []).map(h => {
+    const c = byId.get(h.claim), style = hopStyle(h, c);
+    return { fn: h.call, a: hopAnchor(c), ev: shownEv(c, panel), style, note: hopNote(h, style), d: h.label || "", trace: h.trace,
+      from: h.from, to: h.to, edge: hopEdge(h), loop: h.loop || null, claim: h.claim,
+      chip: c && (c.anchors || []).length ? 0 : null, search: c?.evidence === "searched_not_found" };
+  });
+  /* the graph's start label: the starting lane's label without its file (e.g. "train.py · main" -> "main") */
+  const l0 = (p.lanes || []).find(l => l.id === p.hops?.[0]?.from);
+  const startLabel = l0 ? (l0.path && l0.label.startsWith(l0.path) ? l0.label.slice(l0.path.length).replace(/^[\s·:]+/, "") : l0.label) : "";
+  return { key, id: p.id, title: p.title, lanes, loops, hops, evNames: EVNAMES, startLabel };
+}
+function buildFigures(doc, byId) {
+  for (const k of [...FIGS.keys()]) if (!k.startsWith("resp:")) FIGS.delete(k);
+  const flows = (doc.flows || []).map(f => diagramModel(f, byId, false, `map:${f.id}`));
+  flows.forEach(m => FIGS.set(m.key, m));
+  const mods = moduleIndex(doc);
+  const files = [...mods].map(([file, x]) => ({ file, role: x.role, entry: x.entry, module: x.block }));
+  const gm = HGD.graphModel(flows, files);
+  if (gm.edges.length || gm.starts.length) FIGS.set("graph", gm);
+}
+function graphCaption() {
+  const gm = FIGS.get("graph"), n = gm.edges.reduce((s, e) => s + e.calls.length, 0);
+  return `Each box is a file. The ${plural(n, "call")} that cross from one file to another in the ${plural(gm.flows, "traced flow")} (<a href="#s-${esc(flowsSection())}" data-goflows>Flows</a>, below) are drawn as arrows, heavier when there are more. Click a file for its module, an arrow for its calls.`;
+}
+function flowsSection() { return (D.map?.document?.sections || []).find(s => s.kind === "flows")?.id || "flows"; }
+/* the width a figure gets: the map area (less the panel when it is open), 560 to 1000 px */
+function panelWidth() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pw")) || 408; }
+function figWidth() { return Math.round(Math.max(560, Math.min(1000, MAIN.clientWidth - (UI.open ? panelWidth() : 0) - 48))); }
+function figSVG(key, w) {
+  const m = FIGS.get(key);
+  if (!m) return "";
+  return key === "graph" ? HGD.renderGraph(HGD.layoutGraph(m, w)) : HGD.renderSeq(HGD.layoutSeq(m, w), m);
+}
+/* Han's v3.1 choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
+   (readable text over a shrunken picture); "Show the diagram" or View as diagram overrides that for the flow. */
+const MIN_SCALE = 0.85;
+function tooNarrow(key, w) { const m = FIGS.get(key); return !!m && UI.open && w / HGD.layoutSeq(m, w).natural < MIN_SCALE; }
+function renderFigs(force) {
+  const w = figWidth();
+  document.documentElement.style.setProperty("--fw", w + "px");
+  for (const fl of $$(".flow", COL)) {
+    const key = `map:${fl.dataset.flow}`;
+    const auto = fl.classList.contains("open") && !fl.classList.contains("view-list") && !fl.dataset.force && tooNarrow(key, w);
+    fl.classList.toggle("view-auto", auto);
+    $$("[data-fview]", $(".fviews", fl) || fl).forEach(b => { const on = auto ? b.dataset.fview === "list" : (b.dataset.fview === "list") === fl.classList.contains("view-list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+  }
+  for (const fig of [...$$(".fig[data-key]", COL), $("#dgovfig")]) {
+    if (!fig || !fig.dataset.key || (!force && fig.offsetParent === null)) continue;
+    if (!force && +fig.dataset.w === w) continue;
+    if (pinned && fig.contains(pinned)) unpin();
+    fig.dataset.w = w;
+    $(".dgwrap", fig).innerHTML = figSVG(fig.dataset.key, w - 2);
+    /* a sequence diagram shown anyway in too little room (the overlay, or "Show the diagram") keeps 0.85 and
+       scrolls sideways rather than shrinking its text further */
+    const svg = $("svg.dg-seq", fig);
+    const floored = !!svg && (w - 2) / +svg.dataset.natural < MIN_SCALE;
+    if (floored) svg.style.width = Math.round(+svg.dataset.natural * MIN_SCALE) + "px";
+    fig.classList.toggle("scrolls", floored);
+  }
+}
+function openFlow(id, view = "dg", draw = true) {
+  const f = $(`.flow[data-flow="${CSS.escape(id)}"]`, COL);
+  if (!f) return null;
+  f.classList.add("open");
+  $(".flow-h", f).setAttribute("aria-expanded", "true");
+  f.classList.toggle("view-list", view === "list");
+  if (view === "list") delete f.dataset.force;
+  if (draw) { renderFigs(); layout(); }
+  return f;
+}
+function flashFig(el) { el.classList.remove("flashfig"); void el.getBoundingClientRect(); el.classList.add("flashfig"); setTimeout(() => el.classList.remove("flashfig"), 1800); }
+/* "View as diagram" from a rail in the panel: a map flow scrolls to its diagram and flashes it; a Tracer answer that
+   is not a map flow opens in an overlay over the map (never over the panel). Jumps are instant (choice 9). */
+function mapFlowOf(key) {
+  if (key.startsWith("map:")) return key.slice(4);
+  const r = IDX.R.get(key.slice(5)), p = r?.path;
+  const f = p && (D.map?.document?.flows || []).find(x => x.id === p.id && x.title === p.title);
+  return f ? f.id : null;
+}
+function viewDiagram(key) {
+  const id = mapFlowOf(key);
+  if (id) {
+    const f = $(`.flow[data-flow="${CSS.escape(id)}"]`, COL);
+    if (!f) return null;
+    f.dataset.force = "1";
+    openFlow(id, "dg");
+    const fig = $(".fig", f);
+    MAIN.scrollTop += f.getBoundingClientRect().top - MAIN.getBoundingClientRect().top - 24;
+    flashFig(fig);
+    return fig;
+  }
+  const m = FIGS.get(key);
+  if (!m) return null;
+  const ov = $("#dgov"), fig = $("#dgovfig");
+  fig.dataset.key = key;
+  fig.dataset.w = "";
+  $("#dgovt").textContent = m.title;
+  $("#dgovs").textContent = "🧵 Tracer answer, as a diagram · not part of the map";
+  ov.classList.add("on");
+  ov.dataset.from = key;
+  renderFigs();
+  ov.scrollTop = 0;
+  $("[data-dgclose]", ov).focus({ preventScroll: true });
+  return fig;
+}
+function closeOverlay() {
+  const ov = $("#dgov");
+  if (!ov.classList.contains("on")) return;
+  if (pinned && ov.contains(pinned)) unpin();
+  ov.classList.remove("on");
+  $("#dgovfig").dataset.key = "";
+  $(".dgwrap", $("#dgovfig")).innerHTML = "";
+  $(`[data-dgview="${CSS.escape(ov.dataset.from || "")}"]`, PBODY)?.focus({ preventScroll: true });
+}
+/* the module graph: an arrow leads to the calls it counts, a box to its module */
+function showCalls(from, to) {
+  const hits = [];
+  for (const [key, m] of FIGS) {
+    if (!key.startsWith("map:")) continue;
+    m.hops.forEach((h, i) => { if (h.from !== h.to && m.lanes[h.from]?.file === from && m.lanes[h.to]?.file === to) hits.push({ id: key.slice(4), i }); });
+  }
+  if (!hits.length) return;
+  for (const x of hits) { const f = openFlow(x.id, "dg", false); if (f) f.dataset.force = "1"; }
+  renderFigs();
+  layout();
+  const f = $(`.flow[data-flow="${CSS.escape(hits[0].id)}"]`, COL);
+  MAIN.scrollTop += f.getBoundingClientRect().top - MAIN.getBoundingClientRect().top - 24;
+  for (const x of hits) {
+    const g = $(`.fig[data-key="map:${CSS.escape(x.id)}"] .dg-a[data-kind="call"][data-hop="${x.i}"]`, COL);
+    if (g) { g.classList.add("hl"); setTimeout(() => g.classList.remove("hl"), 2400); }
+  }
+}
+function goModule(file) {
+  const m = $$(".mod[data-path]", COL).find(x => x.dataset.path === file);
+  if (!m) return;
+  scrollMapTo(m, 80);
+  flash(m);
+}
+/* the line a diagram's preview gains: "Hop 6 of 7 · loss.backward() · seen at runtime", its description, its note */
+function hopCtxHTML(g) {
+  const m = FIGS.get(g.dataset.key), i = +g.dataset.hop, h = m?.hops[i], k = g.dataset.kind;
+  if (!h) return "";
+  const what = k === "call" ? `<code>${esc(h.fn)}</code>` : `${k === "ret" ? "returns" : "hands on"} <code>${esc(h.edge.filter(Boolean).join(" "))}</code>`;
+  const ev = h.ev ? EVNAMES[h.ev] : "not checked yet";
+  const tr = h.trace === "seen" ? "seen at runtime" : h.trace === "blind_spot" ? "trace blind spot" : "not in the runtime trace";
+  const evw = h.ev === "seen_at_runtime" && h.trace === "seen" ? ev : `${ev} · ${tr}`;
+  return `<div class="snip-ctx"><div class="sc-h">${h.ev ? `<span class="dot ev-${esc(h.ev)}"></span>` : ""}<b>Hop ${i + 1} of ${m.hops.length}</b><span>·</span>${what}<span>·</span><span>${esc(evw)}</span></div>`
+    + `${h.d || h.note ? `<div class="sc-d">${h.d ? inlineCode(h.d) : ""}${h.note && h.note[0] !== "Inferred." ? `${h.d ? "<br>" : ""}${h.note[0] ? `<b>${esc(h.note[0])}</b> ` : ""}${esc(h.note[1])}` : ""}</div>` : ""}</div>`;
 }
 
 /* ---------------------------------------------------------------- threads: index the store */
@@ -447,35 +645,33 @@ function renderHeader() {
   const s = D.state;
   if (!s || !MAPTEXT) return;
   const doc = D.map.document;
-  const claims = allClaims();
   const mapClaims = D.map.claims || [];
   const files = new Set(mapClaims.flatMap(c => (c.anchors || []).map(a => a.path)));
   $("#sub").textContent = `Mapped by the 🗺️ Cartographer · ${plural((doc.sections || []).length, "section")} · cites ${plural(files.size, "file")}`;
-  /* the same rules as memory.memory_state: behind HEAD first, then claims waiting for a re-check */
-  const stale = claims.filter(c => claimState(c) === "stale").length;
-  const failed = claims.filter(c => claimState(c) === "stale_flagged").length;
-  const retired = mapClaims.filter(c => c.freshness === "retired").length;
-  const live = mapClaims.filter(c => c.freshness !== "retired").length;
+  /* the header is memory.memory_state, as /api/state returns it ("memory"): never "Up to date" while refreshing or behind */
+  const m = s.memory || {};
+  const fr = m.freshness || {};
+  const stale = m.awaiting_recheck || 0;
+  const headline = esc(m.headline || "").replace(/\b[0-9a-f]{12}\b/g, x => `<code>${x}</code>`);
   let h;
-  if (s.map_commit && s.map_commit !== s.head) {
-    h = `<span class="mem-i warn">${ICON.info}</span><span data-tip="The map was saved at <code>${esc(short(s.map_commit))}</code>; HEAD is now <code>${esc(short(s.head))}</code>. A refresh re-resolves every claim against the new code.">Map at <code>${esc(short(s.map_commit))}</code> · HEAD is <code>${esc(short(s.head))}</code>: refresh pending</span>`;
-  } else if (stale) {
-    h = `<span class="mem-i busy"><span class="ring"></span></span><span data-tip="The code changed since these claims were checked. They are shown greyed, without their evidence mark, and not served as fact or given to agents until the Checker re-reads the new lines.">Refreshing · ${plural(stale, "claim")} being re-checked</span>`;
+  if (m.state === "behind") {
+    h = `<span class="mem-i warn">${ICON.info}</span><span data-tip="The map was saved at <code>${esc(short(m.map_commit))}</code>; HEAD is now <code>${esc(short(m.head))}</code>. A refresh re-resolves every claim against the new code.">${headline}</span>`;
+  } else if (m.state === "refreshing") {
+    h = `<span class="mem-i busy"><span class="ring"></span></span><span data-tip="The code changed since these claims were checked. They are shown greyed, without their evidence mark, and not served as fact or given to agents until the Checker re-reads the new lines.">${headline}</span>`;
   } else {
-    h = `<span class="mem-i">${ICON.ok}</span><span data-tip="The map is at <code>${esc(short(s.head))}</code>, which is HEAD, and no claim waits for a re-check.">Up to date at <code>${esc(short(s.head))}</code></span>`;
+    h = `<span class="mem-i">${ICON.ok}</span><span data-tip="The map is at <code>${esc(short(m.head))}</code>, which is HEAD, and no claim waits for a re-check.">${headline}</span>`;
   }
-  const parts = [stale + failed ? `${stale + failed} stale` : "", retired ? `${retired} retired` : ""].filter(Boolean);
-  h += `<span class="sep">·</span><span>${plural(live, "claim")}${parts.length ? ", " + parts.join(", ") : ", every anchor resolved"}</span>`;
-  /* re-checked = a verdict on a claim that had gone stale (rechecked_at, as memory.memory_state counts it) */
-  const since = s.previous_visit ? claims.filter(c => c.rechecked_at && c.rechecked_at > s.previous_visit).length : 0;
+  const live = (fr.current || 0) + (fr.stale || 0);
+  const parts = [fr.stale ? `${fr.stale} stale` : "", fr.retired ? `${fr.retired} retired` : ""].filter(Boolean);
+  h += `<span class="sep">·</span><span data-tip="Claims on the map and in answers">${plural(live, "claim")}${parts.length ? ", " + parts.join(", ") : ", every anchor resolved"}</span>`;
+  const since = m.rechecked_since_visit || 0;
   if (since) h += `<span class="sep">·</span><span class="since">${plural(since, "claim")} re-checked since your last visit</span>`;
-  if (s.dirty && s.dirty.tracked) h += `<span class="sep">·</span><span data-tip="${s.dirty.tracked} uncommitted change(s) in the working tree. The map and previews read committed code only.">uncommitted changes not mapped</span>`;
+  if (m.dirty && m.dirty.tracked) h += `<span class="sep">·</span><span data-tip="${m.dirty.tracked} uncommitted change(s) in the working tree. The map and previews read committed code only.">uncommitted changes not mapped</span>`;
   $("#mem").innerHTML = h;
-  $("#repo").textContent = `${doc.title || ""} @ ${short(s.head)}`;
+  $("#repo").textContent = `${doc.title || ""} @ ${short(m.head || s.head)}`;
   /* the refresh since the last visit */
-  const log = s.refresh_log || [];
-  const last = log[log.length - 1];
-  const show = last && (!s.previous_visit || last.at > s.previous_visit) && UI.dismissed !== last.at;
+  const last = m.last_refresh;
+  const show = last && (!m.previous_visit || last.at > m.previous_visit) && UI.dismissed !== last.at;
   $("#refresh").innerHTML = show ? refreshHTML(last, stale) : "";
   $("#mapnew").innerHTML = UI.pendingRev ? `<div class="mapnew" role="status"><span>The Cartographer saved a new version of the map.</span><button data-reload>Show it</button></div>` : "";
 }
@@ -534,7 +730,8 @@ function answerHTML(q, r, byId) {
   for (const h of r.path?.hops || []) shown.add(h.claim);
   const extra = (r.claims || []).filter(c => !shown.has(c.id));
   const extraHTML = extra.length ? `<ul class="ans-claims">${extra.map(c => `<li><span class="claim">${inlineCode(c.text)}</span>${citeHTML(c, "answer")}</li>`).join("")}</ul>` : "";
-  const path = r.path ? `${pathHTML(r.path, byId, true)}<span class="asdiagram" data-tip="The swimlane diagram view arrives in step 4 (T7.4)">View as diagram</span>` : "";
+  if (r.path) FIGS.set(`resp:${r.id}`, diagramModel(r.path, byId, true, `resp:${r.id}`));
+  const path = r.path ? `${pathHTML(r.path, byId, true)}<button class="dglink" data-dgview="resp:${esc(r.id)}">${ICON.dg}View as diagram</button>` : "";
   return `<div class="ans" data-doc="${esc(doc)}"><div class="atext">${body}</div>${extraHTML}${path}</div>`;
 }
 function checkHTML(q, r) {
@@ -683,7 +880,7 @@ function renderPanel(force) {
   renderTop();
   renderMarks();
 }
-function render(force) { if (!IDX) return; renderPanel(force); renderHeader(); }
+function render(force) { if (!IDX) return; renderPanel(force); renderHeader(); renderFigs(); }
 
 /* ---------------------------------------------------------------- composer */
 function curResponse() { const q = UI.curNode && IDX.Q.get(UI.curNode); return q && q.status === "answered" ? IDX.respOf.get(q.id) : null; }
@@ -856,15 +1053,24 @@ function previewHTML(p) {
   return `<div class="snip"><div class="snip-h"><span>${esc(p.path)} · ${lines(p.start, p.end)}</span>${linksHTML(p)}</div>${changed}<pre>${rows}</pre></div>`;
 }
 async function previewFor(chip) {
+  if (chip.matches(".dg-a")) {
+    const ctx = hopCtxHTML(chip);
+    const inner = chip.dataset.i !== undefined || chip.dataset.search ? await chipPreview(chip)
+      : `<div class="snip"><div class="msg">General knowledge: nothing in this repo to show.</div></div>`;
+    return inner.replace('<div class="snip">', `<div class="snip">${ctx}`);
+  }
+  return chipPreview(chip);
+}
+async function chipPreview(chip) {
   const byId = claimsById();
   const c = byId.get(chip.dataset.claim);
   if (chip.dataset.search) {
     const qs = c?.searched || [];
     return `<div class="snip"><div class="snip-h"><span>searched, not found</span></div><div class="search">${qs.length ? qs.map(q => esc(q)).join("<br>") : "no record of the searches"}<br><span>no match in the repo</span></div></div>`;
   }
-  const key = `${chip.dataset.claim}:${chip.dataset.i}`;
+  const key = `${chip.dataset.claim}:${chip.dataset.i || 0}`;
   if (!PCACHE.has(key)) {
-    PCACHE.set(key, api(`/api/preview?claim=${encodeURIComponent(chip.dataset.claim)}&anchor=${chip.dataset.i}&context=3`)
+    PCACHE.set(key, api(`/api/preview?claim=${encodeURIComponent(chip.dataset.claim)}&anchor=${chip.dataset.i || 0}&context=3`)
       .then(previewHTML).catch(e => { PCACHE.delete(key); return `<div class="snip"><div class="msg">${esc(e.message)}</div></div>`; }));
   }
   return PCACHE.get(key);
@@ -899,7 +1105,7 @@ function showTip(el, html, below) {
   TIP.classList.add("on");
 }
 document.addEventListener("mouseover", e => {
-  const chip = e.target.closest(".chip:not(.gone)");
+  const chip = e.target.closest(".chip:not(.gone),.dg-a");
   clearTimeout(hoverT);
   if (chip || e.target.closest(".prev")) clearTimeout(hideT);
   if (chip && !pinned) hoverT = setTimeout(() => showPreview(chip), 280);
@@ -938,9 +1144,19 @@ document.addEventListener("click", e => {
   const ed = el.closest("a[data-cursor]");
   if (ed && e.altKey && ed.dataset.cursor) { e.preventDefault(); location.href = ed.dataset.cursor; return; }
   if (el.closest(".lk")) return;
-  const chip = el.closest(".chip");
+  const chip = el.closest(".chip,.dg-a");
   if (chip) { e.stopPropagation(); if (!chip.classList.contains("gone")) pinPreview(chip); return; }
   if (!el.closest(".prev")) unpin();
+  if (el.closest("[data-dgclose]") || el.id === "dgov") { closeOverlay(); return; }
+  const dv = el.closest("[data-dgview]");
+  if (dv) { viewDiagram(dv.dataset.dgview); return; }
+  const fv = el.closest("[data-fview]");
+  if (fv) { const f = fv.closest(".flow"); if (fv.dataset.fview === "dg") f.dataset.force = "1"; openFlow(f.dataset.flow, fv.dataset.fview); return; }
+  const ge = el.closest(".dg-e");
+  if (ge) { TIP.classList.remove("on"); showCalls(ge.dataset.from, ge.dataset.to); return; }
+  const gnode = el.closest(".dg-node");
+  if (gnode) { TIP.classList.remove("on"); goModule(gnode.dataset.file); return; }
+  if (el.closest("[data-goflows]")) { e.preventDefault(); scrollMapTo($(`#s-${CSS.escape(flowsSection())}`), 24); return; }
   if (el.closest("#top")) { UI.open = true; if (!UI.cur && UI.tab === "thread") UI.tab = "nav"; render(true); return; }
   if (el.closest("#pclose")) { closePanel(); return; }
   const tab = el.closest("[data-tab]");
@@ -978,7 +1194,7 @@ document.addEventListener("click", e => {
   const qp = el.closest("#qp button");
   if (qp) { submit(qp.textContent); return; }
   const fh = el.closest(".flow-h");
-  if (fh) { const f = fh.parentElement; f.classList.toggle("open"); fh.setAttribute("aria-expanded", f.classList.contains("open")); layout(); return; }
+  if (fh) { const f = fh.parentElement; f.classList.toggle("open"); fh.setAttribute("aria-expanded", f.classList.contains("open")); renderFigs(); layout(); return; }
   const tocA = el.closest("#toc a");
   if (tocA) { e.preventDefault(); scrollMapTo($(tocA.getAttribute("href")), 24); return; }
 });
@@ -1007,7 +1223,14 @@ $("#cin").addEventListener("keydown", e => {
   if (e.key === "Escape") $("[data-cancel]")?.click();
 });
 $("#cin").addEventListener("input", autoGrow);
-document.addEventListener("keydown", e => { if (e.key === "Escape") { unpin(); hideTB(); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { unpin(); hideTB(); closeOverlay(); return; }
+  /* diagram arrows, pills, graph boxes and arrows are buttons: Enter or Space acts */
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".dg-a,.dg-e,.dg-node")) {
+    e.preventDefault();
+    e.target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+});
 function setNotesLayer(on) { document.body.classList.toggle("layer-notes", on); store.set("notesLayer", on ? "1" : "0"); layout(); }
 $("#laynotes").addEventListener("change", e => setNotesLayer(e.target.checked));
 
@@ -1042,6 +1265,7 @@ function setRail(on) {
   b.setAttribute("aria-label", on ? "Expand the contents" : "Collapse the contents");
   b.dataset.tip = on ? "Expand the contents" : "Collapse the contents";
   applyWidth();
+  if (MAPTEXT) renderFigs();
   setTimeout(layout, 200);
 }
 $("#railbtn").addEventListener("click", () => setRail(!document.documentElement.classList.contains("rail")));
@@ -1063,14 +1287,14 @@ function applyWidth() {
   g.setAttribute("aria-valuetext", `${w} pixels wide`);
   return w;
 }
-function setWant(w, save = true) { want = Math.max(PW.min, Math.min(PW.max, Math.round(w))); applyWidth(); if (save) store.set("panelWidth", String(want)); layout(); }
+function setWant(w, save = true) { want = Math.max(PW.min, Math.min(PW.max, Math.round(w))); applyWidth(); if (save) store.set("panelWidth", String(want)); renderFigs(); layout(); }
 $("#grip").addEventListener("pointerdown", e => {
   e.preventDefault();
   const grip = e.currentTarget;
   grip.setPointerCapture(e.pointerId);
   document.body.classList.add("resizing");
   const move = ev => { want = Math.max(PW.min, Math.min(PW.max, innerWidth - ev.clientX)); applyWidth(); layout(); };
-  const up = () => { grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up); document.body.classList.remove("resizing"); setWant(Math.min(want, maxWidth())); };
+  const up = () => { grip.removeEventListener("pointermove", move); renderFigs(); grip.removeEventListener("pointerup", up); document.body.classList.remove("resizing"); setWant(Math.min(want, maxWidth())); };
   grip.addEventListener("pointermove", move);
   grip.addEventListener("pointerup", up);
 });
@@ -1082,7 +1306,7 @@ $("#grip").addEventListener("keydown", e => {
   e.preventDefault();
   setWant(to);
 });
-addEventListener("resize", () => { applyWidth(); layout(); });
+addEventListener("resize", () => { applyWidth(); renderFigs(); layout(); });
 MAIN.addEventListener("transitionend", layout);
 
 /* ---------------------------------------------------------------- loading and polling */

@@ -92,7 +92,7 @@ def test_page_and_assets_are_served_with_a_strict_policy(site):
     assert status == 200 and site["token"] in page and site["store"].repo_id in page
     assert headers["Content-Security-Policy"] == PAGE_CSP and "script-src 'self'" in PAGE_CSP
     assert "<script>" not in page and " style=" not in page          # nothing inline for the policy to block
-    for path, kind in (("/page.js", "javascript"), ("/page.css", "css"), ("/boot.js", "javascript"),
+    for path, kind in (("/page.js", "javascript"), ("/page.css", "css"), ("/boot.js", "javascript"), ("/diagrams.js", "javascript"),
                        ("/favicon.svg", "svg")):
         status, headers, _ = get(site, path, token=False)
         assert status == 200 and kind in headers["Content-Type"], path

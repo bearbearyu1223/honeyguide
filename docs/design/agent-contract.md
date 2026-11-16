@@ -139,6 +139,10 @@ Records saved before T7 have no `status`; they read as `open` until answered.
 - `section.kind`: `overview`, `modules`, `flows`, `other`. `block.type`: `text`, `module` (adds `path`, the
   file it describes), `flow` (adds `flow`, a path record id; its spans are the caption). Ids match
   `[a-z0-9][a-z0-9-]*`, unique per document.
+- Optional on a `module` block (T7.4): `role`, the file's one-line role (a string, one line, <= 80 chars; shown
+  after the path in the Modules heading, as the subtitle of that file's lanes in flow diagrams, and in the module
+  graph), and `entry: true` on the module that is the repo's entry point (the module graph tags it ENTRY POINT).
+  Neither is part of the plain text, so neither moves annotation offsets.
 - **Claims to text**: a span with `claim` is that claim's rendered text. In drafts, `claim` is the draft `key`; save
   rewrites it to the id. A claim may back several spans; a claim no span shows is a warning.
 - **Plain text** (what DocumentAnchor offsets index): section title, blank line, then each block's spans joined,
@@ -161,9 +165,25 @@ One per flow (in `document.flows`) or per Tracer answer (`response.path`):
 ```
 
 Hops are in call order. `from`/`to` name lanes; `loop` (optional) names a loop frame; `trace` is `seen` (in the
-runtime trace: solid arrow), `unseen` (read or inferred only: dashed), or `blind_spot` (where the trace can't see,
-e.g. C++ backward: dotted). `claim` is required: every hop is a claim and obeys the claim rules, so it is
-anchor-cited or labelled. `returns`, `data`, `label` are optional strings. Loops with no hop are a warning.
+runtime trace), `unseen` (read or inferred only), or `blind_spot` (where the trace can't see, e.g. C++ backward).
+`claim` is required: every hop is a claim and obeys the claim rules, so it is anchor-cited or labelled. `returns`,
+`data`, `label` and (T7.4) `note` are optional strings; `note` says what a blind spot hides or why an unseen hop is
+inferred ("autograd runs in C++, so the trace sees this call but not its walk back"). Loops with no hop are a
+warning.
+
+How the page draws a path (T7.4: the Steps rail and the swimlane diagram, from the same record):
+- Line style (Han's v3.1 choice 1): **dotted** = `blind_spot`; **solid** = `seen`, or `unseen` whose claim is read in
+  source / asserted by a test / seen at runtime (the evidence shape says which); **dashed** = everything else
+  (inferred: neither read nor seen). Dashed and dotted hops carry a note under the arrow (`note`, else `label`).
+- Lanes: in order of first use in the hops; header = the lane's `label`, subtitle = the `role` of the module block
+  whose `path` is the lane's `path`. The flow starts in the first hop's `from` lane (a start dot); there is no
+  separate entry hop.
+- Data: `returns` + `data` show as one pill, `[returns, data]` (`["returns", returns]` or `["data", data]` when only
+  one is given). It goes back to whoever makes the next hop (a return arrow) or, when that is the callee's own lane,
+  stays on that lane as a pill.
+- Evidence shape: the hop claim's, withheld while the claim is stale, retired or (in the panel) unchecked.
+- Module graph: calls between two lanes with different `path`s, across `document.flows`; lanes without a `path`
+  (libraries) are left out.
 
 ## Activity log (avatars)
 
@@ -210,8 +230,8 @@ land in the inbox and the session's `watch` wakes the Guide.
 
 | method, path | body / query | result |
 |---|---|---|
-| GET `/` | | placeholder page (T7.3 replaces it) |
-| GET `/api/state` | | repo id, HEAD, map commit, counts, `previous_visit`, `rechecked_since_visit`, refresh log; plus `memory` (the memory state above; T7.5, to be added by the server's owner) |
+| GET `/` | | the map page (T7.3), with `/page.css`, `/page.js`, `/boot.js`, `/diagrams.js` (T7.4), `/favicon.svg` |
+| GET `/api/state` | | repo id, HEAD, map commit, counts, `previous_visit`, `rechecked_since_visit` (legacy: counts any verdict since the visit; the header uses `memory`'s), refresh log; plus `memory` (the memory state above, added in T7.4; the page header shows it) |
 | GET `/api/map` | | the map layer |
 | GET `/api/threads` | | questions (with status) and responses |
 | GET `/api/notes` | | notes |

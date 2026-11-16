@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import activity, inbox
+from . import activity, inbox, memory
 from .contract import ContractError, load_side
 from .gitio import GitError, Repo
 from .preview import preview
@@ -32,7 +32,8 @@ TOKEN_HEADER = "X-Honeyguide-Token"
 PAGE_DIR = Path(__file__).parent / "page"
 # The map page's own files (T7.3), served by name only: nothing else on disk is reachable.
 PAGE_FILES = {"/page.css": "text/css; charset=utf-8", "/page.js": "text/javascript; charset=utf-8",
-              "/boot.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml"}
+              "/boot.js": "text/javascript; charset=utf-8",
+              "/diagrams.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml"}
 # Scripts, styles and fetches from this server only; no frames, no forms posting elsewhere.
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
             "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
@@ -87,6 +88,7 @@ def state(repo: Repo, store: Store) -> dict:
         "previous_visit": since, "last_visit": session.get("last_visit"),
         "rechecked_since_visit": sum(1 for c in claims if since and (c.get("checked_at") or "") > since),
         "refresh_log": session["refresh_log"][-20:],
+        "memory": memory.memory_state(repo, store),
     }
 
 

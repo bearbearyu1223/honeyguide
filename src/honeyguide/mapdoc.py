@@ -16,6 +16,7 @@ BLOCK_TYPES = ("text", "module", "flow")
 TRACE = ("seen", "unseen", "blind_spot")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 MAX_STATUS = 200
+MAX_ROLE = 80   # a module's one-line role, shown in its heading, as its lane's subtitle and in the module graph
 
 
 def _str(value: Any) -> bool:
@@ -133,7 +134,7 @@ def check_path_record(path: Any, where: str, errors: list[str], warnings: list[s
             if hop["loop"] not in loop_ids:
                 errors.append(f"{at}: loop {hop['loop']!r} is not declared")
             used_loops.add(hop["loop"])
-        for key in ("returns", "data", "label"):
+        for key in ("returns", "data", "label", "note"):
             if key in hop and hop[key] is not None and not isinstance(hop[key], str):
                 errors.append(f"{at}: {key} must be a string")
     for loop_id in sorted(loop_ids - used_loops):
@@ -188,6 +189,12 @@ def check_document(document: Any) -> tuple[list[str], list[str]]:
                 errors.append(f"{at}: type must be one of {', '.join(BLOCK_TYPES)}")
             if kind == "module" and not _str(block.get("path")):
                 errors.append(f"{at}: a module block needs path")
+            if "role" in block and block["role"] is not None and (
+                    kind != "module" or not isinstance(block["role"], str) or "\n" in block["role"]
+                    or len(block["role"]) > MAX_ROLE):
+                errors.append(f"{at}: role is a module block's one-line role (a string, <= {MAX_ROLE} chars)")
+            if "entry" in block and block["entry"] is not None and (kind != "module" or not isinstance(block["entry"], bool)):
+                errors.append(f"{at}: entry is true or false, on a module block only")
             if kind == "flow" and block.get("flow") not in flow_ids:
                 errors.append(f"{at}: flow {block.get('flow')!r} is not in document.flows")
             check_spans(block.get("spans"), at, errors)

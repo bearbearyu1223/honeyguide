@@ -354,6 +354,8 @@ MAP_CLAIMS = [
     C("g2", "the prefill runs every prompt position in one pass", "seen_at_runtime", A("engine.py", "        logits = self.model(x, cache=cache)  # prefill")),
     C("g3", "each new token is sampled from the last position's logits", "read_in_source", A("engine.py", "            nxt = sample(logits[:, -1], temperature)")),
     C("g4", "the ids are decoded back to text", "read_in_source", A("engine.py", "        return self.tok.decode(out)")),
+    C("g5", "each new token runs one decode step through the model, reading the cache", "seen_at_runtime",
+      A("engine.py", "            logits = self.model(nxt, cache=cache)")),
 ]
 
 FLOWS = [
@@ -361,7 +363,7 @@ FLOWS = [
      "lanes": [{"id": "train", "label": "train.py · main", "path": "train.py"},
                {"id": "data", "label": "data.py · ShardLoader", "path": "data.py"},
                {"id": "model", "label": "model.py · GPT", "path": "model.py"},
-               {"id": "optim", "label": "torch · AdamW"}],
+               {"id": "optim", "label": "optim.py · AdamW", "path": "optim.py"}],
      "loops": [{"id": "acc", "label": "× grad_accum"}],
      "hops": [
          {"from": "train", "to": "data", "call": "loader.next_batch()", "returns": "x, y", "data": "(B, T) int64",
@@ -369,7 +371,8 @@ FLOWS = [
          {"from": "train", "to": "model", "call": "model(x, y)", "data": "logits (B, T, 50304) → loss",
           "label": "under bf16 autocast on CUDA", "loop": "acc", "trace": "seen", "claim": "h3"},
          {"from": "train", "to": "model", "call": "loss.backward()", "label": "on loss / grad_accum", "loop": "acc",
-          "trace": "blind_spot", "claim": "h4"},
+          "trace": "blind_spot", "note": "autograd runs in C++, so the trace sees this call but not its walk back "
+          "through model.py", "claim": "h4"},
          {"from": "train", "to": "optim", "call": "opt.step()", "label": "once per outer step", "trace": "unseen",
           "claim": "h5"}]},
     {"id": "f-gen", "title": "How does generate turn a prompt into text?",
@@ -382,6 +385,8 @@ FLOWS = [
           "label": "prefill: all prompt positions at once", "trace": "seen", "claim": "g2"},
          {"from": "engine", "to": "engine", "call": "sample(logits[:, -1])", "data": "(1, 1)", "loop": "tok",
           "trace": "seen", "claim": "g3"},
+         {"from": "engine", "to": "model", "call": "model(nxt, cache=cache)", "data": "logits (1, 1, 50304)", "loop": "tok",
+          "label": "decode: one new position, reading the cached keys and values", "trace": "seen", "claim": "g5"},
          {"from": "engine", "to": "engine", "call": "tok.decode(out)", "returns": "str", "trace": "seen", "claim": "g4"}]},
 ]
 
@@ -401,15 +406,15 @@ DOCUMENT = {
             {"id": "b-readme", "type": "text", "spans": [S(MAP_CLAIMS[9]["text"], "readme"), S(".")]},
         ]},
         {"id": "modules", "kind": "modules", "title": "Modules", "blocks": [
-            {"id": "m-train", "type": "module", "path": "train.py", "spans": [S(MAP_CLAIMS[10]["text"], "accum"), S(". "),
+            {"id": "m-train", "type": "module", "path": "train.py", "role": "the training loop", "entry": True, "spans": [S(MAP_CLAIMS[10]["text"], "accum"), S(". "),
                                                                              S(MAP_CLAIMS[11]["text"], "ckpt"), S(".")]},
-            {"id": "m-model", "type": "module", "path": "model.py", "spans": [S(MAP_CLAIMS[12]["text"], "sdpa"), S(". "),
+            {"id": "m-model", "type": "module", "path": "model.py", "role": "GPT, attention blocks", "spans": [S(MAP_CLAIMS[12]["text"], "sdpa"), S(". "),
                                                                              S(MAP_CLAIMS[13]["text"], "kernel"), S(".")]},
-            {"id": "m-data", "type": "module", "path": "data.py", "spans": [S(MAP_CLAIMS[14]["text"], "shuffle"), S(".")]},
-            {"id": "m-engine", "type": "module", "path": "engine.py", "spans": [S(MAP_CLAIMS[15]["text"], "kv"), S(".")]},
-            {"id": "m-optim", "type": "module", "path": "optim.py", "spans": [S(MAP_CLAIMS[16]["text"], "groups"), S(". "),
+            {"id": "m-data", "type": "module", "path": "data.py", "role": "the sharded token loader", "spans": [S(MAP_CLAIMS[14]["text"], "shuffle"), S(".")]},
+            {"id": "m-engine", "type": "module", "path": "engine.py", "role": "sampling with a KV cache", "spans": [S(MAP_CLAIMS[15]["text"], "kv"), S(".")]},
+            {"id": "m-optim", "type": "module", "path": "optim.py", "role": "AdamW and the schedule", "spans": [S(MAP_CLAIMS[16]["text"], "groups"), S(". "),
                                                                              S(MAP_CLAIMS[17]["text"], "sched"), S(".")]},
-            {"id": "m-tok", "type": "module", "path": "tokenizer.py", "spans": [S(MAP_CLAIMS[18]["text"], "tok"), S(".")]},
+            {"id": "m-tok", "type": "module", "path": "tokenizer.py", "role": "tiktoken's gpt2 encoding", "spans": [S(MAP_CLAIMS[18]["text"], "tok"), S(".")]},
         ]},
         {"id": "flows", "kind": "flows", "title": "Flows", "blocks": [
             {"id": "fl-step", "type": "flow", "flow": "f-step", "spans": [
@@ -455,6 +460,8 @@ ANSWER_SECOND = {
         C("t1", "the second call finds self._cache set and makes no new KVCache", "read_in_source",
           A("engine.py", "        cache = self._cache or KVCache(cfg, batch=1, max_len=cfg.block_size)")),
         C("t2", "pos is rewound to 0", "read_in_source", A("engine.py", "        cache.pos = 0")),
+        C("t2b", "the prefill runs every prompt position through the model in one pass", "seen_at_runtime",
+          A("engine.py", "        logits = self.model(x, cache=cache)  # prefill")),
         C("t3", "the prefill overwrites positions 0 … P−1 in every layer", "seen_at_runtime",
           A("engine.py", "        self.kv[layer, 0, :, :, self.pos:self.pos + t] = k", end_anchor="        self.kv[layer, 1, :, :, self.pos:self.pos + t] = v")),
         C("t4", "entries past pos are never read", "inferred", A("engine.py", "        return self.kv[layer, :, :, :, :self.pos + t]")),
@@ -464,15 +471,18 @@ ANSWER_SECOND = {
              "lanes": [{"id": "engine", "label": "engine.py · Engine", "path": "engine.py"},
                        {"id": "cache", "label": "engine.py · KVCache", "path": "engine.py"},
                        {"id": "model", "label": "model.py · GPT", "path": "model.py"}],
+             "loops": [{"id": "layer", "label": "per layer, × 12"}],
              "hops": [
                  {"from": "engine", "to": "engine", "call": "Engine.generate(prompt)", "label": "self._cache is set: no new KVCache",
                   "returns": "the same KVCache object", "trace": "seen", "claim": "t1"},
                  {"from": "engine", "to": "cache", "call": "cache.pos = 0", "label": "rewinds the write position",
                   "trace": "seen", "claim": "t2"},
+                 {"from": "engine", "to": "model", "call": "model(x, cache=cache)", "label": "prefill: all prompt positions at once",
+                  "trace": "seen", "claim": "t2b"},
                  {"from": "model", "to": "cache", "call": "KVCache.append(layer, k, v)", "label": "overwrites positions 0 … P−1",
-                  "data": "kv[:, :, :, :pos + t]", "trace": "seen", "claim": "t3"},
+                  "data": "kv[:, :, :, :pos + t]", "loop": "layer", "trace": "seen", "claim": "t3"},
                  {"from": "model", "to": "model", "call": "attention over kv[: pos + t]", "label": "stale entries are never read",
-                  "trace": "unseen", "claim": "t4"},
+                  "loop": "layer", "trace": "unseen", "claim": "t4"},
                  {"from": "engine", "to": "engine", "call": "self._cache = cache", "label": "keeps the buffer for the next call",
                   "trace": "seen", "claim": "t5"}]},
 }
@@ -637,6 +647,15 @@ def build(out: Path, variant: str) -> dict:
         r3 = answer(st, repo, q3, "investigator", ANSWER_LOSS)
         check_all(st, r3, {"l3": f"Line {line_of('train.py', '            print(step, loss.item() * cfg.grad_accum, lr)')} logs "
                                  "the last micro-batch's loss, rescaled; it is not an average."})
+        # a follow-up routed to the Tracer whose path is the map's training-step flow
+        r3_whole = {"doc": f"answer:{r3['id']}", "revision": r3["revision"], "quote": r3["text"], "start": 0,
+                    "end": len(r3["text"])}
+        q3a = ask(st, "What happens in one training step?", r3_whole, r3["id"])
+        step_claims = [dict(c) for c in MAP_CLAIMS if c["key"] in ("h2", "h3", "h4", "h5")]
+        r3a = answer(st, repo, q3a, "tracer", step_claims, path=json.loads(json.dumps(FLOWS[0])),
+                     spans=[S("One step pulls grad_accum micro-batches, runs the model and backward on each, "
+                              "then steps the optimizer once.")])
+        check_all(st, r3a)
         # notes: one on the map, one saved answer
         inbox.post_note(st, {"text": "Compare with nanochat: is rotary applied before or after the QK norm?",
                              "anchor": map_anchor(doc, rev, "Positions are rotary, not learned")})
@@ -644,7 +663,7 @@ def build(out: Path, variant: str) -> dict:
         inbox.post_note(st, {"text": "Inferred, not read: worth a runtime check with 2 GPUs.", "share_with_agents": True,
                              "anchor": map_anchor(doc, rev, "Each GPU reads its own interleaved slice of every shard")})
     ids.update(q1=q1["id"], r1=r1["id"], q1a=q1a["id"], q1b=q1b["id"], q1c=q1c["id"], q2=q2["id"], q3=q3["id"],
-               r3=r3["id"], saved=len(saved["saved"]))
+               r3=r3["id"], q3a=q3a["id"], r3a=r3a["id"], r1c=r1c["id"], saved=len(saved["saved"]))
     info["visits"] = {"previous": iso(t0 + timedelta(hours=1)), "last": iso(t0 + timedelta(hours=2))}
     set_visits(st, **info["visits"])
 

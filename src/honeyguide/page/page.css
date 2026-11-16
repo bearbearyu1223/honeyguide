@@ -110,13 +110,130 @@ h2{font-size:20px;line-height:1.3;letter-spacing:-.02em;color:var(--ink);font-we
 .mod:first-of-type{padding-top:0}
 .mod-h{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
 .mod-h code{background:none;padding:0;font-size:14px;font-weight:600;color:var(--ink)}
+.mod-h .role{font-size:13.5px;color:var(--muted)}
 .mod-h code.gone{text-decoration:line-through;color:var(--faint)}
 .mod p{margin-bottom:8px}
 .unres{font-size:13px;color:var(--muted);border-left:2px dashed var(--line2);padding-left:10px;margin:0 0 12px}
 
-/* slots for step 4 (T7.4): swimlane diagrams and the module graph */
-.slot{border:1px dashed var(--line2);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--faint);margin:8px 0 16px;display:flex;gap:8px;align-items:center}
-.slot b{font-weight:600;color:var(--muted)}
+/* ---------- flow diagrams and the module graph (T7.4; inline SVG from diagrams.js) ----------
+   Wide figures break out of the text column to --fw (the map area's width, 560-1000px), centred on it. The SVG
+   carries no style attributes (the page's CSP): fonts, colours and dashes are these classes; line weights in the
+   module graph are presentation attributes, so no rule here sets .gw's stroke-width. */
+:root{--fw:1000px;--dg-bg:var(--surface);--dg-loop:#FAF8F3}
+:root[data-theme="dark"]{--dg-loop:#242830}
+.fig{position:relative;margin:16px 0 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.fig.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2)}
+.fig.flashfig{animation:figflash 1.7s ease-out}
+@keyframes figflash{0%,35%{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 50%,transparent)}100%{box-shadow:0 0 0 3px transparent}}
+.rm .fig.flashfig{outline:2px solid var(--brand);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.fig.flashfig{outline:2px solid var(--brand);outline-offset:2px}}
+.figcap{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 24px}
+.figcap a{color:var(--brand);text-underline-offset:3px}
+.figcap.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:0 4px;box-sizing:border-box}
+.dgwrap{overflow-x:auto;border-radius:12px}
+.fig.scrolls::after{content:"Scroll sideways for the rest \2192";position:absolute;right:10px;bottom:10px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 8px;pointer-events:none}
+.dg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;overflow:visible}
+.dg text{font-family:var(--sans);font-size:11.5px}
+.dg .halo{paint-order:stroke;stroke:var(--dg-bg);stroke-width:4px;stroke-linejoin:round}
+.dg .halo.lp{stroke:var(--dg-loop)}
+.dg .life{stroke:var(--line2);stroke-width:1}
+.dg .act{fill:var(--sunken);stroke:var(--line2);stroke-width:1}
+.dg .lane-h rect{fill:var(--surface);stroke:var(--line2)}
+.dg .lane-n{font:600 12.5px var(--mono);fill:var(--ink)}
+.dg .lane-s{font-size:11px;fill:var(--muted)}
+.dg .frame{fill:var(--dg-loop);stroke:var(--line2);stroke-width:1}
+.dg .ftag{font-size:11.5px;fill:var(--soft)}
+.dg .ftk{font-size:10px;font-weight:650;letter-spacing:.1em;fill:var(--muted)}
+.dg .ftbg{fill:var(--dg-loop)}
+.dg .num{font:500 11px var(--mono);fill:var(--faint)}
+.dg .start{fill:var(--ink)}
+.dg .fn{font:600 12px var(--mono);fill:var(--ink)}
+.dg .anc{font:10.5px var(--mono);fill:var(--faint)}
+.dg .dnote{font-size:11.5px;fill:var(--muted)}
+.dg .dnote tspan.b{font-weight:600;fill:var(--soft)}
+.dg .ln{fill:none;stroke:var(--soft);stroke-width:1.75}
+.dg .hd{fill:var(--soft)}
+.dg .s-dashed .ln{stroke-dasharray:7 5}
+.dg .s-dashed path.ln{stroke-dasharray:4 3}
+.dg .s-dotted .ln{stroke-dasharray:.1 5;stroke-linecap:round;stroke-width:2.3}
+.dg .k-ret .ln{stroke:var(--muted);stroke-width:1.25}
+.dg .k-ret .hd{fill:none;stroke:var(--muted);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
+.dg .k-ret.s-dotted .ln{stroke-width:1.9}
+.dg .pill{fill:var(--surface);stroke:var(--line2)}
+.dg .pn{font:11px var(--mono);fill:var(--faint)}
+.dg .ps{font:11px var(--mono);fill:var(--soft)}
+.dg .hit{fill:transparent}
+.dg .hitl{fill:none;stroke:transparent;stroke-width:14}
+.dg .evf1{fill:var(--e1)}
+.dg .evf2{fill:var(--e2)}
+.dg .evr{fill:none;stroke:var(--e1);stroke-width:1.3}
+.dg .evi{fill:var(--dg-bg);stroke:var(--e3);stroke-width:1.6}
+.dg .evn{fill:none;stroke:var(--e4);stroke-width:1.5;stroke-dasharray:1.4 1.6}
+.dg .evg{fill:none;stroke:var(--e4);stroke-width:1.4}
+.dg .evp{fill:var(--dg-bg);stroke:var(--line2);stroke-width:1.5;stroke-dasharray:2 2}
+.dg .dg-a{cursor:pointer;outline:none}
+.dg .dg-a .ln,.dg .dg-a .hd,.dg .dg-a .fn,.dg .dg-a .pill{transition:stroke var(--t),fill var(--t)}
+.dg .dg-a:hover .ln,.dg .dg-a.pin .ln,.dg .dg-a.hl .ln,.dg .dg-a:focus-visible .ln{stroke:var(--green)}
+.dg .dg-a:hover .hd,.dg .dg-a.pin .hd,.dg .dg-a.hl .hd,.dg .dg-a:focus-visible .hd{fill:var(--green)}
+.dg .k-ret:hover .hd,.dg .k-ret.pin .hd,.dg .k-ret.hl .hd,.dg .k-ret:focus-visible .hd{fill:none;stroke:var(--green)}
+.dg .dg-a:hover .fn,.dg .dg-a.pin .fn,.dg .dg-a.hl .fn,.dg .dg-a:focus-visible .fn{fill:var(--green)}
+.dg .dg-a:hover .pill,.dg .dg-a.pin .pill,.dg .dg-a.hl .pill,.dg .dg-a:focus-visible .pill{stroke:var(--green)}
+.dg .dg-a.hl .hit{fill:color-mix(in srgb,var(--green) 8%,transparent)}
+.dg .dg-a:focus-visible .hit,.dg .dg-e:focus-visible .hit,.dg .dg-node:focus-visible .gbox{stroke:var(--brand);stroke-width:2}
+.dg .sep{stroke:var(--line)}
+.dg .lgt{font-size:11.5px;fill:var(--muted)}
+.dg .lgh{font-size:10px;font-weight:650;letter-spacing:.1em;fill:var(--faint)}
+.dg .gbox{fill:var(--surface);stroke:var(--line2)}
+.dg .dg-node{cursor:pointer;outline:none}
+.dg .dg-node:hover .gbox{stroke:var(--soft)}
+.dg .gname{font:600 13px var(--mono);fill:var(--ink)}
+.dg .grole{font-size:12px;fill:var(--muted)}
+.dg .gtag{font-size:9.5px;font-weight:650;letter-spacing:.1em;fill:var(--muted)}
+.dg .gtagbox{fill:none;stroke:var(--line2)}
+.dg .iso .gbox{fill:none;stroke:var(--line)}
+.dg .iso .gname{fill:var(--faint);font-weight:500}
+.dg .iso .grole{fill:var(--faint)}
+.dg .gw{fill:none;stroke:var(--soft);stroke-linecap:butt}
+.dg .gh{fill:var(--soft)}
+.dg .gcnt{font:600 11px var(--sans);fill:var(--soft)}
+.dg .dg-e{cursor:pointer;outline:none}
+.dg .dg-e:hover .gw,.dg .dg-e.hover .gw,.dg .dg-e:focus-visible .gw{stroke:var(--green)}
+.dg .dg-e:hover .gh,.dg .dg-e.hover .gh,.dg .dg-e:focus-visible .gh{fill:var(--green)}
+.dg .dg-e:hover .gcnt,.dg .dg-e.hover .gcnt,.dg .dg-e:focus-visible .gcnt{fill:var(--green)}
+.dg .gstart{font:11.5px var(--mono);fill:var(--soft)}
+/* a flow: Diagram (default) or Steps; with the panel open and too little room, steps (choice 7) */
+.fbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:12px 0 0;font-size:12.5px;color:var(--faint)}
+.fviews{display:inline-flex;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.fviews button{font-size:12.5px;font-weight:500;color:var(--muted);padding:2px 10px;border-radius:6px;transition:background var(--t),color var(--t)}
+.fviews button:hover{color:var(--ink)}
+.fviews button.on{background:var(--sunken);color:var(--ink);font-weight:600}
+.flow .rail,.flow .fnarrow{display:none}
+.flow.view-list .rail,.flow.view-auto .rail{display:block}
+.flow.view-list .fig,.flow.view-auto .fig{display:none}
+.flow.view-auto .fnarrow{display:block;font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.fnarrow button{color:var(--brand);font-weight:500}
+.hop-blind{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.hop-blind b{font-weight:600;color:var(--soft)}
+.dglink{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--brand);border-radius:6px;margin:6px 0 0 34px}
+.dglink:hover{text-decoration:underline;text-underline-offset:3px}
+.dglink svg{width:16px;height:16px}
+.snip-ctx{padding:8px 12px;border-bottom:1px solid var(--line);font:12.5px/1.5 var(--sans);color:var(--muted);background:var(--bg)}
+.snip-ctx .sc-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--soft)}
+.snip-ctx .sc-h .dot{margin:0 2px 0 0}
+.snip-ctx .sc-h b{font-weight:600;color:var(--ink)}
+.snip-ctx code{font-size:11.5px}
+.snip-ctx .sc-d{margin-top:2px}
+.snip-ctx .sc-d b{font-weight:600;color:var(--soft)}
+/* a Tracer answer that is not a map flow, as a diagram: an overlay over the map, never over the panel */
+.dgov{position:fixed;z-index:42;top:0;left:var(--side);right:0;bottom:0;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:56px 0 48px;
+  background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(2px)}
+body.popen .dgov{right:var(--pw)}
+.dgov.on{display:flex}
+.dgov-c{width:var(--fw)}
+.dgov-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:8px}
+.dgov-t{font-weight:600;font-size:15px}
+.dgov-s{font-size:12.5px;color:var(--muted)}
+.dgov .fig{margin:0}
 
 /* ---------- memory state, under the title ---------- */
 .mem{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:12px 0 0;flex-wrap:wrap}
@@ -367,8 +484,8 @@ body.resizing .main,body.resizing .panel{transition:none}
 .hop{position:relative;padding:0 0 6px 34px}
 .hop::before{content:"";position:absolute;left:8px;top:14px;bottom:0;width:2px;background:var(--line)}
 .hop:last-child::before{display:none}
-.hop.unseen::before{background:none;border-left:2px dashed var(--line2);width:0}
-.hop.blind_spot::before{background:none;border-left:2px dotted var(--line2);width:0}
+.hop.s-dashed::before{background:none;border-left:2px dashed var(--line2);width:0}
+.hop.s-dotted::before{background:none;border-left:2px dotted var(--line2);width:0}
 .node{position:absolute;left:2px;top:9px;z-index:1;width:14px;height:14px;border-radius:50%;background:var(--ev,var(--e4));box-shadow:0 0 0 4px var(--pbg,var(--bg))}
 .panel .node{--pbg:var(--surface)}
 .node.ev-asserted_by_test{border-radius:2px;width:12px;height:12px;left:3px;top:10px}

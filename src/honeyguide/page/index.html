@@ -9,6 +9,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/page.css">
 <script src="/boot.js"></script>
+<script src="/diagrams.js" defer></script>
 <script src="/page.js" defer></script>
 </head>
 <body class="layer-notes">
@@ -55,6 +56,7 @@
   <button data-act="note" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3-7.5 7.5H3v-3z"/></svg>Annotate</button>
   <button data-act="copy" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1 1 0 0 0 10 2.5H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy</button>
 </div>
+<div class="dgov" id="dgov" role="dialog" aria-labelledby="dgovt"><div class="dgov-c"><div class="dgov-h"><div><div class="dgov-t" id="dgovt"></div><div class="dgov-s" id="dgovs"></div></div><button class="x" data-dgclose aria-label="Close the diagram">×</button></div><figure class="fig" id="dgovfig" data-key=""><div class="dgwrap"></div></figure></div></div>
 <div class="tip" id="tip" role="tooltip"></div>
 <div class="prev" id="prev"></div>
 <div class="toast" id="toast" role="status"></div>
