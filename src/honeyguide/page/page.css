@@ -11,7 +11,7 @@
   --bg:#F8F7F4; --surface:#FFFFFF; --sunken:#F1EFEA; --ink:#24272B; --soft:#3E444B; --muted:#66717D; --faint:#868D96;
   --line:#E8E5DF; --line2:#DDD9D1;
   --brand:#8F5A24; --brand-ink:#FFFFFF; --brand-soft:#F3E8DB;
-  --amber:#B8862A; --amber-ink:#8C6512; --mark:#F5E7C9; --amber-soft:#FAF2E1;
+  --amber:#B8862A; --amber-ink:#8C6512; --mark:#F5E7C9; --amber-soft:#FAF2E1; --select:#D9DEE5;
   --ai:#5267B2; --ai-soft:#EEF0F8; --ai-line:#C9D0EA;
   --green:#28835C;
   --e1:#28835C; --e2:#5B8A70; --e3:#7A8B82; --e4:#8C939B;
@@ -30,7 +30,7 @@
   --bg:#171A20; --surface:#1F232A; --sunken:#272B33; --ink:#F0F1F3; --soft:#D2D5DB; --muted:#A5AAB5; --faint:#7F8590;
   --line:#323741; --line2:#3A3F49;
   --brand:#C98348; --brand-ink:#1B140C; --brand-soft:#3A2B1E;
-  --amber:#E2C25C; --amber-ink:#EBCF74; --mark:#423A1C; --amber-soft:#2D2918;
+  --amber:#E2C25C; --amber-ink:#EBCF74; --mark:#423A1C; --select:#3B414C; --amber-soft:#2D2918;
   --ai:#9FAEF1; --ai-soft:#252B3D; --ai-line:#3E4870;
   --green:#66BD91;
   --e1:#66BD91; --e2:#8DB59E; --e3:#9AA8A0; --e4:#8F96A1;
@@ -46,7 +46,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 input,textarea{font:inherit;color:inherit}
 a{color:inherit}
 code{font:.84em var(--mono);background:var(--sunken);padding:.1em .34em;border-radius:4px}
-::selection{background:var(--mark)}
+::selection{background:var(--select)} /* neutral: amber (--mark) means a reader's note, never a plain selection */
 :focus{outline:none}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
 .em{font-family:var(--emoji);font-style:normal}
