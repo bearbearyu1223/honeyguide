@@ -794,3 +794,17 @@ def test_map_arm_repeat_trial_and_side_by_side_capture(ah, capsys, monkeypatch):
     assert A.main(args(ah, "--spot-check")) == 0
     md = (ah["out"] / "spot_check.md").read_text()
     assert "## map claims (the control): 6 units" in md and "Evidence label" in md
+
+
+def test_review_block_names_the_reviewer_and_counts_from_rows():
+    import adhoc_report as R
+    rev = {"reviewer": "GPT-6", "how": "from the sheet only", "items": [
+        {"n": 1, "verdict": "supported", "review": "agree"},
+        {"n": 2, "verdict": "wrong", "review": "change", "note": "minor"},
+        {"n": 3, "verdict": "not_supported", "review": "borderline", "note": "inference"}]}
+    out = "\n".join(R.review_block(rev))
+    assert "reviewer: GPT-6; from the sheet only" in out
+    assert "items 3; agree 1, would change 1, borderline 1" in out
+    assert "#2 wrong (change): minor" in out
+    assert all(len(x) <= 74 for x in out.splitlines())
+    assert "not recorded (no spot_check_review.json)" in "\n".join(R.review_block(None))

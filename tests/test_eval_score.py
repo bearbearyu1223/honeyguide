@@ -238,3 +238,10 @@ def test_class_index_lets_a_class_body_caller_resolve():
     assert got == [("A", 1, 5), ("A.B", 4, 5), ("g.<locals>.C", 9, 10)]
     funcs = {"m.py": ES.class_index(src, "m.py")}
     assert SC.resolve_item({"file": "m.py", "symbol": "A"}, funcs) == ("m.py", "A")
+
+
+def test_grader_label_reads_the_grades_file():
+    import evalscore as ES
+    assert ES.grader_label({"grader": "ChatGPT (GPT-6)", "how": "sheet only"}) == ("ChatGPT (GPT-6)", "sheet only")
+    assert ES.grader_label({"grades": {}}) == ("not recorded", "")
+    assert ES.grader_label(None) == ("not recorded", "")

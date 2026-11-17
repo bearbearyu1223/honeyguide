@@ -29,13 +29,13 @@ setup: maps, outline, leakage
 scores by condition (per run; score in [0, 1]; failed runs = 0)
 --------------------------------------------------------------------------
   condition    runs  scored    mean  exact  capped  error  invalid
-  no-access      20      15   0.662      7       0      0        0
-  explore        40      30   0.967     26       0      0        0
-  outline        40      30   0.989     28       0      0        0
-  map            60      45   0.962     38       0      0        0
+  no-access      20      20   0.622      9       0      0        0
+  explore        40      40   0.950     34       0      0        0
+  outline        40      40   0.967     36       0      0        0
+  map            60      60   0.972     53       0      0        0
   scores: locate 1/0 (first item, function level); callers F1; flow
-  required hops in order (LCS / required); why/how Han's blind grade.
-  exact = runs scoring 1.
+  required hops in order (LCS / required); why/how a blind grade by
+  ChatGPT (GPT-6). exact = runs scoring 1.
 
 by type (descriptive; mean per run)
 --------------------------------------------------------------------------
@@ -43,7 +43,7 @@ by type (descriptive; mean per run)
   locate            6       0.500       1.000       1.000       1.000
   callers           5       0.733       0.933       1.000       0.933
   flow              4       0.817       0.958       0.958       0.942
-  whyhow            5           -           -           -           -
+  whyhow            5       0.500       0.900       0.900       1.000
   flow items not in the key (all conditions): in the trace but pre-
     filtered 46, other path 0, invented 1
   callers: answered sites Han decided are not callers 6; items outside the
@@ -54,9 +54,9 @@ paired differences by question
   per question: mean over its passes; then the mean difference over
   questions with both conditions, 95% CI from 10000 bootstrap resamples of
   questions (seed 0)
-  map - explore           -0.004  [-0.013, +0.000]  n=15
-  map - outline           -0.027  [-0.076, +0.000]  n=15
-  explore - no-access     +0.304  [+0.102, +0.531]  n=15
+  map - explore           +0.022  [-0.010, +0.075]  n=20
+  map - outline           +0.005  [-0.050, +0.072]  n=20
+  explore - no-access     +0.328  [+0.140, +0.530]  n=20
 
 learning vs remembering: mean score by cutoff subset
 --------------------------------------------------------------------------
@@ -79,24 +79,25 @@ tokens (thousands), time and cost per answering run (means)
   price check: list cost rebuilt from tokens with the config prices is
     within 0.0% of the CLI's total_cost_usd on every run (161 runs)
   cost per exact answer (list, with cache):
-    no-access       $0.10  (7 exact of 20 runs)
-    explore         $0.11  (26 exact of 40 runs)
-    outline         $0.22  (28 exact of 40 runs)
-    map             $0.23  (38 exact of 60 runs)
+    no-access       $0.08  (9 exact of 20 runs)
+    explore         $0.09  (34 exact of 40 runs)
+    outline         $0.17  (36 exact of 40 runs)
+    map             $0.17  (53 exact of 60 runs)
   map build: $7.22 list per map (mean of 1)
     break-even vs explore: never (map answers are not cheaper per exact
       answer)
-    break-even vs outline: never (map answers are not cheaper per exact
-      answer)
+    break-even vs outline: 1803 questions asked
 
 failed runs by cell (each counts as wrong)
 --------------------------------------------------------------------------
   none
 
-why/how (graded blind by Han)
+why/how (graded blind)
 --------------------------------------------------------------------------
-  graded 0 of 40 finished answers; questions awaiting grades (left out of
-    every score above): 5
+  grader: ChatGPT (GPT-6); from sheet.md only: blind to the condition, no
+    access to the repository source
+  graded 40 of 40 finished answers; questions awaiting grades (left out of
+    every score above): 0
 
 transcripts
 --------------------------------------------------------------------------

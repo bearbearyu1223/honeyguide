@@ -5,7 +5,7 @@
 
 Reads the run archive (see eval/run/evalrun.py) and never writes to it, except --grading-sheet, which writes
 <archive>/<run-id>/grading/{sheet.md, sheet.json, blind_key.json, grades.json (a template, never overwritten)}.
-Han's grades are read back from grading/grades.json (or --grades FILE).
+The why/how grades are read back from grading/grades.json (or --grades FILE); its "grader" and "how" are printed.
 
 Deterministic: every number comes from the saved runs, the frozen questions, Han's answers and grades; the
 bootstrap is seeded. Re-scoring the same archive prints the same bytes. Rules: scoring.py (per type), the
@@ -264,8 +264,14 @@ def build_label(meta: dict) -> str:
     return f"build + {n} fix round{'s' if n != 1 else ''}" if n else "build"
 
 
+def grader_label(doc: dict | None) -> tuple[str, str]:
+    """(who graded, how) from grades.json's "grader" and "how"; "not recorded" when the file names no grader."""
+    doc = doc or {}
+    return (str(doc.get("grader") or "").strip() or "not recorded", str(doc.get("how") or "").strip())
+
+
 def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, grades: dict[str, float],
-            grade_problems: list[str]) -> str:
+            grade_problems: list[str], grader: tuple[str, str] = ("not recorded", "")) -> str:
     plan, metas = arch["plan"], arch["metas"]
     seed = int(plan["config"].get("seed", 0))
     qs = plan["questions"]
@@ -380,7 +386,7 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
         L.append(f"  {c:<11}{len(rs):>6}{len(sc):>8}{f3(S.mean(sc)):>8}{sum(1 for x in sc if x >= 1.0):>7}"
                  f"{st.count('capped'):>8}{st.count('error'):>7}{st.count('invalid_answer'):>9}")
     L += wrap("scores: locate 1/0 (first item, function level); callers F1; flow required hops in order (LCS / "
-              "required); why/how Han's blind grade. exact = runs scoring 1.", 2, 2)
+              f"required); why/how a blind grade by {grader[0]}. exact = runs scoring 1.", 2, 2)
 
     L += rule("by type (descriptive; mean per run)")
     L.append(f"  {'type':<9}{'questions':>10}" + "".join(f"{c:>12}" for c in CONDS))
@@ -496,7 +502,8 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
         L.append("  none")
 
     # --- why/how and transcripts
-    L += rule("why/how (graded blind by Han)")
+    L += rule("why/how (graded blind)")
+    L += wrap(f"grader: {grader[0]}" + (f"; {grader[1]}" if grader[1] else ""), 2, 4)
     wh = [it for it in items if it["kind"] == "answer" and it["qtype"] == "whyhow" and it["id"] in scores
           and scores[it["id"]]["status"] == "ok"]
     graded = sum(1 for it in wh if scores[it["id"]]["score"] is not None)
@@ -557,12 +564,15 @@ def main(argv: list[str] | None = None) -> int:
               "(open sheet.md, not blind_key.json; fill grades.json)", file=sys.stderr)
         return 0
     grades, problems = {}, []
+    grader = grader_label(None)
     gpath = a.grades or gdir / "grades.json"
     if gpath.exists():
         key = json.loads((gdir / "blind_key.json").read_text()) if (gdir / "blind_key.json").exists() else g["key"]
-        grades, problems = G.read_grades(json.loads(gpath.read_text()), key, g["scale"])
+        gdoc = json.loads(gpath.read_text())
+        grades, problems = G.read_grades(gdoc, key, g["scale"])
+        grader = grader_label(gdoc)
     facts = RepoFacts(cfg, repo, arch["plan"]["commit"], frozen)
-    sys.stdout.write(capture(cfg, arch, frozen, human, facts, grades, problems))
+    sys.stdout.write(capture(cfg, arch, frozen, human, facts, grades, problems, grader=grader))
     return 0
 
 

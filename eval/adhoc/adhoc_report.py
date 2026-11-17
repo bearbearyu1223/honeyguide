@@ -626,6 +626,31 @@ def capture(data: dict, evidence: list[dict], runs_txt: str | None, map_data: di
     return text
 
 
+def review_block(review: dict | None) -> list[str]:
+    """The spot-check review (spot_check_review.json in the answers archive): who reviewed, how, and agreement per
+    verdict, counted from its per-item rows."""
+    L = rule("spot-check review of the Checker's verdicts")
+    if not review:
+        return L + ["  not recorded (no spot_check_review.json)"]
+    items = review.get("items") or []
+    L += wrap(f"reviewer: {review.get('reviewer') or 'not recorded'}; {review.get('how') or 'how: not recorded'}",
+              2, 4)
+    n = len(items)
+    cnt = {k: sum(1 for i in items if i.get("review") == k) for k in ("agree", "change", "borderline")}
+    L.append(f"  items {n}; agree {cnt['agree']}, would change {cnt['change']}, borderline {cnt['borderline']}")
+    L.append(f"  {'verdict':<16}{'items':>6}{'agree':>7}{'change':>8}{'borderline':>12}")
+    for v in ("supported", "not_supported", "wrong", "not_a_claim"):
+        vs = [i for i in items if i.get("verdict") == v]
+        if vs:
+            L.append(f"  {v:<16}{len(vs):>6}" + "".join(
+                f"{sum(1 for i in vs if i.get('review') == k):>{w}}" for k, w in (("agree", 7), ("change", 8),
+                                                                                  ("borderline", 12))))
+    for i in items:
+        if i.get("review") != "agree":
+            L += wrap(f"#{i['n']} {i['verdict']} ({i['review']}): {i.get('note', '')}", 2, 6)
+    return L
+
+
 def main_report(cfg: dict, archive, runs_txt: Path, *, spot_check: bool = False, map_archive=None,
                 repeat_archive=None) -> int:
     if not (archive.root / "plan.json").exists():
@@ -643,5 +668,8 @@ def main_report(cfg: dict, archive, runs_txt: Path, *, spot_check: bool = False,
     evidence = A.check_evidence(data["rows"], lines_of)
     map_ev = A.check_evidence(map_data["rows"], lines_of) if map_data else None
     text = runs_txt.read_text() if runs_txt.exists() else None
-    sys.stdout.write(capture(data, evidence, text, map_data, map_ev, repeat))
+    rp = archive.root / "spot_check_review.json"
+    review = json.loads(rp.read_text()) if rp.exists() else None
+    sys.stdout.write(capture(data, evidence, text, map_data, map_ev, repeat)
+                     + "\n".join([""] + review_block(review)) + "\n")
     return 0
