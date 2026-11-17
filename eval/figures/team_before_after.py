@@ -3,7 +3,7 @@
 # dependencies = ["matplotlib>=3.8"]
 # ///
 """The team problem, as a figure (mechanism, no numbers). Before: every engineer asks their own agent, which searches
-the code again, and each answer stays private, unchecked and gone after the chat. After: one map, built once, every
+the code again, and each answer stays private, unchecked and kept current by no one. After: one map, built once, every
 claim citing its lines and checked, and kept current by a refresh as the code changes (both measured in the post,
 solid arrows); everyone reading it is the aim, untested (dashed arrows, with a key). Questions asked on it (the aim, dashed) feed back
 in from the shared line all the engineers hang off.
@@ -266,7 +266,7 @@ def draw(honey: tuple, people: int, theme: Theme, path: Path) -> Path:
             rbox(5.75, y - 0.45, 3.6, 0.9, fc=theme.surface, ec=theme.muted, lw=1.3, ls=(0, (4, 3)))
             lines(6.05, y + 0.17, 2.4, 2, theme.edge, gap=0.34)
             text(9.05, y, "?", size=15, bold=True, color=theme.muted)
-        text(5.6, 1.35, "Each answer: checked by no one, seen by one person,\ngone when the chat ends",
+        text(5.6, 1.35, "Each answer: checked by no one, seen by one person,\nkept current by no one",
              size=13, bold=True)
 
         # divider

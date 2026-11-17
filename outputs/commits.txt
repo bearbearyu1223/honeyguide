@@ -1,0 +1,10 @@
+Honeyguide commits: who wrote them
+==========================================================================
+  frozen at   f1b52e9 (f1b52e909c80ba389bf4c70f662bc66d26642f02)
+  rule        a 'Co-Authored-By: Claude' line in the trailer block
+              (key case-insensitive, any Claude model)
+
+  commits reachable from f1b52e9       69
+  with a Claude co-author trailer      69 of 69
+  first commit                         55282ea, 2026-11-15T12:43:35-08:00
+  f1b52e9 itself                       2026-11-16T21:55:47-08:00
