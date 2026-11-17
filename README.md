@@ -7,8 +7,31 @@
 
 # Honeyguide
 
-Honeyguide is a set of Claude Code subagents that learn a repository into a map you read in your browser and
-ask questions on. Every sentence in the map cites the lines of code it comes from.
+**When agents write the code, who maintains the understanding of it?**
+
+Coding agents make writing code cheaper. Someone still has to know how the code works, check that what they
+know is true, and keep it current as the code changes. Today most of that understanding lives in private
+chats. Each engineer's agent works out the same code again, nobody checks the answer, and it is gone when the
+chat ends.
+
+Honeyguide keeps that understanding as a record you can check. It is a Claude Code plugin with four
+subagents. It builds a map of a repo that you read in your browser and ask questions on:
+
+- every claim on the map cites the source lines it comes from;
+- a separate Checker reads those lines against the claim;
+- a repair pass fixes or retires the claims the Checker turns down;
+- when the code changes, a refresh updates only what changed.
+
+The map records what is believed about the code, why (the citations, an evidence label, the Checker's
+verdict), and when to look at it again (each claim is current, stale or retired).
+
+**What is measured and what isn't.** The checking and the refresh are measured, on two Python repos. The
+first hypothesis, that a map makes an agent answer more accurately, was not supported on the repo tested.
+Sharing one map across a team is the aim. It isn't built yet: today Honeyguide is single-user and local.
+Whether it saves a team time is untested.
+
+The write-up: [Honeyguide on the blog](https://bearbearyu1223.github.io/)
+<!-- TODO: post URL when published -->
 
 ![Honeyguide on the nanochat map: click gpt.py on the component map to focus it, choose "Ask about this component", and a live Claude Code session answers beside it; the Checker checks the answer and the repair pass fixes the claims it flagged](demo/honeyguide-demo.gif)
 
@@ -23,7 +46,30 @@ marked on screen.
   </picture>
 </p>
 
-Honeyguide is a work in progress. It has mapped two real repos so far, nanochat and waku-agent.
+## What I found
+
+Each number links to the line of the results file in [`outputs/`](outputs/) it comes from.
+
+- **The map didn't make answers measurably more accurate.** In a 20-question pilot on nanochat, map minus
+  explore (an agent searching the code with no map) was +0.022, 95% CI [-0.010, +0.075]
+  ([eval_pilot_nanochat.txt](outputs/eval_pilot_nanochat.txt#L57)).
+- **Ad-hoc answers weren't measurably worse.** A Checker that finds its own evidence judged 0.020 (2.0%) of
+  the claims in the pilot's ad-hoc answers not supported or wrong, against 0.010 (1.0%) of a map's unchecked
+  claims. The difference is +0.010, 95% CI [-0.016, +0.033], which spans 0
+  ([adhoc_check.txt](outputs/adhoc_check.txt#L36-L43)).
+- **A refresh costs a fraction of a rebuild.** After an ordinary day on waku-agent, a refresh cost 0.20 to
+  0.26 of a rebuild at list price, about a fifth to a quarter
+  ([refresh.txt](outputs/refresh.txt#L134-L138)). Across nanochat's 60-commit rewrite it cost 0.51, about
+  half ([refresh.txt](outputs/refresh.txt#L103)).
+- **The Checker mostly catches citations that are too narrow, and it passed one wrong value.** Before any
+  repair it turned down 102 of 260 claims on nanochat's map ([runs.txt](outputs/runs.txt#L114)). In the first
+  repair round, 85 of them kept their words and got citations that cover more lines
+  ([runs.txt](outputs/runs.txt#L124)).
+  It also passed a claim that an attention window is 768 tokens, where the code gives 512
+  ([runs.txt](outputs/runs.txt#L260-L291)).
+
+Limits: one person, one model, two small-to-medium Python repos, and no team study (see
+[Limits and what's next](#limits-and-whats-next)).
 
 ## Requirements
 
@@ -181,6 +227,20 @@ Other commands:
 
 ## How it stays honest
 
+A claim on the map can be trusted at three levels, and Honeyguide guards them differently:
+
+1. **The citation points at real lines.** A script checks this, never the agent. The agent quotes the lines
+   it means, and the script finds them at the map's commit and records the line range and a hash. A quote
+   that can't be found, or turns up twice, is refused.
+2. **The lines support the claim.** The Checker judges this. Most of what it turns down is true but cites too
+   few lines.
+3. **The claim is correct.** Nothing guarantees this. On nanochat the Checker passed a claim that an
+   attention window is 768 tokens, because a stale comment on the cited line said 768. The code on that line
+   gives 512 ([runs.txt](outputs/runs.txt#L260-L291)). The Checker's rule is now "compute, don't quote", and
+   it can still miss things: it is Claude checking Claude.
+
+How each guard works:
+
 - Every factual sentence is a claim that cites lines at a commit. A claim not read straight from the code
   says how it was reached (inferred, searched and not found, or general knowledge).
 - The Checker re-reads the cited lines for each claim. For a value (a number, a default, a size) it works the
@@ -192,6 +252,34 @@ Other commands:
 - Nothing claims a run that didn't happen. Your code runs only if you approve a runtime trace for the
   Tracer. Otherwise a flow's steps say "read in source, not run", and only a step found in such a trace is
   ever marked seen at runtime.
+
+**The refresh gap.** A refresh flags a claim when its cited lines change. A claim whose cited lines only
+moved, or that cites no code at all, keeps its status even when the code around it changes, so it can go
+stale unnoticed until a re-map reads that code again. In the nanochat refresh, the re-map later retired 3
+moved claims and 6 of the 12 claims that cite no code ([refresh.txt](outputs/refresh.txt#L57),
+[refresh.txt](outputs/refresh.txt#L157-L158)).
+
+## Limits and what's next
+
+**Limits.**
+
+- Single-user and local. The map lives on the machine that built it, and the page is served only there.
+- Tested on two small-to-medium Python repos, nanochat and waku-agent. The accuracy pilot ran on nanochat
+  only, with 20 questions.
+- One model, Claude Opus 5.5, built the maps, answered the questions and ran the Checker.
+- No team study. Nobody else has used these maps, so reuse, adoption and time saved are untested.
+
+**Next.**
+
+- **Sharing**: a static export of the map, with its citations, checks and answers, that a team can commit
+  next to the code or host.
+- **Reviewable knowledge updates**: when a pull request changes code, propose the matching change to the
+  map's claims (old claim, new claim, the source lines) for review alongside the code.
+- **A team study**: engineers new to a repo, on overlapping tasks, with and without Honeyguide.
+- **A map health check**: generate questions with keys from the code, answer them from the map and score them
+  by script, to show where a map is thin.
+- **Closing the refresh gap**: re-check claims that cite no code, and claims about the repo as a whole, on
+  every refresh.
 
 ## Where things are stored
 
@@ -249,15 +337,27 @@ code goes only to Claude, through your own Claude Code session.
 | UX v4: repo card (`repo-info`), outline + Find, component map with focus and Ask, diagram zoom / pan / full screen (T7.17, T7.18, `docs/design/ux-v4.md`) | built |
 | demo video on UX v4 (T7.19, `demo/README.md`) | built |
 | runtime confirmation of flow hops in the product | not built; `eval/trace/` is the eval's trace |
+| sharing the map with a team (a static export of the page) | not built; the map is local to one machine |
 
-Run the tests with `uv run pytest -q --ignore=tests/review` (403 tests).
+Run the tests with `uv run pytest -q --ignore=tests/review` (611 tests).
 
 ### The eval
 
-The eval asks whether the map pays off. `eval/pilot/` isolates a Claude Code run from your settings and
-memory. `eval/questions/` holds the question sets and answer keys for nanochat and waku-agent, and
-`eval/trace/` captures runtime traces of their flows. Captured output is in `outputs/`. Target repos are
-cloned outside this repo.
+The eval asks whether the map helps an agent answer, how well the checking works, and what keeping a map
+current costs. `eval/pilot/` isolates a Claude Code run from your settings and memory. `eval/questions/` holds
+the question sets and answer keys for nanochat and waku-agent, and `eval/trace/` captures runtime traces of
+their flows. `eval/adhoc/` checks ad-hoc answers and a sample of map claims with the same Checker.
+`eval/refresh/` captures two refreshes and compares their cost with a rebuild. `eval/runs/` reads the saved
+records of the map builds, the Checker and the repair passes. Target repos are cloned outside this repo.
+
+Captured output is in `outputs/`. The results files behind [What we found](#what-i-found):
+
+| file | what it holds |
+|---|---|
+| [`outputs/eval_pilot_nanochat.txt`](outputs/eval_pilot_nanochat.txt) | the 20-question pilot on nanochat: no access, explore, outline and map, with paired differences and cost |
+| [`outputs/adhoc_check.txt`](outputs/adhoc_check.txt) | ad-hoc answers against map claims, judged by one Checker |
+| [`outputs/refresh.txt`](outputs/refresh.txt) | refresh against rebuild: nanochat across a 60-commit rewrite, waku-agent after an ordinary day |
+| [`outputs/runs.txt`](outputs/runs.txt) | the map builds: Checker verdicts, repair rounds and the "compute, don't quote" re-check |
 
 ### Folders
 
