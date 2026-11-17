@@ -350,7 +350,7 @@ their flows. `eval/adhoc/` checks ad-hoc answers and a sample of map claims with
 `eval/refresh/` captures two refreshes and compares their cost with a rebuild. `eval/runs/` reads the saved
 records of the map builds, the Checker and the repair passes. Target repos are cloned outside this repo.
 
-Captured output is in `outputs/`. The results files behind [What we found](#what-i-found):
+Captured output is in `outputs/`. The results files behind [What I found](#what-i-found):
 
 | file | what it holds |
 |---|---|
