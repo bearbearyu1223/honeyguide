@@ -10,7 +10,8 @@ A map fix round (prompt starts "MODE: fix") returns fix_outputs[n-1] for the n-t
 default map_output) with fix_behaviors[n-1] (default ok); it records the --add-dir folder's files and whether the
 PREVIOUS file in the prompt was there.
 behaviors: ok, error, capped, usage_limit, usage_limit_once (first call usage limit, later ok), bad_json,
-echo_token (prints the token it was given, to test that the runner withholds it).
+echo_token (prints the token it was given, to test that the runner withholds it), hang (one assistant message
+with usage, then sleeps without a result: to test a timeout).
 Each call is appended to <dir>/calls.jsonl: the argv without the prompt, a prompt hash, the condition it saw, the
 working dir's files, the environment's variable names and whether a token was present (never the token itself).
 """
@@ -102,6 +103,15 @@ def main():
     cost = (10 * 4 + 1000 * 0.2 + 500 * 8 + 100 * 20) / 1e6
     base = {"type": "result", "num_turns": 3, "duration_ms": 1200, "total_cost_usd": cost, "usage": usage,
             "modelUsage": {model: {"inputTokens": 10, "costUSD": cost, "costBasis": "list"}}}
+    if behavior == "hang":
+        print(json.dumps({"type": "system", "subtype": "init", "model": model, "cwd": cwd, "tools": []}))
+        print(json.dumps({"type": "assistant", "message": {
+            "id": "msg_1", "model": model, "content": [{"type": "tool_use", "name": "Grep", "input": {}}],
+            "usage": {"input_tokens": 1000, "output_tokens": 1000, "cache_read_input_tokens": 0,
+                      "cache_creation_input_tokens": 0}}}), flush=True)
+        import time
+        time.sleep(60)
+        return 1
     if behavior == "usage_limit":
         emit(model, cwd, {**base, "subtype": "success", "is_error": True, "total_cost_usd": 0,
                           "result": "Claude AI usage limit reached|1794777040"}, tool_use=False)

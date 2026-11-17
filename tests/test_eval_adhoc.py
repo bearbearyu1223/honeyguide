@@ -4,6 +4,7 @@ fake `claude` (no model call anywhere) and a synthetic source archive built on t
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sys
@@ -25,6 +26,7 @@ import workdirs as W  # noqa: E402
 ALLOWED_ENV = {"CLAUDE_CODE_DISABLE_AUTO_MEMORY", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "CLAUDE_CODE_OAUTH_TOKEN",
                "CLAUDE_CONFIG_DIR", "DISABLE_AUTOUPDATER", "HOME", "LANG", "PATH", "TERM", "TMPDIR",
                "__CF_USER_TEXT_ENCODING"}
+HERE_ADHOC = ROOT / "eval" / "adhoc"
 PILOT = Path("~/Documents/GitHub/honeyguide-targets/_eval/pilot-nanochat-2").expanduser()
 
 
@@ -146,11 +148,17 @@ def test_parse_verdicts_ids_paths_and_problems():
         {"id": "s2", "verdict": "maybe", "note": "", "evidence": []}]}}
     rows, how, problems = A.parse_verdicts(res, UNITS, ("/private/tmp/hg-eval-x/work",))
     assert how == "structured_output"
+    # s1 twice with different verdicts: flagged and left without a verdict, never merged
+    assert [r["verdict"] for r in rows] == [None, None, None]
+    assert problems == ["s1: repeated with different verdicts (supported, wrong): no verdict",
+                        "entry 2: unknown id 's9'", "entry 3: malformed",
+                        "s1: no verdict", "s2: no verdict", "s3: no verdict"]
+    res["structured_output"]["units"][1]["verdict"] = "supported"      # the same verdict twice: first kept
+    rows, how, problems = A.parse_verdicts(res, UNITS, ("/private/tmp/hg-eval-x/work",))
     assert [r["verdict"] for r in rows] == ["supported", None, None]
     assert rows[0]["evidence"] == [{"path": "pkg/core.py", "start": 1, "end": 2},
                                    {"path": "scripts/main.py", "start": 3, "end": 3}]
-    assert problems == ["s1: repeated (first kept)", "entry 2: unknown id 's9'", "entry 3: malformed",
-                        "s2: no verdict", "s3: no verdict"]
+    assert problems[0] == "s1: repeated with the same verdict (supported; first kept)"
     assert A.parse_verdicts({"structured_output": {"items": []}, "result": "x"}, UNITS)[0] is None
     assert A.parse_verdicts(None, UNITS)[0] is None
 
@@ -192,8 +200,21 @@ Map claims by Checker verdict.
   fx          run 2 before repair          158       102         0       0
   fx          after repair round 1         253         7         0       0
 
+maps
+--------------------------------------------------------------------------
+  fx, run 2 after re-check
+    claims              260
+    Checker verdicts    supported 256, not supported 4
+
 recheck
 --------------------------------------------------------------------------
+After the repair pass, a batch run re-checked every map claim that states
+a value under the Checker's new "Compute, don't quote" rule, then ran the
+repair pass.
+  repo         map claims  re-checked  newly not supp.  still not supp.
+  fx                  260         117               39                4
+
+  Re-checked claims by state:
   repo        stage                  supported not supp. unchecked retired
   fx          before repair                 78        39         0       0
 
@@ -216,11 +237,25 @@ def test_runs_txt_parsers():
     assert R.parse_demo_answers(MAP_TXT) == [{"q": "q1", "repo": "fx", "claims": 13, "supported": 4,
                                               "not_supported": 9}]
     assert R.parse_map_checker("nothing here\n") == []
+    assert R.parse_recheck(MAP_TXT) == {
+        "rule_new": True, "summary": [{"repo": "fx", "map_claims": 260, "rechecked": 117, "newly": 39, "still": 4}],
+        "states": [{"repo": "fx", "stage": "before repair", "supported": 78, "not_supported": 39}]}
+    mrs, rcs, _ = R.map_rows(MAP_TXT)
+    assert [(m["stage"], m["rule"]) for m in mrs] == [("run 2 before repair", "before"),
+                                                     ("after repair round 1", "before"),
+                                                     ("run 2 after re-check", "mixed")]
+    assert [(m["stage"], m["rule"]) for m in rcs] == [("before repair", "with")]
+    no_rule = MAP_TXT.replace('new "Compute, don\'t quote" rule', "rule")
+    assert {m["rule"] for m in R.map_rows(no_rule)[0][:2]} == {"?"}
     real = ROOT / "outputs" / "runs.txt"
     if real.exists():
         rows = R.parse_map_checker(real.read_text())
         assert {(r["repo"], r["stage"]) for r in rows} >= {("nanochat", "run 2 before repair"),
                                                            ("waku-agent", "run 2 before repair")}
+        rc = R.parse_recheck(real.read_text())
+        assert rc["rule_new"] and {(x["repo"], x["rechecked"]) for x in rc["summary"]} >= {("nanochat", 117)}
+        assert ("nanochat", "before repair", 78, 39) in {(x["repo"], x["stage"], x["supported"], x["not_supported"])
+                                                         for x in rc["states"]}
 
 
 def test_sample_is_seeded_and_round_robin():
@@ -262,6 +297,21 @@ def check_rules() -> list[dict]:
             {"match": "each step stays small", "answer": why}]
 
 
+MAP_CLAIMS = (
+    [{"key": f"r{k}", "evidence": "read_in_source", "text": f"claim r{k}: `finish` doubles its input ({k})",
+      "anchors": [{"path": "pkg/core.py", "anchor": f"ANCHOR-SECRET-{k}"}]} for k in range(6)]
+    + [{"key": f"d{k}", "evidence": "docs", "text": f"claim d{k}: the README says so ({k})",
+        "anchors": [{"path": "README.md", "anchor": f"ANCHOR-SECRET-d{k}"}]} for k in range(2)]
+    + [{"key": "i0", "evidence": "inferred", "text": "claim i0: main reaches finish", "anchors": []},
+       {"key": "n0", "evidence": "searched_not_found", "text": "claim n0: no HTTP server", "anchors": [],
+        "searched": ["flask"]}])
+MAP_ANSWER = {"units": [
+    {"id": "s1", "verdict": "supported", "note": "ok", "evidence": [_ev("pkg/core.py", 20, 21)]},
+    {"id": "s2", "verdict": "wrong", "note": "it triples", "evidence": [_ev("pkg/core.py", 20, 21)]},
+    {"id": "s3", "verdict": "not_supported", "note": "not found", "evidence": []}]}
+MAP_RULE = {"match": "There is no question.", "answer": MAP_ANSWER}
+
+
 def make_source(fx: dict, tmp: Path) -> Path:
     """A source run archive like pilot-nanochat-2: explore answers for flow, why/how and locate questions; one
     flow pass that failed (left out of scope)."""
@@ -288,6 +338,9 @@ def make_source(fx: dict, tmp: Path) -> Path:
         (d / "meta.json").write_text(json.dumps({
             "id": rid, "status": st, "answer": {"items": [], "text": text} if st == "ok" else None,
             "usage": {"cost_usd": 0.05}, "wall_s": 12.0}))
+    (src / "maps" / "seed1").mkdir(parents=True)
+    (src / "maps" / "seed1" / "map.json").write_text(json.dumps({"target": "map", "mode": "replace",
+                                                                  "document": {}, "claims": MAP_CLAIMS}))
     (src / "plan.json").write_text(json.dumps({"run_id": "src", "repo": "fx", "commit": fx["commit"],
                                                "url": FX.frozen(fx["commit"])["url"], "questions": qs,
                                                "items": items}))
@@ -298,7 +351,7 @@ def make_source(fx: dict, tmp: Path) -> Path:
 def ah(tmp_path, monkeypatch):
     monkeypatch.setenv(FX.TOKEN_ENV, FX.TOKEN)
     fx = FX.make(tmp_path)
-    FX.write_fake(tmp_path / "bin", {"rules": check_rules(), "map_output": FX.MAP_OUTPUT})
+    FX.write_fake(tmp_path / "bin", {"rules": check_rules() + [MAP_RULE], "map_output": FX.MAP_OUTPUT})
     fx["src"] = make_source(fx, tmp_path)
     fx["out"] = tmp_path / "archive" / "src-adhoc"
     fx["tmp"] = tmp_path
@@ -320,7 +373,7 @@ def events(fx):
 def set_rules(fx, rules):
     p = fx["fake"].parent / "claude.json"
     ctl = json.loads(p.read_text())
-    ctl["rules"] = rules
+    ctl["rules"] = rules + ([MAP_RULE] if MAP_RULE not in rules else [])
     p.write_text(json.dumps(ctl))
 
 
@@ -376,14 +429,17 @@ def test_end_to_end_isolation_archive_and_capture(ah, capsys):
     flat = [" ".join(ln.split()) for ln in cap.splitlines()]
     # units, claims, supported, not supported, wrong, not a claim
     assert "all 7 5 2 1 2 2" in flat and "flow 5 3 1 0 2 2" in flat and "why/how 2 2 1 1 0 0" in flat
-    assert "all 5 0.400 0.200 0.400 0.600" in flat                     # shares of claims
+    assert "all 5 0 0.400 0.200 0.400 0.600" in flat                   # shares of claims (no verdict 0)
+    assert "ad-hoc answers 7 5 2 1 2 0 0.600" in flat and "map claims not run yet" in flat
     assert "fx-flo-01 flow 5 3 1 0 2 0.333" in flat
     assert "[WRONG] fx-flo-01__explore__p1#s3" in cap and "[not supp.] fx-why-01__explore__p1#s1" in cap
     joined = " ".join(cap.split())
     assert 'faulted only for a line reference (the note starts "line reference:"): 1 of the 3 units' in joined
     assert "ranges cited 4; ranges that don't exist at the commit 2 (lines out of range 1, no such file 1)" in joined
     assert "verdicts citing at least one range that doesn't exist: 2 (supported 1, wrong 1)" in joined
-    assert "fx run 2 before repair 260 158 102 0.392" in flat
+    assert "fx run 2 before repair 260 158 102 0.392 before" in flat
+    assert "fx run 2 after re-check 260 256 4 0.015 mixed" in flat and "fx before repair 117 78 39 0.333 with" in flat
+    assert "fx 117 of 260 claims judged under the rule, 143 before it" in joined
     assert "live answer q1 (fx, Honeyguide's own answer): 13 claims" in joined
     assert "spot check for Han: 7 units" in cap and "pkg/core.py#L23-L24" in cap
     assert A.main(args(ah, "--capture", "--runs-txt", str(ah["tmp"] / "none.txt"))) == 0
@@ -402,16 +458,19 @@ def test_resume_after_interruption_and_usage_limit(ah, capsys):
     assert "stopped: usage limit hit at fx-why-01__explore__p1" in out
     assert "resume with: uv run python eval/adhoc/adhoc.py --run-id src" in out
     n = len(calls(ah))
-    assert n == 3
+    # the seeded run order puts the why check second: the stop leaves the third unstarted
+    assert json.loads((ah["out"] / "plan.json").read_text())["run_order"] == [
+        "fx-flo-01__explore__p1", "fx-why-01__explore__p1", "fx-flo-01__explore__p2"]
+    assert n == 2 and not (ah["out"] / "runs" / "fx-flo-01__explore__p2").exists()
     # an interrupted check: started, no meta
-    (ah["out"] / "runs" / "fx-flo-01__explore__p2" / "meta.json").unlink()
+    (ah["out"] / "runs" / "fx-flo-01__explore__p1" / "meta.json").unlink()
     assert A.main(args(ah)) == 0
     assert "3 of 3 answers checked; ok 3" in capsys.readouterr().out
-    assert len(calls(ah)) == n + 2                                     # only those two ran again
+    assert len(calls(ah)) == n + 3                                     # the interrupted, the stopped, the unstarted
     ev = [e["event"] for e in events(ah)]
     assert "resume_after_usage_limit" in ev and "restart_after_interruption" in ev and "stop" in ev
     assert (ah["out"] / "attempts" / "fx-why-01__explore__p1" / "1" / "meta.json").exists()
-    assert A.main(args(ah)) == 0 and len(calls(ah)) == n + 2           # nothing finished is repeated
+    assert A.main(args(ah)) == 0 and len(calls(ah)) == n + 3           # nothing finished is repeated
 
 
 def test_cap_stops(ah, capsys):
@@ -431,7 +490,7 @@ def test_cap_stops(ah, capsys):
     assert A.main(args(ah, "--retry-failed")) == 0 and len(calls(ah)) == n
     capsys.readouterr()
     assert A.main(args(ah, "--capture")) == 0
-    assert "gaps        2 units in checks that did not finish ok" in capsys.readouterr().out
+    assert "gaps        answers: 2 units in checks that returned no verdicts" in capsys.readouterr().out
 
 
 def test_refuses_changed_plan_and_source_dir(ah, capsys):
@@ -441,3 +500,297 @@ def test_refuses_changed_plan_and_source_dir(ah, capsys):
     with pytest.raises(SystemExit, match="must be a new folder"):
         A.main(args(ah, "--out-id", "src/sub"))
     shutil.rmtree(ah["out"])
+
+
+# ------------------------------------------------------------------------------------------------------------
+# review of e523906 (moved from tests/review/test_review_adhoc_e1.py)
+
+# 1. A check that leaves units out is partial, never final ok; the shares count its missing units.
+def test_partial_check_is_not_final_ok(ah, capsys):
+    rules = check_rules()
+    # the flow p1 check answers only s1 and s2 of its 3 units (s3, the wrong "triples" unit, is left out)
+    rules[0] = {**rules[0], "answer": {"units": rules[0]["answer"]["units"][:2]}}
+    set_rules(ah, rules)
+    # was 0 ("3 of 3 answers checked"); a partial check is resumable, so the run is not finished: 3
+    assert A.main(args(ah)) == 3
+    meta = json.loads((ah["out"] / "runs" / "fx-flo-01__explore__p1" / "meta.json").read_text())
+    assert meta["problems"] == ["s3: no verdict"]
+    assert meta["status"] != "ok", "a check missing a unit's verdict is final ok, so --retry-failed skips it"
+
+
+def test_shares_of_claims_count_units_without_a_verdict(ah, capsys):
+    rules = check_rules()
+    rules[0] = {**rules[0], "answer": {"units": rules[0]["answer"]["units"][:2]}}
+    set_rules(ah, rules)
+    A.main(args(ah))
+    capsys.readouterr()
+    A.main(args(ah, "--capture", "--runs-txt", str(ah["tmp"] / "none.txt")))
+    cap = capsys.readouterr().out
+    shares = cap.split("shares of claims", 1)[1].split("faulted only", 1)[0]
+    assert "no verdict" in shares or "all 5" in " ".join(shares.split()), shares
+    flat = [" ".join(ln.split()) for ln in cap.splitlines()]
+    assert "all 4 1 0.500 0.250 0.250 0.500" in flat
+    assert "ad-hoc answers 7 4 2 1 1 1 0.500" in flat
+    joined = " ".join(cap.split())
+    assert "ns + wrong with them counted as not supported 0.600, left out 0.500" in joined
+
+
+# 2. Ids echoed the way the prompt shows them ("[s1]") or with another case.
+def test_parse_verdicts_accepts_ids_as_the_prompt_shows_them():
+    res = {"structured_output": {"units": [
+        {"id": "[s1]", "verdict": "supported", "note": "", "evidence": []},
+        {"id": "S2", "verdict": "wrong", "note": "", "evidence": []},
+        {"id": " s3 ", "verdict": "not_a_claim", "note": "", "evidence": []}]}}
+    rows, _, problems = A.parse_verdicts(res, UNITS)
+    assert [r["verdict"] for r in rows] == ["supported", "wrong", "not_a_claim"], problems
+    assert [A.norm_id(x) for x in ("[s1]", "S1", " s1 ", "a#s1", "[ S12 ]")] == ["s1", "s1", "s1", "s1", "s12"]
+    dup = {"structured_output": {"units": [{"id": "s1", "verdict": "supported", "note": "", "evidence": []},
+                                           {"id": "[S1]", "verdict": "wrong", "note": "", "evidence": []}]}}
+    rows, _, problems = A.parse_verdicts(dup, UNITS[:1])
+    assert rows[0]["verdict"] is None and problems[0].startswith("s1: repeated with different verdicts")
+
+
+# 3. The comparison rows say which Checker rule judged them.
+def test_map_comparison_says_which_checker_rule_judged_it():
+    real = (ROOT / "outputs" / "runs.txt").read_text()
+    data = {"plan": {"repo": "nanochat", "run_id": "x", "source_run_id": "s", "commit": "0" * 40,
+                     "url": "https://github.com/karpathy/nanochat", "types": ["flow"], "model": "m",
+                     "effort": "medium", "answer_cap_usd": 1.5, "seed": 0, "skipped": [], "items": []},
+            "metas": {}, "attempts": [], "rows": [], "not_checked": 0}
+    cap = R.capture(data, [], real)
+    comp = cap.split("for comparison:", 1)[1].split("spot check for Han", 1)[0]
+    flat = " ".join(comp.split())
+    assert "nanochat after repair round 2 260 260 0 0.000" in flat       # what is printed today
+    assert "compute, don't quote" in flat.lower() or "re-check" in flat.lower(), comp
+    assert "nanochat after repair round 2 260 260 0 0.000 before" in flat
+    assert "nanochat run 2 after re-check 260 256 4 0.015 mixed" in flat
+    assert "nanochat before repair 117 78 39 0.333 with" in flat
+    assert "Not the main comparison (that is the control above)" in flat
+
+
+# 4. Splitter: nesting survives a blank line inside a list item (nc-why-05__explore__p2 item 8).
+def test_split_keeps_nesting_after_a_blank_line_inside_an_item():
+    t = ("8. **Optimizer update.** Schedules are computed from `step`:\n"
+         "   - `get_weight_decay`: cosine decay to zero.\n\n"
+         "   These values are written into each param group (lines 520-527). Then:\n"
+         "   - Without a scaler, it just calls `optimizer.step()`.\n\n"
+         "After the list.")
+    us = S.split_units("r", t)
+    assert [(u.kind, u.level) for u in us] == [("item", 0), ("item", 1), ("para", 1), ("para", 1), ("item", 1),
+                                               ("para", 0)], [(u.kind, u.level, u.text) for u in us]
+
+
+# ------------------------------------------------------------------------------------------------------------
+# the control (map claims), the repeat, the trial, follow-ups, cost
+
+def test_allocate_sample_batches_order_pick():
+    assert A.allocate({"read_in_source": 166, "docs": 32, "inferred": 11, "asserted_by_test": 6}, 100) == {
+        "read_in_source": 77, "docs": 15, "inferred": 5, "asserted_by_test": 3}
+    assert A.allocate({"a": 2, "b": 1}, 10) == {"a": 2, "b": 1}
+    import random
+    s1, st = A.stratified_sample(MAP_CLAIMS, 6, random.Random(0))
+    s2, _ = A.stratified_sample(MAP_CLAIMS, 6, random.Random(0))
+    assert s1 == s2 and len(s1) == 6
+    assert st["sampled"] == {"read_in_source": 4, "docs": 1, "inferred": 1}
+    assert st["in_map"]["searched_not_found"] == 1 and st["in_map"]["general_knowledge"] == 0
+    assert not any(c["evidence"] in A.MAP_EXCLUDE for c in s1)
+    assert [len(b) for b in A.batch(list(range(100)), 25)] == [25, 25, 25, 25]
+    assert [len(b) for b in A.batch(list(range(7)), 3)] == [4, 3]
+    assert sum(A.batch(list(range(7)), 3), []) == list(range(7)) and A.batch([], 3) == []
+    ids = [f"a{k}" for k in range(10)]
+    assert sorted(A.run_order(ids, 0)) == ids and A.run_order(ids, 0) == A.run_order(ids[::-1], 0)
+    assert A.run_order(ids, 0) != ids
+    assert A.repeat_pick(ids, 3, 0) == A.repeat_pick(ids, 3, 0) and len(A.repeat_pick(ids, 3, 0)) == 3
+
+
+def test_bootstrap_diff_and_agreement():
+    a = [(1, 4), (2, 4), (0, 4)]
+    lo, hi = R.bootstrap_diff(a, [(0, 4), (0, 4)], n_boot=2000, seed=0)
+    assert lo <= 0.25 <= hi and lo >= 0 and (lo, hi) == R.bootstrap_diff(a, [(0, 4), (0, 4)], n_boot=2000, seed=0)
+    lo, hi = R.bootstrap_diff([(2, 4)], [(1, 4)], n_boot=100)
+    assert lo == hi == 0.25
+    assert all(x != x for x in R.bootstrap_diff([], a))                  # nan when an arm is empty
+    f = [{"unit": "u1", "verdict": "supported"}, {"unit": "u2", "verdict": "wrong"},
+         {"unit": "u3", "verdict": None}, {"unit": "u4", "verdict": "not_a_claim"}]
+    s = [{"unit": "u1", "verdict": "supported"}, {"unit": "u2", "verdict": "not_supported"},
+         {"unit": "u3", "verdict": "wrong"}, {"unit": "u4", "verdict": "not_a_claim"}]
+    ag = R.agreement(f, s)
+    assert (ag["units"], ag["both"], ag["agree"]) == (4, 3, 2)
+    assert ag["confusion"] == {("supported", "supported"): 1, ("wrong", "not_supported"): 1, (None, "wrong"): 1,
+                               ("not_a_claim", "not_a_claim"): 1}
+
+
+def test_brief_is_shared_and_follows_checker_md():
+    brief = A.BRIEF.read_text()
+    checker = (ROOT / "agents" / "checker.md").read_text()
+    assert "**Compute, don't quote.**" in brief and "Worked example: compute, don't quote" in brief
+    for line in ("MAX_JOBS = 1536                              # 1536 / 64 = 24 per queue",
+                 "    per = -(-MAX_JOBS // workers // 3)         # leave room for retries (was // 2)"):
+        assert line in brief and line in checker
+    assert "choose the other" not in brief and "The units cite no lines" not in brief
+    assert "a summary that only repeats" not in brief and "repeats earlier units: judge it" in " ".join(brief.split())
+    assert "When unsure, `not_supported` with a note saying why" in brief
+    units = [{"id": "x#s1", "text": "`finish` doubles", "kind": "para", "level": 0}]
+    pa, pm = A.check_prompt("c0", "Q?", units, "answers"), A.check_prompt("c0", "Q?", units, "map")
+    strip = [A.SOURCE_LINE["answers"], A.SOURCE_LINE["map"], A.CONTEXT["answers"].replace("{question}", "Q?"),
+             A.CONTEXT["map"]]
+    for x in strip:
+        pa, pm = pa.replace(x, ""), pm.replace(x, "")
+    assert pa == pm                                                       # the rules are the same text
+    assert (HERE_ADHOC / "BRIEF_NOTES.md").exists()
+
+
+def test_followup_checks_only_missing_units_and_merges(ah, capsys):
+    rules = check_rules()
+    rules[0] = {**rules[0], "answer": {"units": rules[0]["answer"]["units"][:2]}}
+    set_rules(ah, rules)
+    assert A.main(args(ah)) == 3
+    out = capsys.readouterr().out
+    assert "1 partial checks (units without a verdict): 1 get a follow-up" in out
+    n = len(calls(ah))
+    # the follow-up's prompt holds only s3; the check echoes its id as the prompt shows it
+    follow = {"match": "## The units\n\n[s3]", "answer": {"units": [
+        {"id": "[S3]", "verdict": "wrong", "note": "finish doubles", "evidence": [_ev("pkg/core.py", 20, 21)]}]}}
+    set_rules(ah, [follow] + rules)
+    assert A.main(args(ah)) == 0
+    assert len(calls(ah)) == n + 1
+    d = ah["out"] / "runs" / "fx-flo-01__explore__p1"
+    meta = json.loads((d / "meta.json").read_text())
+    assert meta["status"] == "ok" and meta["followup_of"] == 1 and meta["units_asked"] == 1
+    assert [r["verdict"] for r in meta["verdicts"]] == ["not_a_claim", "wrong", "wrong"]
+    assert "[s1]" not in (d / "prompt.txt").read_text() and "[s3]" in (d / "prompt.txt").read_text()
+    first = json.loads((ah["out"] / "attempts" / "fx-flo-01__explore__p1" / "1" / "meta.json").read_text())
+    assert first["status"] == "partial"
+    assert "followup_missing_units" in [e["event"] for e in events(ah)]
+
+
+def test_partial_stops_after_its_followups(ah, capsys):
+    rules = check_rules()
+    rules[0] = {**rules[0], "answer": {"units": rules[0]["answer"]["units"][:2]}}
+    set_rules(ah, rules)
+    assert A.main(args(ah)) == 3
+    assert A.main(args(ah)) == 3                       # follow-up 1: s3 still missing
+    assert A.main(args(ah)) == 0                       # follow-up 2: still missing; no more follow-ups
+    out = capsys.readouterr().out
+    assert f"used their {A.MAX_FOLLOWUPS} follow-ups" in out
+    n = len(calls(ah))
+    assert A.main(args(ah)) == 0 and len(calls(ah)) == n
+    meta = json.loads((ah["out"] / "runs" / "fx-flo-01__explore__p1" / "meta.json").read_text())
+    assert meta["status"] == "partial" and meta["counts"]["no verdict"] == 1
+
+
+def test_run_order_is_the_plans_seeded_shuffle(ah, capsys):
+    assert A.main(args(ah)) == 0
+    plan = json.loads((ah["out"] / "plan.json").read_text())
+    assert plan["run_order"] == A.run_order([i["id"] for i in plan["items"]], 0)
+    by_sha = {}
+    for i in plan["items"]:
+        p = (ah["out"] / "runs" / i["id"] / "prompt.txt").read_text()
+        by_sha[hashlib.sha256(p.encode()).hexdigest()] = i["id"]
+    assert [by_sha[c["prompt_sha"]] for c in calls(ah)] == plan["run_order"]
+
+
+def test_timeout_keeps_known_cost_and_a_killed_check_counts(ah, capsys):
+    cfg_text = ah["config"].read_text().replace("timeout_answer_s = 60", "timeout_answer_s = 2")
+    ah["config"].write_text(cfg_text)
+    rules = check_rules()
+    rules[2] = {**rules[2], "behavior": "hang"}
+    set_rules(ah, rules)
+    assert A.main(args(ah)) == 0
+    capsys.readouterr()
+    meta = json.loads((ah["out"] / "runs" / "fx-why-01__explore__p1" / "meta.json").read_text())
+    assert meta["status"] == "error" and meta["reason"] == "timeout"
+    want = (1000 * 4 + 1000 * 20) / 1e6
+    assert meta["usage"]["cost_usd"] == pytest.approx(want) and "rebuilt" in meta["usage"]["cost_source"]
+    fake_cost = (10 * 4 + 1000 * 0.2 + 500 * 8 + 100 * 20) / 1e6
+    assert A.ER.Archive(ah["out"]).spent() == pytest.approx(2 * fake_cost + want)
+    # a check killed with the runner: started, cost_so_far.json, no meta.json
+    d = ah["out"] / "runs" / "fx-flo-01__explore__p2"
+    (d / "meta.json").unlink()
+    (d / A.ER.COST_SO_FAR).write_text(json.dumps({"usage": {"cost_usd": 0.5}}))
+    assert A.ER.Archive(ah["out"]).spent() == pytest.approx(fake_cost + want + 0.5)
+    assert A.main(args(ah)) == 0                                     # re-run; the killed try kept as attempt
+    assert (ah["out"] / "attempts" / "fx-flo-01__explore__p2" / "1" / A.ER.COST_SO_FAR).exists()
+    assert A.ER.Archive(ah["out"]).spent() == pytest.approx(2 * fake_cost + want + 0.5)
+    capsys.readouterr()
+    A.main(args(ah, "--capture", "--runs-txt", str(ah["tmp"] / "none.txt")))
+    assert "(earlier attempts $0.50" in " ".join(capsys.readouterr().out.split())
+
+
+def test_usage_tracker_counts_each_message_once():
+    t = A.UsageTracker({"input": 4.0, "cache_read": 0.2, "cache_write_1h": 8.0, "cache_write_5m": 5.0,
+                        "output": 20.0})
+    ev = {"type": "assistant", "message": {"id": "m1", "model": "x", "usage": {"input_tokens": 100,
+                                                                                "output_tokens": 10}}}
+    assert t.add(json.dumps(ev)) and t.add(json.dumps(ev))
+    ev["message"]["usage"]["output_tokens"] = 50
+    t.add(json.dumps(ev))
+    assert not t.add("not json") and not t.add(json.dumps({"type": "result"}))
+    s = t.summary()
+    assert s["tokens"]["input_tokens"] == 100 and s["tokens"]["output_tokens"] == 50 and s["messages"] == 1
+    assert s["cost_usd"] == pytest.approx((100 * 4 + 50 * 20) / 1e6) and s["models"] == ["x"]
+
+
+def test_map_arm_repeat_trial_and_side_by_side_capture(ah, capsys, monkeypatch):
+    # the dry run shows both arms and the repeat, and an assumed estimate before any check ran
+    monkeypatch.delenv(FX.TOKEN_ENV)
+    assert A.main(args(ah, "--dry-run", "--map-n", "6", "--batch-size", "3")) == 0
+    out = capsys.readouterr().out
+    assert "ARM 1      ad-hoc answers" in out and "ARM 2      map claims (the control)" in out
+    assert "sample     6 of 9 eligible claims (seed 0), stratified by evidence label; left out: " \
+           "general_knowledge 0, searched_not_found 1" in out
+    assert "units      6 claims in 2 checks of about 3" in out and "REPEAT     3 answers re-checked" in out
+    assert "an estimate, not measured" in out and "map arm and repeat (13 units)" in out
+    assert not (ah["tmp"] / "archive" / "src-adhoc-map").exists()
+    monkeypatch.setenv(FX.TOKEN_ENV, FX.TOKEN)
+    # the trial: one check, then the dry run projects from its measured cost
+    assert A.main(args(ah, "--only", "fx-why-01__explore__p1")) == 3
+    assert len(calls(ah)) == 1
+    capsys.readouterr()
+    assert A.main(args(ah, "--dry-run", "--map-n", "6", "--batch-size", "3")) == 0
+    out = capsys.readouterr().out
+    fake_cost = (10 * 4 + 1000 * 0.2 + 500 * 8 + 100 * 20) / 1e6
+    assert "ESTIMATE   measured-based" in out and f"answers: 1 check(s), 2 units, ${fake_cost:.2f}" in out
+    assert f"pooled ${fake_cost / 2:.4f}" in out
+    assert "answers     7 units,    5 left" in out and "map         6 units,    6 left" in out
+    assert "a projection from measured checks, not a result" in out
+    with pytest.raises(SystemExit, match="not a check of the answers arm"):
+        A.main(args(ah, "--only", "map-b01"))
+    # the full runs: answers (skips the trial), the control, the repeat
+    assert A.main(args(ah)) == 0 and len(calls(ah)) == 3
+    assert A.main(args(ah, "--source", "map", "--map-n", "6", "--batch-size", "3")) == 0
+    out = capsys.readouterr().out
+    assert "2 of 2 batches checked; ok 2" in out
+    mout = ah["tmp"] / "archive" / "src-adhoc-map"
+    mplan = json.loads((mout / "plan.json").read_text())
+    assert [len(i["units"]) for i in mplan["items"]] == [3, 3] and mplan["arm"] == "map"
+    for i in mplan["items"]:
+        p = (mout / "runs" / i["id"] / "prompt.txt").read_text()
+        assert "ANCHOR-SECRET" not in p and "There is no question." in p and "## The question" not in p
+        assert all(u["text"] in p for u in i["units"]) and not any(f"key {u['key']}" in p for u in i["units"])
+    assert A.main(args(ah, "--repeat", "1")) == 0
+    rplan = json.loads((ah["tmp"] / "archive" / "src-adhoc-repeat" / "plan.json").read_text())
+    assert rplan["arm"] == "repeat" and len(rplan["items"]) == 1 and rplan["repeat_of"] == "src-adhoc"
+    capsys.readouterr()
+    # the capture: the two arms side by side, the CI, the repeat's agreement
+    rt = ah["tmp"] / "runs.txt"
+    rt.write_text(MAP_TXT)
+    assert A.main(args(ah, "--capture", "--runs-txt", str(rt))) == 0
+    cap = capsys.readouterr().out
+    assert all(len(ln) <= R.WIDTH and ln == ln.rstrip() for ln in cap.splitlines())
+    flat = [" ".join(ln.split()) for ln in cap.splitlines()]
+    joined = " ".join(cap.split())
+    assert "ad-hoc answers 7 5 2 1 2 0 0.600" in flat and "map claims 6 6 2 2 2 0 0.667" in flat
+    assert "difference in ns+w, ad-hoc minus map: -0.067, 95% CI [" in joined
+    assert "3 answers, 2 batches; seed 0" in joined
+    assert "never checked (the eval map was never Checker-passed)" in joined
+    assert "both judged by the same Checker" in joined
+    rid = rplan["items"][0]["id"]
+    nu = len(rplan["items"][0]["units"])
+    assert f"per-unit agreement: {nu} of the {nu} units with a verdict in both passes (1.000)" in joined
+    assert "first \\ repeat" in cap
+    assert "read_in_source" in cap and "spot check for Han, map claims: 6 units" in cap
+    assert f"answers: {rid}" in joined
+    assert A.main(args(ah, "--spot-check")) == 0
+    md = (ah["out"] / "spot_check.md").read_text()
+    assert "## map claims (the control): 6 units" in md and "Evidence label" in md

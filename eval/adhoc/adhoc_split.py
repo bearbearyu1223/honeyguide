@@ -4,6 +4,9 @@ Rules (tested in tests/test_eval_adhoc.py with text from the pilot's answers):
   - Blocks come from lines. A list item (`-`, `*`, `+`, `1.`, `1)`, `a.`, `a)` at the start of a line, any
     indent) starts a new block, and so does a markdown heading (`# ...`). A blank line ends a paragraph; a line
     that is neither joins the block before it (a wrapped paragraph or item). A fenced code block is one unit.
+  - Nesting survives a blank line inside a list: an indented paragraph after a blank line belongs to the list
+    item above it (level = the number of open list indents left of it), and the items after it keep their
+    levels. A paragraph at column 0 ends the list.
   - Each block is split into sentences: at `.`, `!` or `?` (with any closing `)`, `]`, quote, `*` or `_` after
     it) followed by whitespace. Never inside a code span (`...`), after an ellipsis, or after e.g., i.e., vs.,
     cf., approx., incl., resp., et al.; after etc. only when the next word starts with a capital. Dots that are
@@ -73,8 +76,12 @@ def _blocks(text: str) -> list[tuple[str, int, str]]:
         elif cur is not None:
             cur[2] += " " + line.strip()
         else:
-            indents = []
-            cur = ["para", 0, line.strip()]
+            ind = len(line[:len(line) - len(line.lstrip())].expandtabs(4))
+            if ind and indents:                # a paragraph inside a list item, after a blank line
+                cur = ["para", sum(1 for i in indents if i < ind), line.strip()]
+            else:
+                indents = []
+                cur = ["para", 0, line.strip()]
             out.append(cur)
     if fence is not None:                      # an unclosed fence: keep what there is
         out.append(["code", 0, "\n".join(fence)])
