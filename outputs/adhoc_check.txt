@@ -1,0 +1,487 @@
+E1: ad-hoc answers checked: nanochat (run pilot-nanochat-2-adhoc)
+==========================================================================
+  commit      92d63d4e8bb4 (https://github.com/karpathy/nanochat)
+  source      pilot-nanochat-2: the explore answers (an agent with Read,
+              Grep and Glob, no map), as returned; nobody checked them
+  scope       flow, why/how questions: 18 answers to 9 questions (flow 8,
+              why/how 10)
+  units       520 (sentences and list items, split by script:
+              eval/adhoc/adhoc_split.py)
+  control     map claims: 100 of the 224 claims of pilot-nanochat-2's eval
+              map (maps/seed1/map.json, built at the same commit, never
+              Checker-passed), a seeded sample (seed 0) stratified by
+              evidence label (asserted_by_test 3, docs 15, inferred 5,
+              read_in_source 77); left out: general_knowledge 0,
+              searched_not_found 9; anchors stripped; 4 checks of about 25
+              claims
+  checker     one isolated claude -p per check (an answer, or a batch of
+              map claims), the same brief, schema and parsing for both
+              arms; Read/Grep/Glob on a fresh copy of the pin; requested
+              claude-opus-5-5, effort medium; cap $1.5 per check
+              used: claude-opus-5-5 x25
+  checks      answers checked 18 of 18; ok 18; map checked 4 of 4; ok 4;
+              repeat checked 3 of 3; ok 3
+  cost        answers $3.55, 9.3 min; map $2.32, 4.5 min; repeat $0.36,
+              1.3 min (list price; wall clock summed over checks)
+
+the comparison: ad-hoc answers against map claims (the control)
+--------------------------------------------------------------------------
+  What this compares: sentences and list items from ad-hoc answers, and
+  claims the Cartographer wrote for the eval map and that were never
+  checked (the eval map was never Checker-passed), both judged by the same
+  Checker: one brief, schema, isolation and parsing. The map claims'
+  anchors were stripped, so for both arms the Checker finds the evidence
+  itself.
+
+  arm              units claims supp. not supp. wrong no verdict    ns+w
+  ------------------------------------------------------------------------
+  ad-hoc answers     520    489   479         5     5          0   0.020
+  map claims         100    100    99         1     0          0   0.010
+  claims = units judged supported, not supported or wrong; ns+w = (not
+    supported + wrong) / claims. not_a_claim and no verdict are left out
+    of claims.
+  difference in ns+w, ad-hoc minus map: +0.010, 95% CI [-0.016, +0.033]
+    (bootstrap, 10000 resamples; ad-hoc units clustered by answer (18
+    answers), map claims resampled one by one (100; a random sample, so
+    its batches are arbitrary); seed 0; units without a verdict left out)
+  bounds, ad-hoc answers: 0 units without a verdict; ns+w with them
+    counted as not supported 0.020, with them left out 0.020
+  bounds, map claims: 0 units without a verdict; ns+w with them counted as
+    not supported 0.010, with them left out 0.010
+
+verdicts: ad-hoc answers (units of checks that returned verdicts)
+--------------------------------------------------------------------------
+  group           units  claims  supported  not supp.  wrong  not a claim
+  ------------------------------------------------------------------------
+  all               520     489        479          5      5           31
+  flow              215     200        199          0      1           15
+  why/how           305     289        280          5      4           16
+
+  shares of claims (units judged supported, not supported or wrong)
+  group        claims  no verdict  supported  not supp.  wrong  ns + wrong
+  all             489           0      0.980      0.010  0.010       0.020
+  flow            200           0      0.995      0.000  0.005       0.005
+  why/how         289           0      0.969      0.017  0.014       0.031
+  no verdict: units the check left without one (never in claims). ns +
+    wrong with them counted as not supported 0.020, left out 0.020
+  faulted only for a line reference (the note starts "line reference:"): 0
+    of the 10 units judged not supported or wrong
+
+per question (both explore passes together)
+--------------------------------------------------------------------------
+  question   type      units  claims  supp.  not supp.  wrong  share supp.
+  ------------------------------------------------------------------------
+  nc-flo-01  flow         53      49     48          0      1        0.980
+  nc-flo-02  flow         55      51     51          0      0        1.000
+  nc-flo-04  flow         50      45     45          0      0        1.000
+  nc-flo-05  flow         57      55     55          0      0        1.000
+  nc-why-01  why/how      48      42     40          1      1        0.952
+  nc-why-02  why/how      77      75     73          0      2        0.973
+  nc-why-03  why/how      47      47     47          0      0        1.000
+  nc-why-04  why/how      42      40     36          4      0        0.900
+  nc-why-05  why/how      91      85     84          0      1        0.988
+
+verdicts: map claims, by evidence label
+--------------------------------------------------------------------------
+  label             units claims supp. not supp. wrong not claim    ns+w
+  ------------------------------------------------------------------------
+  asserted_by_test      3      3     3         0     0         0   0.000
+  docs                 15     15    15         0     0         0   0.000
+  inferred              5      5     4         1     0         0   0.200
+  read_in_source       77     77    77         0     0         0   0.000
+  all                 100    100    99         1     0         0   0.010
+
+the 10 answer units judged wrong or not supported (truncated)
+--------------------------------------------------------------------------
+  [WRONG] nc-flo-01__explore__p1#s4: With the 'SSSL' pattern and 2 layers,
+      layer 0 would get the short window and layer 1 the long one.
+      note: The pattern tiling gives layer 1 pattern[1] = 'S', so the
+        pattern alone makes both layers short. Layer 1 only becomes long
+        through the final-layer override at line 313.
+  [WRONG] nc-why-01__explore__p1#s22: In `GPT.setup_optimizer`
+      (nanochat/gpt.py:432-433), the AdamW learning rates are also scaled
+      by (model_dim/768)^-0.5.
+      note: dmodel_lr_scale = (model_dim/768)**-0.5 is defined at gpt.py
+        432-433, but it is applied only to the lm_head, embedding and
+        value-embed AdamW groups (lines 439-441). The resid, x0 and smear
+        AdamW gr...
+  [WRONG] nc-why-02__explore__p1#s36: It then builds GPTConfig and GPT
+      inside `with torch.device("meta")`.
+      note: GPTConfig is built at lines 136-140, outside the with block.
+        Only GPT(config) is built inside `with torch.device("meta")`, at
+        lines 141-142.
+  [WRONG] nc-why-02__explore__p1#s38: Loading a checkpoint: build_model in
+      nanochat/checkpoint_manager.py rebuilds
+      GPTConfig(**meta_data["model_config"]), adding any missing keys
+      first.
+      note: _patch_missing_config_keys adds only one missing key,
+        window_pattern (set to 'L'), not any missing key. It is then used
+        to build GPTConfig(**model_config_kwargs).
+  [WRONG] nc-why-05__explore__p1#s42: Time from the first 10 steps is left
+      out of `total_training_time`.
+      note: Line 555 adds dt only when step > 10, so steps 0 through 10
+        are left out. That is 11 steps on a fresh run, not 10; the 'first
+        10 steps' wording is the comment's.
+  [not supp.] nc-why-01__explore__p1#s27: That keeps the code simple and
+      lets models of different sizes be compared fairly.
+      note: README line 108 says the user doesn't have to set other
+        hyperparameters and that changes must work for all depths. Nothing
+        I read says the design keeps the code simple or lets models of
+        different s...
+  [not supp.] nc-why-04__explore__p1#s8: Embeddings and the output head
+      behave like lookup tables or classifiers, not like linear maps
+      inside the network, so an adaptive per-element method such as A...
+      note: The code does use adamw_step_fused for embeddings and lm_head.
+        However, the reasoning that they act like lookup tables or
+        classifiers and so suit AdamW better is not stated in the code or
+        docs I re...
+  [not supp.] nc-why-04__explore__p1#s19: An assert checks that every
+      parameter lands in exactly one group.
+      note: The assert only checks that the total parameter count equals
+        the sum of the group list lengths (line 430). It does not check
+        that no parameter is duplicated or missing, so 'exactly one group'
+        is st...
+  [not supp.] nc-why-04__explore__p1#s21: The combination comes from
+      modded-nanogpt: Muon trains the hidden matrices faster, and AdamW
+      handles the parameters Muon is not suited to.
+      note: The module docstring says it is adapted from modded-nanogpt
+        (line 8). Nothing in the code or docs says Muon trains the hidden
+        matrices faster.
+  [not supp.] nc-why-04__explore__p2#s6: This step only makes sense for a
+      weight matrix that maps one hidden space to another.
+      note: Neither the code nor the docstring says Muon only makes sense
+        for hidden-to-hidden matrices; the docstring only excludes
+        embeddings, the final layer and {0,1}-D params. This is the
+        author's own rea...
+
+the 1 map claims judged wrong or not supported (truncated)
+--------------------------------------------------------------------------
+  [not supp.] map-b01#s19 (inferred): The SDPA fallback builds an explicit
+      boolean mask for sliding windows and chunks, which is slower than
+      FA3's native windows
+      note: _sdpa_attention does build an explicit bool mask for windows
+        and chunks (flash_attention.py:99-110). The claim that this is
+        slower than FA3's native windows is a performance claim the code
+        does not...
+
+evidence check (every cited range against the pinned commit)
+--------------------------------------------------------------------------
+  ad-hoc answers
+    ranges cited 664; ranges that don't exist at the commit 0
+    verdicts citing at least one range that doesn't exist: 0
+    verdicts that need evidence and cite none: supported 2, wrong 0
+  map claims
+    ranges cited 179; ranges that don't exist at the commit 0
+    verdicts citing at least one range that doesn't exist: 0
+    verdicts that need evidence and cite none: supported 0, wrong 0
+
+repeat: the same check again on 3 answers (seed 0)
+--------------------------------------------------------------------------
+  answers: nc-flo-01__explore__p2, nc-why-03__explore__p1,
+    nc-why-03__explore__p2
+  per-unit agreement: 75 of the 76 units with a verdict in both passes
+    (0.987); 76 units in both
+  ns+w on these answers: first pass 0.000 (73 claims), repeat 0.014 (73
+    claims)
+
+  first \ repeat        supp.  not supp.      wrong  not claim       none
+  supp.                    72          0          1          0          0
+  not supp.                 0          0          0          0          0
+  wrong                     0          0          0          0          0
+  not claim                 0          0          0          3          0
+  none                      0          0          0          0          0
+
+for comparison: the map Checker on Honeyguide's maps (outputs/runs.txt)
+--------------------------------------------------------------------------
+  Not the main comparison (that is the control above): the map Checker
+  judged each claim against the lines it cites, its not supported includes
+  what is wrong here, and these maps went through repair. Each row says
+  which Checker rule judged it.
+
+  repo       stage                  claims  supp. not supp.  share  rule
+  ------------------------------------------------------------------------
+  nanochat   run 1 (no repair)         149    129        20  0.134  before
+  nanochat   run 2 before repair       260    158       102  0.392  before
+  nanochat   after repair round 1      260    253         7  0.027  before
+  nanochat   after repair round 2      260    260         0  0.000  before
+  nanochat   run 2 after re-check      260    256         4  0.015  mixed
+  waku-agent run 1 (no repair)         138    126        12  0.087  before
+  waku-agent run 2 before repair       266    219        47  0.177  before
+  waku-agent after repair round 1      266    265         1  0.004  before
+  waku-agent after repair round 2      266    266         0  0.000  before
+  waku-agent run 2 after re-check      266    265         1  0.004  mixed
+
+  the re-checked value claims only (runs.txt recheck):
+  repo       stage                  claims  supp. not supp.  share  rule
+  ------------------------------------------------------------------------
+  nanochat   before repair             117     78        39  0.333  with
+  nanochat   after repair round 1      117    112         5  0.043  with
+  nanochat   after repair round 2      117    113         4  0.034  with
+  waku-agent before repair              36     23        13  0.361  with
+  waku-agent after repair round 1       36     31         5  0.139  with
+  waku-agent after repair round 2       36     35         1  0.028  with
+  share = not supported / claims. rule: before = judged before the
+    Checker's "Compute, don't quote" rule existed (runs.txt's recheck
+    calls the rule new); with = judged under it; mixed = the final map
+    after the re-check: nanochat 117 of 260 claims judged under the rule,
+    143 before it, waku-agent 36 of 266 claims judged under the rule, 230
+    before it.
+  nanochat: of 117 value claims re-checked under the rule, 39 were newly
+    not supported; 4 still not supported after repair round 2
+  waku-agent: of 36 value claims re-checked under the rule, 13 were newly
+    not supported; 1 still not supported after repair round 2
+  live answer q1 (nanochat, Honeyguide's own answer): 13 claims, supported
+    4, not supported 9 (share 0.692); judged against its cited lines,
+    runs.txt does not record under which rule
+  live answer q2 (nanochat, Honeyguide's own answer): 9 claims, supported
+    8, not supported 1 (share 0.111); judged against its cited lines,
+    runs.txt does not record under which rule
+
+spot check for Han: 20 units (seed 0, round-robin across verdicts)
+--------------------------------------------------------------------------
+  links: https://github.com/karpathy/nanochat/blob/92d63d4e8bb4/<path>#L<s
+    tart>-L<end>; full links in the answers archive's spot_check.md
+    (--spot-check)
+
+  1. [supported] nc-flo-04__explore__p2#s22
+      So generation can end before four tokens.
+      note: The all-completed break at line 230 can stop the loop before
+        num_generated reaches 4.
+      at: nanochat/engine.py#L229-L231
+
+  2. [not_supported] nc-why-04__explore__p1#s21
+      The combination comes from modded-nanogpt: Muon trains the hidden
+      matrices faster, and AdamW handles the parameters Muon is not suited
+      to.
+      note: The module docstring says it is adapted from modded-nanogpt
+        (line 8). Nothing in the code or docs says Muon trains the hidden
+        matrices faster.
+      at: nanochat/optim.py#L1-L10
+
+  3. [wrong] nc-why-01__explore__p1#s22
+      In `GPT.setup_optimizer` (nanochat/gpt.py:432-433), the AdamW
+      learning rates are also scaled by (model_dim/768)^-0.5.
+      note: dmodel_lr_scale = (model_dim/768)**-0.5 is defined at gpt.py
+        432-433, but it is applied only to the lm_head, embedding and
+        value-embed AdamW groups (lines 439-441). The resid, x0 and smear
+        AdamW groups (lines 442-444) are not scaled, so it does not cover
+        "the AdamW learning rates" in general.
+      at: nanochat/gpt.py#L432-L445
+
+  4. [not_a_claim] nc-flo-04__explore__p2#s2
+      I didn't run it.
+      note: general knowledge/framing: states the author did not run the
+        code.
+      at: no evidence cited
+
+  5. [supported] nc-why-01__explore__p1#s26
+      In short: because width, heads, token budget, batch size, learning
+      rates and weight decay are all derived from depth, changing depth
+      alone moves you along a compute-optimal scaling curve.
+      note: This summary matches the derivations in base_train.py 129-143
+        and 263-302, and README line 108.
+      at: scripts/base_train.py#L263-L302, README.md#L108
+
+  6. [not_supported] nc-why-04__explore__p1#s8
+      Embeddings and the output head behave like lookup tables or
+      classifiers, not like linear maps inside the network, so an adaptive
+      per-element method such as AdamW (`adamw_step_fused`) suits them
+      better.
+      note: The code does use adamw_step_fused for embeddings and lm_head.
+        However, the reasoning that they act like lookup tables or
+        classifiers and so suit AdamW better is not stated in the code or
+        docs I read; the docstring only says they should use a standard
+        method.
+      at: nanochat/optim.py#L198-L200, nanochat/gpt.py#L439-L441
+
+  7. [wrong] nc-why-02__explore__p1#s38
+      Loading a checkpoint: build_model in nanochat/checkpoint_manager.py
+      rebuilds GPTConfig(**meta_data["model_config"]), adding any missing
+      keys first.
+      note: _patch_missing_config_keys adds only one missing key,
+        window_pattern (set to 'L'), not any missing key. It is then used
+        to build GPTConfig(**model_config_kwargs).
+      at: nanochat/checkpoint_manager.py#L22-L27,
+        nanochat/checkpoint_manager.py#L94-L97
+
+  8. [not_a_claim] nc-why-01__explore__p1#s24
+      Naming.
+      note: Section label.
+      at: no evidence cited
+
+  9. [supported] nc-flo-04__explore__p1#s10
+      `GPT.forward` (gpt.py:459) runs once on the whole prompt with that
+      cache.
+      note: Line 205 calls self.model.forward(ids,
+        kv_cache=kv_cache_prefill) once, and GPT.forward is at gpt.py:459.
+      at: nanochat/engine.py#L204-L205, nanochat/gpt.py#L459
+
+  10. [not_supported] nc-why-01__explore__p1#s27
+      That keeps the code simple and lets models of different sizes be
+      compared fairly.
+      note: README line 108 says the user doesn't have to set other
+        hyperparameters and that changes must work for all depths. Nothing
+        I read says the design keeps the code simple or lets models of
+        different sizes be compared fairly; that is the author's
+        inference.
+      at: README.md#L108
+
+  11. [wrong] nc-flo-01__explore__p1#s4
+      With the 'SSSL' pattern and 2 layers, layer 0 would get the short
+      window and layer 1 the long one.
+      note: The pattern tiling gives layer 1 pattern[1] = 'S', so the
+        pattern alone makes both layers short. Layer 1 only becomes long
+        through the final-layer override at line 313.
+      at: nanochat/gpt.py#L308-L313
+
+  12. [not_a_claim] nc-why-05__explore__p2#s6
+      **Each pass, in order**
+      note: Heading.
+      at: no evidence cited
+
+  13. [supported] nc-flo-04__explore__p2#s8
+      `GPT.forward` (gpt.py:459) runs once over the whole prompt, using
+      the prefill cache.
+      note: engine.py:205 calls self.model.forward(ids,
+        kv_cache=kv_cache_prefill) with the full prompt; GPT.forward at
+        gpt.py:459.
+      at: nanochat/engine.py#L204-L205, nanochat/gpt.py#L459
+
+  14. [not_supported] nc-why-04__explore__p1#s19
+      An assert checks that every parameter lands in exactly one group.
+      note: The assert only checks that the total parameter count equals
+        the sum of the group list lengths (line 430). It does not check
+        that no parameter is duplicated or missing, so 'exactly one group'
+        is stronger than what it checks.
+      at: nanochat/gpt.py#L430
+
+  15. [wrong] nc-why-05__explore__p1#s42
+      Time from the first 10 steps is left out of `total_training_time`.
+      note: Line 555 adds dt only when step > 10, so steps 0 through 10
+        are left out. That is 11 steps on a fresh run, not 10; the 'first
+        10 steps' wording is the comment's.
+      at: scripts/base_train.py#L555-L556
+
+  16. [not_a_claim] nc-flo-04__explore__p1#s3
+      I'm assuming none of the 4 sampled tokens is a special token, such
+      as `<|assistant_end|>`, `<|bos|>` or
+      `<|python_start|>`/`<|python_end|>`.
+      note: general knowledge/framing: an assumption about the sampled
+        tokens.
+      at: no evidence cited
+
+  17. [supported] nc-why-04__explore__p2#s8
+      An embedding table is a lookup indexed by token, the lm_head maps to
+      vocabulary logits, and 0-D/1-D parameters have no matrix to
+      orthogonalize.
+      note: wte is an nn.Embedding, lm_head is Linear(n_embd,
+        padded_vocab_size), and resid/x0/smear lambdas are 1-D or scalar
+        Parameters.
+      at: nanochat/gpt.py#L174-L192
+
+  18. [not_supported] nc-why-04__explore__p2#s6
+      This step only makes sense for a weight matrix that maps one hidden
+      space to another.
+      note: Neither the code nor the docstring says Muon only makes sense
+        for hidden-to-hidden matrices; the docstring only excludes
+        embeddings, the final layer and {0,1}-D params. This is the
+        author's own reading.
+      at: nanochat/optim.py#L198-L200
+
+  19. [wrong] nc-why-02__explore__p1#s36
+      It then builds GPTConfig and GPT inside `with torch.device("meta")`.
+      note: GPTConfig is built at lines 136-140, outside the with block.
+        Only GPT(config) is built inside `with torch.device("meta")`, at
+        lines 141-142.
+      at: scripts/base_train.py#L136-L142
+
+  20. [not_a_claim] nc-flo-01__explore__p2#s23
+      **Initialising: model.init_weights()**
+      note: Section heading.
+      at: no evidence cited
+
+spot check for Han, map claims: 10 units (seed 0)
+--------------------------------------------------------------------------
+  links: https://github.com/karpathy/nanochat/blob/92d63d4e8bb4/<path>#L<s
+    tart>-L<end>; full links in the answers archive's spot_check.md
+    (--spot-check)
+
+  1. [supported] map-b01#s9 (read_in_source)
+      `base_train.py` constructs `GPT` in `build_model_meta`, and
+      `checkpoint_manager.build_model` constructs it for loaded
+      checkpoints
+      note: build_model_meta calls GPT(config) at base_train.py:142, and
+        checkpoint_manager.build_model calls GPT(model_config) at line
+        100.
+      at: scripts/base_train.py#L129-L146,
+        nanochat/checkpoint_manager.py#L97-L100
+
+  2. [not_supported] map-b01#s19 (inferred)
+      The SDPA fallback builds an explicit boolean mask for sliding
+      windows and chunks, which is slower than FA3's native windows
+      note: _sdpa_attention does build an explicit bool mask for windows
+        and chunks (flash_attention.py:99-110). The claim that this is
+        slower than FA3's native windows is a performance claim the code
+        does not show; only the base_train.py:115 warning says GPU
+        utilization will be terrible.
+      at: nanochat/flash_attention.py#L99-L110,
+        scripts/base_train.py#L114-L115
+
+  3. [supported] map-b01#s17 (read_in_source)
+      `GPT.forward` contains the full path from token embedding through
+      the layer loop to soft-capped logits
+      note: GPT.forward goes from the wte embedding through the block loop
+        to lm_head, then applies softcap 15 via tanh.
+      at: nanochat/gpt.py#L470-L515
+
+  4. [supported] map-b01#s20 (read_in_source)
+      Tokens inside a python block are decoded and passed to
+      `use_calculator`, and a result is queued as forced output tokens
+      note: Inside the python block, tokens are collected, then decoded
+        and passed to use_calculator. A non-None result is encoded and
+        appended to the forced_tokens deque.
+      at: nanochat/engine.py#L252-L267
+
+  5. [supported] map-b01#s16 (read_in_source)
+      `base_train.py` derives the target token count from the parameter
+      count, the batch size from the token ratio, and a learning-rate
+      scale from the batch ratio
+      note: target_tokens = ratio * num_scaling_params, and
+        predicted_batch_size = B_REF * (target_tokens/D_REF)**0.383.
+        batch_lr_scale = (total_batch_size/B_REF)**0.5.
+      at: scripts/base_train.py#L269-L294
+
+  6. [supported] map-b02#s9 (read_in_source)
+      Advantages are rewards minus their mean
+      note: advantages = rewards - rewards.mean().
+      at: scripts/chat_rl.py#L142-L144
+
+  7. [supported] map-b01#s22 (docs)
+      speedrun.sh trains a GPT-2 grade LLM with pretraining and finetuning
+      note: The header says the script trains a GPT-2 grade LLM
+        (pretraining + finetuning), and the script runs base_train and
+        then chat_sft.
+      at: runs/speedrun.sh#L3, runs/speedrun.sh#L67-L75
+
+  8. [supported] map-b01#s10 (read_in_source)
+      chat_cli loads the model via load_model with source defaulting to
+      sft
+      note: chat_cli's --source defaults to 'sft' and is passed to
+        load_model.
+      at: scripts/chat_cli.py#L14, scripts/chat_cli.py#L27
+
+  9. [supported] map-b04#s24 (read_in_source)
+      Each step runs `grad_accum_steps` micro-batches and divides each
+      loss by `grad_accum_steps`
+      note: for micro_step in range(grad_accum_steps): loss = loss /
+        grad_accum_steps before backward.
+      at: scripts/base_train.py#L510-L518
+
+  10. [supported] map-b04#s4 (read_in_source)
+      A meta d12 reference sets D_REF; batch size scales as the token
+      ratio to the 0.383, LRs by the square root of the batch ratio, and
+      weight decay by sqrt(B/B_ref) times D_ref/D
+      note: d12_ref = build_model_meta(12) sets D_REF; batch = B_REF *
+        (target_tokens/D_REF)**0.383; lr scale batch_ratio**0.5; wd *
+        sqrt(B/B_REF) * (D_REF/target_tokens).
+      at: scripts/base_train.py#L271-L302
