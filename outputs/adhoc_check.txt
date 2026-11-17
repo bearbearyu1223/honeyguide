@@ -237,7 +237,7 @@ for comparison: the map Checker on Honeyguide's maps (outputs/runs.txt)
     8, not supported 1 (share 0.111); judged against its cited lines,
     runs.txt does not record under which rule
 
-spot check for Han: 20 units (seed 0, round-robin across verdicts)
+spot check for review: 20 units (seed 0, round-robin across verdicts)
 --------------------------------------------------------------------------
   links: https://github.com/karpathy/nanochat/blob/92d63d4e8bb4/<path>#L<s
     tart>-L<end>; full links in the answers archive's spot_check.md
@@ -400,7 +400,7 @@ spot check for Han: 20 units (seed 0, round-robin across verdicts)
       note: Section heading.
       at: no evidence cited
 
-spot check for Han, map claims: 10 units (seed 0)
+spot check for review, map claims: 10 units (seed 0)
 --------------------------------------------------------------------------
   links: https://github.com/karpathy/nanochat/blob/92d63d4e8bb4/<path>#L<s
     tart>-L<end>; full links in the answers archive's spot_check.md

@@ -1,4 +1,4 @@
-"""Han's human eval chores (T5 why/how questions, T6a flow hops, T6b callers disputes): the frozen sets read, the
+"""The human annotator's eval chores (T5 why/how questions, T6a flow hops, T6b callers disputes): the frozen sets read, the
 answers saved, and the summary that ``check.py`` prints and later steps read.
 
 Standard library only. The frozen question sets (eval/questions/*.json, MANIFEST.txt) are read, never written.
@@ -7,8 +7,8 @@ the two agree line by line).
 
 Answers live in eval/human/answers/, one file per chore and repo:
 
-- ``whyhow_<repo>.json``: T5, Han's own why/how questions with a rubric each (ids ``<prefix>-why-NN``, never
-  reused; list order is the order Han set);
+- ``whyhow_<repo>.json``: T5, the annotator's own why/how questions with a rubric each (ids ``<prefix>-why-NN``, never
+  reused; list order is the order the annotator set);
 - ``hops_<repo>.json``: T6a, required / optional / excluded per candidate hop of every flow question (with an
   optional one-line ``why`` per hop);
 - ``disputes_<repo>.json``: T6b, caller / not (and an optional note) per disputed call site.
@@ -39,7 +39,7 @@ SCHEMA = 1
 REMINDER = ("Write these from the repo and your own curiosity. Don't look at Honeyguide's map of this repo while "
             "writing (the eval compares the map against exploring; questions shaped by the map would favour it).")
 # T5 bounds: "about 10 per repo (allow 6-15)"; a rubric is 2-6 bullet points of what a good answer must say
-# (6 since 2026-11-16: three questions took one more point from the review pass Han accepted).
+# (6 since 2026-11-16: three questions took one more point from the review pass the annotator accepted).
 WHYHOW_MIN, WHYHOW_MAX, WHYHOW_TARGET = 6, 15, 10
 RUBRIC_MIN, RUBRIC_MAX = 2, 6
 MARKS = ("required", "optional", "excluded")
@@ -49,7 +49,7 @@ MARK_MEANINGS = {
     "excluded": "outside the question's scope: neither credited nor penalised by the scorer",
 }
 # One grading policy for every T5 question in both repos (kept once per answers doc and once in the export, never
-# copied per question). A question's own rubric_partial / rubric_wrong, when Han wrote one, adds to it.
+# copied per question). A question's own rubric_partial / rubric_wrong, when the annotator wrote one, adds to it.
 GRADING_POLICY = {
     "full_credit": ("Every rubric_must point is supported by the pinned code, with the relevant functions and "
                     "branches correctly identified."),
@@ -323,7 +323,7 @@ def clean_whyhow_item(item: dict, qid: str, repo: str) -> dict:
     out = {"id": qid, "repo": repo, "text": text("text", MAX_TEXT), "rubric_must": list(must),
            "rubric_partial": text("rubric_partial", MAX_TEXT), "rubric_wrong": text("rubric_wrong", MAX_TEXT),
            "relevant": text("relevant", MAX_TEXT)}
-    original = text("relevant_original", MAX_TEXT)     # Han's own string, kept when ``relevant`` was refined
+    original = text("relevant_original", MAX_TEXT)     # the annotator's own string, kept when ``relevant`` was refined
     if original:
         out["relevant_original"] = original
     return out
@@ -335,7 +335,7 @@ def relevant_paths(relevant: str) -> list[str]:
 
 
 def apply_whyhow(state: dict, items: list, repo: str) -> dict:
-    """Edit / reorder / delete: ``items`` is the whole list in Han's order; every id must already exist (new
+    """Edit / reorder / delete: ``items`` is the whole list in the annotator's order; every id must already exist (new
     questions come from ``add_whyhow``, so two saves in flight can never mint the same id twice)."""
     if not isinstance(items, list) or len(items) > MAX_ITEMS:
         raise ValueError(f"questions must be a list of at most {MAX_ITEMS}")

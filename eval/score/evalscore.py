@@ -7,7 +7,7 @@ Reads the run archive (see eval/run/evalrun.py) and never writes to it, except -
 <archive>/<run-id>/grading/{sheet.md, sheet.json, blind_key.json, grades.json (a template, never overwritten)}.
 The why/how grades are read back from grading/grades.json (or --grades FILE); its "grader" and "how" are printed.
 
-Deterministic: every number comes from the saved runs, the frozen questions, Han's answers and grades; the
+Deterministic: every number comes from the saved runs, the frozen questions, the human annotator's answers and grades; the
 bootstrap is seeded. Re-scoring the same archive prints the same bytes. Rules: scoring.py (per type), the
 module docstring of pairstats.py (analysis). Runs that errored, were capped or gave no valid answer count as wrong
 (score 0) and are listed per cell; runs not run yet (pending, blocked, stopped by the usage limit) are left out.
@@ -148,7 +148,7 @@ def human_answers(cfg: dict, repo: str) -> dict:
 
 
 def hop_marks(q: dict, hops_doc: dict) -> tuple[list[str | None], list[str]]:
-    """Han's mark per frozen candidate hop, carried over only onto the same hop (index, file, function, line)."""
+    """The annotator's mark per frozen candidate hop, carried over only onto the same hop (index, file, function, line)."""
     saved = {h.get("index"): h for h in (hops_doc.get("questions", {}).get(q["id"], {}).get("hops", []))}
     marks, problems = [], []
     for i, h in enumerate(q["key"]["candidate_hops"]):
@@ -182,7 +182,7 @@ def leakage(q: dict, decisions: list[dict]) -> list[str]:
     generator's own rule (eval/questions/generate.py). locate and flow: the leaks frozen with the question (the
     key function, its class and file; every candidate hop's function name except the entry calls, which the
     question names on purpose). callers: recomputed with the generator's rule over the key callers plus the
-    disputed sites Han decided are callers (their names and classes and files, minus the target, named on
+    disputed sites the annotator decided are callers (their names and classes and files, minus the target, named on
     purpose)."""
     if q["type"] in ("locate", "flow"):
         return list(q.get("leaks", []))
@@ -406,7 +406,7 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
     cal = [scores[i]["detail"] for i in scores if scores[i]["status"] == "ok" and qtype.get(
         next((it["qid"] for it in items if it["id"] == i), ""), "") == "callers"]
     if cal:
-        L += wrap(f"callers: answered sites Han decided are not callers {sum(d['fp_decided_not'] for d in cal)}; "
+        L += wrap(f"callers: answered sites the annotator decided are not callers {sum(d['fp_decided_not'] for d in cal)}; "
                   f"items outside the key scope ignored {sum(d['ignored_out_of_scope'] for d in cal)}", 2, 4)
 
     B = S.B_DEFAULT

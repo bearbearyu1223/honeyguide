@@ -134,9 +134,9 @@ def test_break_even():
 def test_policy_and_grades_round_trip():
     text, scale = G.policy_of({})
     assert scale == G.DEFAULT_SCALE and "No grading_policy" in text
-    text, scale = G.policy_of({"grading_policy": {"text": "Han's rule", "scale": {"full": 1, "half": 0.5,
+    text, scale = G.policy_of({"grading_policy": {"text": "the annotator's rule", "scale": {"full": 1, "half": 0.5,
                                                                                   "none": 0}}})
-    assert text == "Han's rule" and scale == {"full": 1.0, "half": 0.5, "none": 0.0}
+    assert text == "the annotator's rule" and scale == {"full": 1.0, "half": 0.5, "none": 0.0}
     qs = [{"id": "w1", "text": "Why?", "rubric_must": ["a", "b"]}]
     answers = [{"run_id": f"w1__{c}__p1", "qid": "w1", "answer": {"text": f"answer {i}", "items": []}}
                for i, c in enumerate(("map", "explore", "outline", "no-access"))]
@@ -216,7 +216,7 @@ def test_grading_round_trip_changes_scores(scored, capsys):
     row = next(ln for ln in out.splitlines() if ln.startswith("  whyhow ")).split()
     assert row[1:] == ["1", "0.000", "0.000", "0.000", "1.000"]   # explore: both runs failed (token) = 0
     assert sheet["questions"][0]["rubric_must"] == ["names compute and finish", "says why"]
-    # re-running the sheet keeps Han's grades file
+    # re-running the sheet keeps the annotator's grades file
     run_score(scored, capsys, "--grading-sheet")
     assert json.loads((root / "grades.json").read_text()) == grades
 

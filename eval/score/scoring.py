@@ -13,10 +13,10 @@ is scored:
 Scores, each in [0, 1]:
   locate   1 when the FIRST item resolves to the key function (or a function nested in it: also_accept, or a
            <locals> qualname under it) in the key file. Also reported: the file alone, and any item.
-  callers  F1 of the answered caller set against the key: key callers (AST + trace) plus the disputed sites Han
-           decided are callers; sites he decided are not callers count as false positives when answered.
+  callers  F1 of the answered caller set against the key: key callers (AST + trace) plus the disputed sites the annotator
+           decided are callers; sites the annotator decided are not callers count as false positives when answered.
            Items outside the key's scope (tests, examples, docs; for waku-agent outside waku/) are ignored.
-  flow     required hops (Han's marks) recalled in order: LCS of the answer's required hops (first mention,
+  flow     required hops (the annotator's marks) recalled in order: LCS of the answer's required hops (first mention,
            answer order) with the key's required hops (trace order), divided by the number required. Also
            reported: recall, optional hops named, excluded hops ignored, and every other item classified as
            "trace" (in the trace phase but pre-filtered), "other path" (statically reachable from the entry in
@@ -175,7 +175,7 @@ def lcs(a: list, b: list) -> int:
 
 def score_flow(answer: dict, hops: list[dict], marks: list[str | None], funcs: dict[str, list[Fn]],
                trace_pairs: set[tuple[str, str]], reachable: set[tuple[str, str]], workdir: str = "") -> dict:
-    """hops: the frozen candidate hops (key order); marks: Han's mark per hop (required / optional / excluded /
+    """hops: the frozen candidate hops (key order); marks: the annotator's mark per hop (required / optional / excluded /
     None); trace_pairs: (file, qual) of every call in the question's trace phase; reachable: (file, qual)
     statically reachable from the entry calls."""
     index = {(h["file"], h["qual"]): i for i, h in enumerate(hops)}

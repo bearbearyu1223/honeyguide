@@ -1,10 +1,9 @@
-# Honeyguide map page, UX v4 (T7.17 + T7.18)
+# Honeyguide map page, UX v4
 
-Han's asks, in his words: the component diagram "is very small, and not readable ... allow zoom in zoom out"; "the
-diagram like this is really hard to read and navigate"; a repo overview "by providing the detailed repo info, like
-link, programming language, authors, stars"; "the font and layout can be designed better, so it is easy to understand
-and find the section; the UX should give people a clean and professional feel"; "leverage the UX design of NotebookLM
-from Google, for the feel and the theme".
+Design goals. The component diagram was too small to read and had no zoom: every diagram should be easy to read and
+to navigate, with zoom in and out. The page should open with a repo overview: link, programming language, authors,
+stars. Type and layout should make each section easy to find and give the page a clean, professional feel. The feel
+and theme take after Google's NotebookLM.
 
 What we borrow from NotebookLM is its **feel**, not its look: three calm areas on a tonal canvas, rounded surfaces,
 generous whitespace, a clear type hierarchy, quiet chrome, citations as compact chips that show their passage, and

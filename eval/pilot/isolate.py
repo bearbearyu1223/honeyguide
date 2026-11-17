@@ -7,7 +7,7 @@ canary working dir), runs one pilot prompt, and saves the JSON result plus a lea
 
 Auth: a fresh CLAUDE_CONFIG_DIR is not logged in (checked on CLI 2.1.325: `claude auth status` says
 loggedIn false, and the macOS keychain entry is not found from a fresh config dir or a fresh HOME). The
-subscription is carried by CLAUDE_CODE_OAUTH_TOKEN, the long-lived token `claude setup-token` prints; Han
+subscription is carried by CLAUDE_CODE_OAUTH_TOKEN, the long-lived token `claude setup-token` prints; the operator
 creates it once and exports it in the shell that launches the eval. The token is passed through to the child
 environment only; this module never prints or writes it, and refuses to save any output that contains it.
 """
@@ -348,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         if names is not None and name not in names:
             continue
         if "noauth" not in name and not has_token and not a.dry_run:
-            print(f"=== run {name}: skipped, needs {TOKEN_VAR} (Han runs `claude setup-token` once)", flush=True)
+            print(f"=== run {name}: skipped, needs {TOKEN_VAR} (run `claude setup-token` once)", flush=True)
             continue
         rc |= run_one(name, *rest, **kw)
     return rc

@@ -524,7 +524,7 @@ function goNeeds(id, flow) {
 function blockAt(off) { return MAPTEXT?.blocks.find(b => off >= b.start && off < b.end) || MAPTEXT?.blocks.find(b => off <= b.end) || null; }
 
 /* ---------------------------------------------------------------- Tracer path (map flows and panel answers) */
-/* One rule for the rail and the diagram (Han's v3.1 choice 1): solid = read in source or seen at runtime (the
+/* One rule for the rail and the diagram (v3.1 design choice 1): solid = read in source or seen at runtime (the
    evidence shape says which), dashed = inferred (neither read nor seen), dotted = a trace blind spot. */
 const READ_OR_SEEN = new Set(["read_in_source", "asserted_by_test", "seen_at_runtime"]);
 const hopStyle = (h, c) => (h.trace === "blind_spot" ? "dotted" : h.trace === "seen" || READ_OR_SEEN.has(c?.evidence) ? "solid" : "dashed");
@@ -664,7 +664,7 @@ function figSVG(key, w) {
   if (!m) return "";
   return key === "graph" ? HGD.renderMap(graphLayout(w), UI.gall ? "all" : "main") : HGD.renderSeq(HGD.layoutSeq(m, w), m);
 }
-/* Han's v3.1 choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
+/* v3.1 design choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
    (readable text over a shrunken picture); "Show the diagram" or View as diagram overrides that for the flow. */
 const MIN_SCALE = 0.85;
 /* T7.16: the overlay is as wide as its diagram, up to its own width (the map area beside the panel) less margins,

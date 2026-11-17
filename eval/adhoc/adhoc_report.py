@@ -1,4 +1,4 @@
-"""E1's capture (outputs/adhoc_check.txt, 74 columns) and Han's spot-check sheet, from the checks' archives.
+"""E1's capture (outputs/adhoc_check.txt, 74 columns) and the reviewer's spot-check sheet, from the checks' archives.
 
 Reads <archive>/<run-id>-adhoc/ (the answers arm), -adhoc-map/ (the control) and -adhoc-repeat/ (the repeat),
 written by adhoc.py, and never writes to them, except --spot-check, which writes spot_check.md into the answers
@@ -614,10 +614,10 @@ def capture(data: dict, evidence: list[dict], runs_txt: str | None, map_data: di
 
     # --- spot checks
     s = sample(rows, seed)
-    L += _spot(f"spot check for Han: {len(s)} units (seed {seed}, round-robin across verdicts)", s, plan)
+    L += _spot(f"spot check for review: {len(s)} units (seed {seed}, round-robin across verdicts)", s, plan)
     if map_data:
         ms = sample(map_data["rows"], seed, MAP_SAMPLE)
-        L += _spot(f"spot check for Han, map claims: {len(ms)} units (seed {seed})", ms, plan)
+        L += _spot(f"spot check for review, map claims: {len(ms)} units (seed {seed})", ms, plan)
 
     text = "\n".join(ln.rstrip() for ln in L) + "\n"
     too_wide = [ln for ln in text.splitlines() if len(ln) > WIDTH]

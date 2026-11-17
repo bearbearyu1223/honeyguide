@@ -1,4 +1,4 @@
-/* Han's eval chores page: T5 why/how questions, T6a flow hops, T6b callers disputes, Done.
+/* The human annotator's eval chores page: T5 why/how questions, T6a flow hops, T6b callers disputes, Done.
    No inline script or style (CSP); every string from the server goes in as text, never as HTML.
    Every change is posted at once (one queue, in order); the server saves it to eval/human/answers/. */
 (function () {
@@ -154,7 +154,7 @@
 
   // ---------- T5 why/how ----------
   var whyTimer = {};
-  function saveWhy(r) {                  // autosave: debounce typing, then post the whole list in Han's order
+  function saveWhy(r) {                  // autosave: debounce typing, then post the whole list in the annotator's order
     clearTimeout(whyTimer[r.repo]);
     whyTimer[r.repo] = setTimeout(function () { postWhy(r); }, 400);
     flash("Editing...");

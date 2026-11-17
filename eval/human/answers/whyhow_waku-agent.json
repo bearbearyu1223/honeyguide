@@ -176,11 +176,11 @@
   }
  ],
  "questions_json_sha256": "7ac8799c8429b0e4b01d685854b2d91108d6fa827976c20bdd5d101b62bbfae4",
- "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
+ "refinement": "Refined 2026-11-16 from an AI review pass the human annotator supplied (t*_improved.json), applied with the annotator's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "reminder": "Write these from the repo and your own curiosity. Don't look at Honeyguide's map of this repo while writing (the eval compares the map against exploring; questions shaped by the map would favour it).",
  "repo": "waku-agent",
  "saved_at": "2026-11-16T17:41:47Z",
  "schema": 1,
- "source": "eval/t5/han_why_how_2026-11-16.md (Han's chat message, imported verbatim; rubric sentence split into bullets at its commas)",
+ "source": "eval/t5/why_how_2026-11-16.md (the human annotator's message, imported verbatim; rubric sentence split into bullets at its commas)",
  "url": "https://github.com/ShenSeanChen/waku-agent"
 }

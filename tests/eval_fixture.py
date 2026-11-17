@@ -1,4 +1,4 @@
-"""A tiny target repo + frozen question set + Han's answers + trace + config for the eval runner/scorer tests.
+"""A tiny target repo + frozen question set + the annotator's answers + trace + config for the eval runner/scorer tests.
 
 Everything lives under a tmp dir; nothing touches the real frozen sets, ~/.honeyguide or the real archive. The
 token is a fake held in an environment variable the token command prints, so no file on disk contains it.

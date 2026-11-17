@@ -94,7 +94,7 @@ is why these avatars are `static`. In headers and work rows they stay animated.
 |---|---|---|
 | `AG` map and `agFull` | helper | `AG[a][0]` is no longer needed. Split `agFull` into `agHTML(a)` = `hgAv(a, "idle static", 20) + " " + name` for HTML, and `agName(a)` for text |
 | welcome list "The 🗺️ Cartographer reads the code…" | HTML | `agHTML("cartographer")` |
-| `#sub` "Mapped by the 🗺️ Cartographer · …" | `textContent` | name only ("Mapped by the Cartographer · …"), or switch to `innerHTML` with `agHTML` if Han wants the creature in the subtitle |
+| `#sub` "Mapped by the 🗺️ Cartographer · …" | `textContent` | name only ("Mapped by the Cartographer · …"), or switch to `innerHTML` with `agHTML` if the creature is wanted in the subtitle |
 | `#dgovs` "🧵 Tracer answer, as a diagram" | `textContent` | name only |
 | flow header meta `<span class="em">🧵</span>Tracer · N hops` | HTML | `hgAv("tracer", "idle static", 20)` in place of the `em` span |
 | "N stale claims waiting for the ✅ Checker" | HTML | `agHTML("checker")` |

@@ -1,7 +1,7 @@
 """The eval's settings (eval/run/config.toml) and the questions a run size selects.
 
 Standard library only. Pure apart from reading files: the frozen question sets (eval/questions/<repo>.json) and
-Han's why/how questions (eval/human/answers/whyhow_<repo>.json) are read, never written.
+The human annotator's why/how questions (eval/human/answers/whyhow_<repo>.json) are read, never written.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class Question:
 
 
 def load_questions(cfg: dict, repo: str) -> tuple[dict, list[dict], list[dict]]:
-    """(frozen set, its generated questions in presentation order, Han's why/how questions in his order)."""
+    """(frozen set, its generated questions in presentation order, the annotator's why/how questions in the annotator's order)."""
     rc = cfg["repos"][repo]
     frozen = json.loads(expand(rc["questions"]).read_text())
     by_id = {q["id"]: q for q in frozen["questions"]}
@@ -80,7 +80,7 @@ def load_questions(cfg: dict, repo: str) -> tuple[dict, list[dict], list[dict]]:
 
 
 def select_questions(cfg: dict, repo: str, size: str) -> list[Question]:
-    """The size's questions: per type the first N in presentation order (why/how in Han's order), then listed
+    """The size's questions: per type the first N in presentation order (why/how in the annotator's order), then listed
     in that same overall order (generated questions first, why/how after)."""
     sz = cfg["sizes"][size]
     _, ordered, whyhow = load_questions(cfg, repo)

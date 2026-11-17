@@ -1,6 +1,6 @@
 {
  "frozen_manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
- "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
+ "refinement": "Refined 2026-11-16 from an AI review pass the human annotator supplied (t*_improved.json), applied with the annotator's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "chore": "T6b callers: in-key callers and the disputed call sites decided",
  "repos": {
   "nanochat": {
@@ -26,7 +26,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] `model` comes from load_model(), which builds a GPT (checkpoint_manager.py:100), so model.estimate_decode_flops(...) is GPT.estimate_decode_flops."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] `model` comes from load_model(), which builds a GPT (checkpoint_manager.py:100), so model.estimate_decode_flops(...) is GPT.estimate_decode_flops."
       }
      ]
     },
@@ -242,7 +242,7 @@
         "attr"
        ],
        "decision": "not",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] X.float().norm(...) is torch Tensor.norm, not nanochat's norm() in gpt.py:42."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] X.float().norm(...) is torch Tensor.norm, not nanochat's norm() in gpt.py:42."
       }
      ]
     },
@@ -277,7 +277,7 @@
         "reference"
        ],
        "decision": "not",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 194 stores the function in the flash_attn SimpleNamespace; it is not called there."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] Line 194 stores the function in the flash_attn SimpleNamespace; it is not called there."
       },
       {
        "caller": "flash_attn_with_kvcache",
@@ -290,7 +290,7 @@
         "attr"
        ],
        "decision": "not",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] _fa3.flash_attn_with_kvcache is the external FlashAttention-3 kernel (_fa3 = _load_flash_attention_3(), line 49), not this repo's function calling itself."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] _fa3.flash_attn_with_kvcache is the external FlashAttention-3 kernel (_fa3 = _load_flash_attention_3(), line 49), not this repo's function calling itself."
       }
      ]
     },
@@ -557,7 +557,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (cli.py:62), so waku.respond is Waku.respond."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (cli.py:62), so waku.respond is Waku.respond."
       },
       {
        "caller": "GatewayAgentRunner._respond",
@@ -570,7 +570,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] self._agent comes from agent_factory: Waku itself (telegram.py:47) or _build_agent returning Waku (discord.py:128), so it is Waku.respond."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] self._agent comes from agent_factory: Waku itself (telegram.py:47) or _build_agent returning Waku (discord.py:128), so it is Waku.respond."
       },
       {
        "caller": "run_gateway_turn",
@@ -583,7 +583,7 @@
         "attr"
        ],
        "decision": "not",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] runner is a GatewayAgentRunner (runner.py:111); runner.respond is GatewayAgentRunner.respond (runner.py:80), which in turn calls Waku.respond (case 6)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] runner is a GatewayAgentRunner (runner.py:111); runner.respond is GatewayAgentRunner.respond (runner.py:80), which in turn calls Waku.respond (case 6)."
       },
       {
        "caller": "main",
@@ -596,7 +596,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (voice.py:316)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (voice.py:316)."
       },
       {
        "caller": "wake_loop",
@@ -609,7 +609,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] wake_loop's parameter is annotated waku: Waku (voice.py:228)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] wake_loop's parameter is annotated waku: Waku (voice.py:228)."
       },
       {
        "caller": "_build_handler.<locals>.Handler.do_POST",
@@ -622,7 +622,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku(settings=..., conn=...) (whatsapp.py:142)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku(settings=..., conn=...) (whatsapp.py:142)."
       },
       {
        "caller": "compare_stream.<locals>.run",
@@ -635,7 +635,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=settings) (arena.py:111)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] app = Waku(settings=settings) (arena.py:111)."
       },
       {
        "caller": "main",
@@ -648,7 +648,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (brief.py:24)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (brief.py:24)."
       },
       {
        "caller": "chat_stream",
@@ -661,7 +661,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] agent = get_agent() (dashboard.py:114), which returns a Waku (browser_agent.py:83-97)."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] agent = get_agent() (dashboard.py:114), which returns a Waku (browser_agent.py:83-97)."
       },
       {
        "caller": "run_arena.<locals>.one",
@@ -675,7 +675,7 @@
         "attr"
        ],
        "decision": "caller",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=...) (memory_arena.py:472); both lines 484 and 554 call app.respond."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] app = Waku(settings=...) (memory_arena.py:472); both lines 484 and 554 call app.respond."
       }
      ]
     },
@@ -710,7 +710,7 @@
         "reference"
        ],
        "decision": "not",
-       "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 429 passes trim.shrink_seen into trim.chain(...) as a reference; it is called later by the loop's trim step, not here."
+       "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] Line 429 passes trim.shrink_seen into trim.chain(...) as a reference; it is called later by the loop's trim step, not here."
       }
      ]
     },

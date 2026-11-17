@@ -46,8 +46,8 @@ by type (descriptive; mean per run)
   whyhow            5       0.500       0.900       0.900       1.000
   flow items not in the key (all conditions): in the trace but pre-
     filtered 46, other path 0, invented 1
-  callers: answered sites Han decided are not callers 6; items outside the
-    key scope ignored 0
+  callers: answered sites the annotator decided are not callers 6; items
+    outside the key scope ignored 0
 
 paired differences by question
 --------------------------------------------------------------------------

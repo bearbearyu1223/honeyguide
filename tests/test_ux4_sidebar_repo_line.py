@@ -6,7 +6,7 @@ Chrome:
 - it is never clipped: its box keeps its full height, sits inside the sidebar and above the Find box, at short
   windows and at other sidebar widths, light and dark (it was a flex item with overflow:hidden and shrank to 3 px);
 - sidebar chrome is never selectable: no selection, Find mark or note mark inside the sidebar after Find or after
-  a drag from the map up into it (the amber in Han's screenshot was ::selection, which paints in the note colour);
+  a drag from the map up into it (the amber in the reported screenshot was ::selection, which paints in the note colour);
 - the collapsed rail hides it.
 """
 

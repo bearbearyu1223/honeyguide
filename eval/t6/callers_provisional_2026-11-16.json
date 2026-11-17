@@ -1,4 +1,4 @@
-{"note": "Han's T6 caller annotations as pasted in chat 2026-11-16, kept verbatim in substance: 11 self-selected caller cases (9 caller, 2 unresolved), unpinned links; per Han's own notes these are not the analyzer's disputes. Full text is in the session transcript; summary here.",
+{"note": "The human annotator's T6 caller annotations as received 2026-11-16, kept verbatim in substance: 11 self-selected caller cases (9 caller, 2 unresolved), unpinned links; per the annotator's own notes these are not the analyzer's disputes. Summary here.",
  "cases": [
   ["nanochat","scripts.base_train","model.setup_optimizer","caller"],
   ["nanochat","scripts.base_train","evaluate_bpb","caller"],

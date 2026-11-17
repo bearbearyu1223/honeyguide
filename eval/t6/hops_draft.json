@@ -1,5 +1,5 @@
 {
- "status": "drafted by Claude, confirmed by Han 2026-11-16 (no flips); entered into eval/human/answers/hops_*.json",
+ "status": "drafted by Claude, confirmed by the human annotator 2026-11-16 (no flips); entered into eval/human/answers/hops_*.json",
  "rule": "Required: the hops that carry the flow the question asks about, judged by its own text: the entry point, the first call into each component that does the named work (stages, blocks, compute steps, model/tool calls), each step the question says to count, and the hop that produces the result asked for. Optional: repeated low-level helpers (norm, Linear, rotary), wrappers and plumbing (metering, observers, schema getters, graph construction calls, schedulers), config/env checks, string/format helpers, and hops that are a detail of a required parent or that do nothing in this scenario (hooks, plugins, Waku Memory, reports, slot gate off).",
  "questions": [
   {

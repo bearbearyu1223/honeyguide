@@ -2,7 +2,7 @@
  "chore": "T6a flow hops",
  "commit": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
  "manifest_sha256": "9e707c3e2a5939fabee33d44662ce52033ff75e5f066d95127a662d297650490",
- "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by Han 2026-11-16 without changes.",
+ "provenance": "Marks drafted by Claude from the pinned code (eval/t6/hops_draft.json), confirmed by the human annotator 2026-11-16 without changes.",
  "questions": {
   "nc-flo-01": {
    "hops": [
@@ -362,7 +362,7 @@
   }
  },
  "questions_json_sha256": "98e5b0cba25db9608d6aa6886773b133b57d32035b7993aaa80c56469e848937",
- "refinement": "Refined 2026-11-16 from an AI review pass Han supplied (t*_improved.json), applied with Han's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
+ "refinement": "Refined 2026-11-16 from an AI review pass the human annotator supplied (t*_improved.json), applied with the annotator's confirmation: excluded mark for nc-flo-04 Engine.__init__, three rubric points, exact waku files, links, shared grading policy.",
  "repo": "nanochat",
  "saved_at": "2026-11-16T17:41:47Z",
  "schema": 1,

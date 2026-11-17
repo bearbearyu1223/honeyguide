@@ -321,7 +321,7 @@ inferred ("autograd runs in C++, so the trace sees this call but not its walk ba
 warning.
 
 How the page draws a path (T7.4: the Steps rail and the swimlane diagram, from the same record):
-- Line style (Han's v3.1 choice 1): **dotted** = `blind_spot`; **solid** = `seen`, or `unseen` whose claim is read in
+- Line style (v3.1 design choice 1): **dotted** = `blind_spot`; **solid** = `seen`, or `unseen` whose claim is read in
   source / asserted by a test / seen at runtime (the evidence shape says which); **dashed** = everything else
   (inferred: neither read nor seen). Dashed and dotted hops carry a note under the arrow (`note`, else `label`).
 - Lanes: in order of first use in the hops; header = the lane's `label`, subtitle = the `role` of the module block

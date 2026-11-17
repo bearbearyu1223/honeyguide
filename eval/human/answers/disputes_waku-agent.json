@@ -24,7 +24,7 @@
      "lines": [
       91
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (cli.py:62), so waku.respond is Waku.respond."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (cli.py:62), so waku.respond is Waku.respond."
     },
     {
      "caller": "GatewayAgentRunner._respond",
@@ -37,7 +37,7 @@
      "lines": [
       71
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] self._agent comes from agent_factory: Waku itself (telegram.py:47) or _build_agent returning Waku (discord.py:128), so it is Waku.respond."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] self._agent comes from agent_factory: Waku itself (telegram.py:47) or _build_agent returning Waku (discord.py:128), so it is Waku.respond."
     },
     {
      "caller": "run_gateway_turn",
@@ -50,7 +50,7 @@
      "lines": [
       120
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] runner is a GatewayAgentRunner (runner.py:111); runner.respond is GatewayAgentRunner.respond (runner.py:80), which in turn calls Waku.respond (case 6)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] runner is a GatewayAgentRunner (runner.py:111); runner.respond is GatewayAgentRunner.respond (runner.py:80), which in turn calls Waku.respond (case 6)."
     },
     {
      "caller": "main",
@@ -63,7 +63,7 @@
      "lines": [
       353
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (voice.py:316)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (voice.py:316)."
     },
     {
      "caller": "wake_loop",
@@ -76,7 +76,7 @@
      "lines": [
       298
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] wake_loop's parameter is annotated waku: Waku (voice.py:228)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] wake_loop's parameter is annotated waku: Waku (voice.py:228)."
     },
     {
      "caller": "_build_handler.<locals>.Handler.do_POST",
@@ -89,7 +89,7 @@
      "lines": [
       225
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku(settings=..., conn=...) (whatsapp.py:142)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku(settings=..., conn=...) (whatsapp.py:142)."
     },
     {
      "caller": "compare_stream.<locals>.run",
@@ -102,7 +102,7 @@
      "lines": [
       117
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=settings) (arena.py:111)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] app = Waku(settings=settings) (arena.py:111)."
     },
     {
      "caller": "main",
@@ -115,7 +115,7 @@
      "lines": [
       27
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] waku = Waku() (brief.py:24)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] waku = Waku() (brief.py:24)."
     },
     {
      "caller": "chat_stream",
@@ -128,7 +128,7 @@
      "lines": [
       117
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] agent = get_agent() (dashboard.py:114), which returns a Waku (browser_agent.py:83-97)."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] agent = get_agent() (dashboard.py:114), which returns a Waku (browser_agent.py:83-97)."
     },
     {
      "caller": "run_arena.<locals>.one",
@@ -142,7 +142,7 @@
       484,
       554
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] app = Waku(settings=...) (memory_arena.py:472); both lines 484 and 554 call app.respond."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] app = Waku(settings=...) (memory_arena.py:472); both lines 484 and 554 call app.respond."
     }
    ],
    "target": "Waku.respond"
@@ -160,7 +160,7 @@
      "lines": [
       429
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 429 passes trim.shrink_seen into trim.chain(...) as a reference; it is called later by the loop's trim step, not here."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] Line 429 passes trim.shrink_seen into trim.chain(...) as a reference; it is called later by the loop's trim step, not here."
     }
    ],
    "target": "shrink_seen"

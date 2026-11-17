@@ -1,4 +1,4 @@
-"""eval/human: Han's click-through page for the T5 / T6a / T6b chores.
+"""eval/human: the annotator's click-through page for the T5 / T6a / T6b chores.
 
 - what the page shows matches the generated md sheets line for line (counts asserted against the files);
 - answers round-trip through disk as stable sorted JSON with the MANIFEST hash recorded; a changed MANIFEST or a
@@ -286,12 +286,12 @@ def test_whyhow_keeps_relevant_original_source_and_policy(tmp_path):
     path = tmp_path / "whyhow_waku-agent.json"
     doc = json.loads(path.read_text())
     assert doc["grading_policy"] == chores.GRADING_POLICY
-    doc["source"] = "Han's message"
+    doc["source"] = "the annotator's message"
     chores.write_json(path, doc)
     b = chores.Answers(tmp_path)
     b.save_whyhow("waku-agent", b.whyhow["waku-agent"]["questions"])
     doc = json.loads(path.read_text())
-    assert doc["source"] == "Han's message"
+    assert doc["source"] == "the annotator's message"
     assert doc["questions"][0]["relevant_original"] == "waku/" and len(doc["questions"][0]["rubric_must"]) == 6
     assert "relevant_original" not in b.add_whyhow("waku-agent")       # a new question has none
     assert chores.relevant_paths(" a.py; b/c.py ;") == ["a.py", "b/c.py"]
@@ -303,7 +303,7 @@ ANSWERS = json.loads((chores.ANSWERS / "whyhow_nanochat.json").read_text()) if (
 
 @pytest.mark.skipif(ANSWERS is None, reason="no answers saved")
 def test_the_refined_key():
-    """The refinements Han accepted on 2026-11-16, as they stand in eval/human/answers/."""
+    """The refinements the annotator accepted on 2026-11-16, as they stand in eval/human/answers/."""
     hops = json.loads((chores.ANSWERS / "hops_nanochat.json").read_text())
     h0 = hops["questions"]["nc-flo-04"]["hops"][0]
     assert (h0["qual"], h0["mark"]) == ("Engine.__init__", "excluded") and "before generate" in h0["why"]
@@ -321,7 +321,7 @@ def test_the_refined_key():
     assert whys["wk-why-04"]["rubric_must"][-1].startswith("Distinguish the decision to retrieve memory")
     for q in whys.values():
         assert chores.RUBRIC_MIN <= len(q["rubric_must"]) <= chores.RUBRIC_MAX
-        if q["repo"] == "waku-agent":                                   # exact files, Han's string kept
+        if q["repo"] == "waku-agent":                                   # exact files, the annotator's string kept
             assert q["relevant_original"] and not any(p.endswith("/") for p in chores.relevant_paths(q["relevant"]))
 
 

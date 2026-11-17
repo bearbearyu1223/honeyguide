@@ -27,7 +27,7 @@ SCREENS = HERE / "screens"
 
 def seed(answers: chores.Answers) -> None:
     item = answers.add_whyhow("nanochat")
-    answers.save_whyhow("nanochat", [dict(item, text="(screenshot sample) A why/how question Han writes goes here.",
+    answers.save_whyhow("nanochat", [dict(item, text="(screenshot sample) A why/how question the annotator writes goes here.",
                                           rubric_must=["a first point a good answer must make", ""],
                                           relevant="(free text, optional)")])
     for i, mark in enumerate(["required", "required", "optional"]):

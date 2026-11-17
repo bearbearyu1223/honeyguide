@@ -301,5 +301,5 @@
    "confirmed_by_han": true
   }
  ],
- "status": "drafted by Claude, confirmed by Han 2026-11-16; entered into eval/human/answers/disputes_*.json"
+ "status": "drafted by Claude, confirmed by the human annotator 2026-11-16; entered into eval/human/answers/disputes_*.json"
 }

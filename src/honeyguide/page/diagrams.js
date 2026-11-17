@@ -318,7 +318,7 @@ const HGD = (() => {
   const compName = c => c.name || base((c.files || [])[0] || c.id) + ((c.files || []).length > 1 ? ` +${c.files.length - 1}` : "");
 
   /* ------------------------------------------------------------------- (C) the component map (T7.17, UX v4) */
-  /* Han, on the T7.16 module graph: "really hard to read and navigate". The component map:
+  /* The T7.16 module graph was hard to read and to navigate. The component map:
      - three bands derived from the graph, top to bottom: ENTRY POINTS (no traced call reaches them), STAGES (called
        and calling; one row per longest-path step) and LEAVES (call nothing traced); captions in a left gutter, so
        no line ever runs under a caption;

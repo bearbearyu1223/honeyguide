@@ -1,5 +1,5 @@
 """Blind grading of the why/how answers (T13): a sheet with every finished answer shuffled per question and the
-condition hidden, Han's rubric and grading policy beside it; his grades are read back later.
+condition hidden, the annotator's rubric and grading policy beside it; the annotator's grades are read back later.
 
 Pure apart from the caller's file writes. The blind key (blind id -> run id) is written to its own file so the sheet
 can be read without it. Runs that failed (error, capped, invalid answer) are not on the sheet: they score 0 by rule.
@@ -37,7 +37,7 @@ def blind_ids(n: int) -> list[str]:
 
 
 def build_sheet(questions: list[dict], answers: list[dict], seed: int, policy: str, scale: dict) -> tuple[dict, dict]:
-    """questions: Han's why/how questions; answers: [{run_id, qid, answer}] for finished runs (status ok).
+    """questions: the annotator's why/how questions; answers: [{run_id, qid, answer}] for finished runs (status ok).
     Returns (sheet, key)."""
     sheet = {"policy": policy, "scale": scale, "questions": []}
     key: dict[str, str] = {}

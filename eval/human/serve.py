@@ -1,4 +1,4 @@
-"""The click-through page for Han's human eval chores: ``uv run python eval/human/serve.py`` (port 8797).
+"""The click-through page for the human annotator's eval chores: ``uv run python eval/human/serve.py`` (port 8797).
 
 Same guard as ``honeyguide serve`` (src/honeyguide/server.py): binds 127.0.0.1 only, refuses any Host but
 127.0.0.1:<port> / localhost:<port>, every API call carries the token from the URL's fragment (``#t=...``; a fresh one per start, so a page

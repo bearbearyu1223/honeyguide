@@ -38,7 +38,7 @@ def test_alt_cutoff_table_uses_the_same_lines_as_the_tag():
 
 
 def test_dispute_marked_not_leaves_the_tag_lines():
-    """Once Han marks a dispute 'not', its lines no longer count, so a key
+    """Once the annotator marks a dispute 'not', its lines no longer count, so a key
     with no callers left is tagged 'none'."""
     from generate import Tagger, key_ranges
     q = {"type": "callers", "key": {"callers": []},

@@ -3,7 +3,7 @@
 # config (start a new --run-id instead).
 #
 # SMOKE-TEST copy of config.toml (only passes and [sizes.smoke] differ).
-# Han's decisions (2026-11-16): model claude-opus-5-5, effort medium, caps as below.
+# The author's decisions (2026-11-16): model claude-opus-5-5, effort medium, caps as below.
 
 model = "claude-opus-5-5"          # full model id, never an alias; no --fallback-model
 effort = "medium"                   # --effort for every run (map builds and answers)
@@ -23,7 +23,7 @@ timeout_map_s = 5400              # per eval map build (the T7.9 Cartographer ru
 # count) gets up to this many fix rounds: a new isolated run with the error list and the previous map. Each round
 # also has timeout_map_s; caps.map_usd covers the build and its fix rounds together.
 map_fix_rounds = 2
-answers_dir = "eval/human/answers" # Han's T5/T6 answers (read only)
+answers_dir = "eval/human/answers" # the human annotator's T5/T6 answers (read only)
 
 [caps]
 answer_usd = 1.5                   # --max-budget-usd per answering run (a capped run counts as wrong)

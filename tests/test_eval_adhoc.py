@@ -441,7 +441,7 @@ def test_end_to_end_isolation_archive_and_capture(ah, capsys):
     assert "fx run 2 after re-check 260 256 4 0.015 mixed" in flat and "fx before repair 117 78 39 0.333 with" in flat
     assert "fx 117 of 260 claims judged under the rule, 143 before it" in joined
     assert "live answer q1 (fx, Honeyguide's own answer): 13 claims" in joined
-    assert "spot check for Han: 7 units" in cap and "pkg/core.py#L23-L24" in cap
+    assert "spot check for review: 7 units" in cap and "pkg/core.py#L23-L24" in cap
     assert A.main(args(ah, "--capture", "--runs-txt", str(ah["tmp"] / "none.txt"))) == 0
     assert "see runs.txt" in capsys.readouterr().out
     assert A.main(args(ah, "--spot-check")) == 0
@@ -558,7 +558,7 @@ def test_map_comparison_says_which_checker_rule_judged_it():
                      "effort": "medium", "answer_cap_usd": 1.5, "seed": 0, "skipped": [], "items": []},
             "metas": {}, "attempts": [], "rows": [], "not_checked": 0}
     cap = R.capture(data, [], real)
-    comp = cap.split("for comparison:", 1)[1].split("spot check for Han", 1)[0]
+    comp = cap.split("for comparison:", 1)[1].split("spot check for review", 1)[0]
     flat = " ".join(comp.split())
     assert "nanochat after repair round 2 260 260 0 0.000" in flat       # what is printed today
     assert "compute, don't quote" in flat.lower() or "re-check" in flat.lower(), comp
@@ -789,7 +789,7 @@ def test_map_arm_repeat_trial_and_side_by_side_capture(ah, capsys, monkeypatch):
     nu = len(rplan["items"][0]["units"])
     assert f"per-unit agreement: {nu} of the {nu} units with a verdict in both passes (1.000)" in joined
     assert "first \\ repeat" in cap
-    assert "read_in_source" in cap and "spot check for Han, map claims: 6 units" in cap
+    assert "read_in_source" in cap and "spot check for review, map claims: 6 units" in cap
     assert f"answers: {rid}" in joined
     assert A.main(args(ah, "--spot-check")) == 0
     md = (ah["out"] / "spot_check.md").read_text()

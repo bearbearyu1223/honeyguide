@@ -6,7 +6,7 @@ answers. Open it in any browser:
 
     open mockup/index.html
 
-v3 is v2's interaction model, unchanged, in Han's visual system (`feedback/2026-11-15-han-visual-design-recommendations.html`;
+v3 is v2's interaction model, unchanged, in the author's visual system (`feedback/2026-11-15-author-visual-design-recommendations.html`;
 plan §3b "Visual system"), plus two additions agreed after v2 started: **source links** in the code preview and
 the **memory state** (plan §3b "Source links", "Memory and refresh"). v3's screenshots are in `shots/v3/`, v2's in
 `shots/v2/`, v1's in `shots/v1/` (v1 = commit 625a1ae, v2 = 7e16f77, v3 = 5fde9df).
@@ -102,7 +102,7 @@ scrolls and highlights; overlay opens and closes without changing the map; nothi
 
 - **Theme**: warm editorial. Light: canvas `#F8F7F4`, paper `#FFFFFF`, ink `#24272B`, muted `#66717D`, borders
   `#E8E5DF`. Dark is its own charcoal palette, not an inversion: canvas `#171A20`, surface `#1F232A`, ink `#F0F1F3`,
-  muted `#A5AAB5`, borders `#323741`. These are Han's sample values plus a few in-between tones (sunken, faint, a
+  muted `#A5AAB5`, borders `#323741`. These are the author's sample values plus a few in-between tones (sunken, faint, a
   second border).
 - **Colour roles**
   - **amber** (`#B8862A`, highlight `#F5E7C9`): the reader's selections and notes: discussed passages on the map,
@@ -208,7 +208,7 @@ GNU `timeout`, so use perl's alarm):
 The page scrolls inside its main column, not the window, because headless Chrome renders a blank screenshot
 when the window itself is scrolled.
 
-## Choices for Han to confirm (from the v3.1 writer, 2026-11-15)
+## Choices for the author to confirm (from the v3.1 writer, 2026-11-15)
 1. Solid arrow = read in source OR seen at runtime; the evidence shape before the label says which (alternative: a fourth line style).
 2. The generate flow is 6 hops, not v3's 5: the per-token `GPT.forward(nxt, cache)` was missing; `sample` narrowed to engine.py:54-55.
 3. engine2: the `logits` edge moved after the attention hop, outside the per-layer loop (it read as flowing into `KVCache.append`).

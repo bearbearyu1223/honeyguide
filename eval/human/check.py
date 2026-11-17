@@ -1,4 +1,4 @@
-"""Print what's complete and what's left in Han's human eval chores, from eval/human/answers/.
+"""Print what's complete and what's left in the human annotator's eval chores, from eval/human/answers/.
 
     uv run python eval/human/check.py            # the summary, as the Done tab shows it
     uv run python eval/human/check.py --json     # the same, as JSON (what later steps read)

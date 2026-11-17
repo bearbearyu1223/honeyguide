@@ -17,7 +17,7 @@
       173,
       221
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] `model` comes from load_model(), which builds a GPT (checkpoint_manager.py:100), so model.estimate_decode_flops(...) is GPT.estimate_decode_flops."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] `model` comes from load_model(), which builds a GPT (checkpoint_manager.py:100), so model.estimate_decode_flops(...) is GPT.estimate_decode_flops."
     }
    ],
    "target": "GPT.estimate_decode_flops"
@@ -54,7 +54,7 @@
       144,
       160
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] X.float().norm(...) is torch Tensor.norm, not nanochat's norm() in gpt.py:42."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] X.float().norm(...) is torch Tensor.norm, not nanochat's norm() in gpt.py:42."
     }
    ],
    "target": "norm"
@@ -72,7 +72,7 @@
      "lines": [
       194
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] Line 194 stores the function in the flash_attn SimpleNamespace; it is not called there."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] Line 194 stores the function in the flash_attn SimpleNamespace; it is not called there."
     },
     {
      "caller": "flash_attn_with_kvcache",
@@ -85,7 +85,7 @@
      "lines": [
       158
      ],
-     "note": "[proposed by Claude, confirmed by Han 2026-11-16] _fa3.flash_attn_with_kvcache is the external FlashAttention-3 kernel (_fa3 = _load_flash_attention_3(), line 49), not this repo's function calling itself."
+     "note": "[proposed by Claude, confirmed by the human annotator 2026-11-16] _fa3.flash_attn_with_kvcache is the external FlashAttention-3 kernel (_fa3 = _load_flash_attention_3(), line 49), not this repo's function calling itself."
     }
    ],
    "target": "flash_attn_with_kvcache"

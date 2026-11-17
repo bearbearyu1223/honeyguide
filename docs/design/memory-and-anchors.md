@@ -26,7 +26,7 @@ Records (plain JSON objects; ids are `<prefix>_<12 hex>`):
 | Claim (map note or one claim inside an answer) | id, text, evidence label, code anchors, `check` (unchecked / supported / not_supported / skipped), `freshness` (current / stale / retired) + reason |
 | Annotation | id, kind (`note` or `question`), DocumentAnchor, author, created_at, text; notes add `share_with_agents` (default false) |
 | Response | id, parent (question id), agent, text, claims, generation metadata |
-| FollowUp | *not a separate record*: a question Annotation whose anchor is on an answer (`doc = answer:<id>`) and that carries `parent_response`. This holds every FollowUp field in Han's model (parent response, selected offsets, question text; the resulting response points back through `parent`) without a fourth list to keep in sync. |
+| FollowUp | *not a separate record*: a question Annotation whose anchor is on an answer (`doc = answer:<id>`) and that carries `parent_response`. This holds every FollowUp field in the original model (parent response, selected offsets, question text; the resulting response points back through `parent`) without a fourth list to keep in sync. |
 
 Evidence labels: `read_in_source`, `asserted_by_test`, `docs`, `seen_at_runtime`, `inferred`,
 `searched_not_found`, `general_knowledge`. The last two need no anchor; refresh and the Checker skip
