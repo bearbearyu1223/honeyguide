@@ -4,8 +4,9 @@
 # ///
 """The team problem, as a figure (mechanism, no numbers). Before: every engineer asks their own agent, which searches
 the code again, and each answer stays private, unchecked and gone after the chat. After: one map, built once, every
-claim citing its lines and checked, read by everyone; questions asked on it feed back in, and a refresh keeps it
-current as the code changes.
+claim citing its lines and checked, and kept current by a refresh as the code changes (both measured in the post,
+solid arrows); everyone reading it is the aim, untested (dashed arrows, with a key). Questions asked on it (the aim, dashed) feed back
+in from the shared line all the engineers hang off.
 
 Honey, the Honeyguide mascot, is drawn from ``assets/avatars/honey.svg`` itself (its idle pose: the layers the SVG
 shows at rest), so the figure carries the page's own artwork, crisp at any size and on either theme. The SVG reader
@@ -181,13 +182,13 @@ def draw(honey: tuple, people: int, theme: Theme, path: Path) -> Path:
     rc = {"figure.facecolor": theme.surface, "savefig.facecolor": theme.surface, "text.color": theme.ink,
           "font.family": "sans-serif", "font.sans-serif": ["Helvetica Neue", "Helvetica", "DejaVu Sans"],
           "font.size": 12}
-    W, H, FW = 24.0, 11.4, 13.0
+    W, H, FW, Y0 = 24.0, 11.4, 13.0, 0.3
     pt_per_unit = FW / W * 72
     with plt.rc_context(rc):
-        fig, ax = plt.subplots(figsize=(FW, FW * (H - 0.75) / W))
+        fig, ax = plt.subplots(figsize=(FW, FW * (H - Y0) / W))
         fig.subplots_adjust(0, 0, 1, 1)
         ax.set_xlim(0, W)
-        ax.set_ylim(0.75, H)
+        ax.set_ylim(Y0, H)
         ax.set_axis_off()
 
         def text(x, y, s, size=12, color=None, bold=False, ha="center", va="center", **kw):
@@ -201,6 +202,11 @@ def draw(honey: tuple, people: int, theme: Theme, path: Path) -> Path:
         def arrow(a, b, color, lw=1.8, ls="-", rad=0.0):
             ax.add_patch(FancyArrowPatch(a, b, arrowstyle="-|>", mutation_scale=15, color=color, lw=lw, ls=ls,
                                          connectionstyle=f"arc3,rad={rad}", shrinkA=0, shrinkB=0, zorder=3))
+
+        def dashed_arrow(a, b, color, lw=1.8, head=0.32):
+            """A dashed shaft with a solid head (a dashed FancyArrowPatch dashes its head too). Horizontal only."""
+            ax.plot([a[0], b[0] - head], [a[1], b[1]], color=color, lw=lw, ls=(0, (4, 3)), zorder=3)
+            arrow((b[0] - head - 0.02, b[1]), b, color, lw=lw)
 
         def person(x, y, color):
             ax.add_patch(Circle((x, y + 0.3), 0.26, fc=color, ec="none", zorder=4))
@@ -267,14 +273,14 @@ def draw(honey: tuple, people: int, theme: Theme, path: Path) -> Path:
         ax.plot([11.75, 11.75], [0.7, 10.9], color=theme.edge, lw=1.2, zorder=1)
 
         # ---- after ------------------------------------------------------------------------------------------------
-        text(12.3, 10.75, "After: one shared map", size=16, bold=True, ha="left")
+        text(12.3, 10.75, "The aim: one shared map", size=16, bold=True, ha="left")
         # the code, and the two ways into the map
         rbox(14.3, 9.15, 2.9, 0.95, ec=theme.edge)
         text(15.75, 9.62, "the code", size=12.5, bold=True)
         mx0, mx1, my0, my1 = 13.0, 19.9, mid - 2.15, mid + 2.15
         arrow((15.0, 9.15), (15.0, my1), theme.map, lw=2.4)
         text(14.8, (9.15 + my1) / 2, "built once", size=12, bold=True, ha="right", color=theme.ink)
-        arrow((16.5, 9.15), (16.5, my1), theme.map, lw=2.0, ls=(0, (4, 3)))
+        arrow((16.5, 9.15), (16.5, my1), theme.map, lw=2.0)
         text(16.7, (9.15 + my1) / 2, "refreshed as\nthe code changes", size=12, ha="left", color=theme.ink)
         # the map card
         rbox(mx0, my0, mx1 - mx0, my1 - my0, fc=theme.box, ec=theme.map, lw=2.4, r=0.3)
@@ -288,21 +294,30 @@ def draw(honey: tuple, people: int, theme: Theme, path: Path) -> Path:
             lines(mx0 + 1.3, yy, 3.0 - 0.45 * (k % 2), 1, theme.edge)
             rbox(mx0 + 4.75, yy - 0.2, 1.4, 0.4, fc=theme.surface, ec=theme.map, lw=1.1, r=0.12)
             text(mx0 + 5.45, yy, "cited lines", size=9.5, color=theme.secondary)
-        # read by all: stub -> bus -> one arrow into each engineer
+        # read by all (the aim, untested): stub -> bus -> one dashed arrow into each engineer
         bus, px = 20.75, 23.2
-        ax.plot([mx1, bus], [mid, mid], color=theme.map, lw=2.0, zorder=3)
-        ax.plot([bus, bus], [rows[-1], rows[0]], color=theme.map, lw=2.0, zorder=3, solid_capstyle="round")
+        ax.plot([mx1, bus], [mid, mid], color=theme.map, lw=2.0, ls=(0, (4, 3)), zorder=3)
+        ax.plot([bus, bus], [rows[-1], rows[0]], color=theme.map, lw=2.0, ls=(0, (4, 3)), zorder=3)
         for y in rows:
-            arrow((bus, y), (px - 0.62, y), theme.map, lw=1.8)
+            dashed_arrow((bus, y), (px - 0.62, y), theme.map, lw=1.8)
             person(px, y, theme.muted)
         text(21.75, rows[0] + 0.85, "read by all", size=12, bold=True)
-        # questions asked on it feed back in
+        # questions asked on it feed back in: from the shared bus all five hang off, not from any one engineer
         fy = 1.95
-        ax.plot([px, px, (mx0 + mx1) / 2], [rows[-1] - 0.75, fy, fy], color=theme.ink, lw=1.6, zorder=3,
-                solid_joinstyle="round")
-        arrow(((mx0 + mx1) / 2, fy), ((mx0 + mx1) / 2, my0), theme.ink, lw=1.6)
-        text(19.0, 1.35, "questions asked on it, and their checked answers, are added to it", size=12.5,
+        # a team adding questions back is the aim too (untested), so it is dashed like "read by all"
+        ax.plot([bus, bus, (mx0 + mx1) / 2], [rows[-1], fy, fy], color=theme.map, lw=1.6, zorder=3,
+                ls=(0, (4, 3)))
+        cx = (mx0 + mx1) / 2   # vertical: dashed shaft, then a short solid segment for the head
+        ax.plot([cx, cx], [fy, my0 - 0.45], color=theme.map, lw=1.6, ls=(0, (4, 3)), zorder=3)
+        arrow((cx, my0 - 0.5), (cx, my0), theme.map, lw=1.6)
+        text(18.0, 1.35, "questions asked on it, and their checked answers, are added to it", size=12.5,
              bold=True)
+        # key: which arrows this post measures
+        ky = 0.62
+        arrow((16.5, ky), (17.4, ky), theme.map, lw=2.0)
+        text(17.6, ky, "measured here", size=11.5, color=theme.secondary, ha="left")
+        dashed_arrow((20.1, ky), (21.0, ky), theme.map, lw=2.0)
+        text(21.2, ky, "the aim, untested", size=11.5, color=theme.secondary, ha="left")
 
         path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(path, dpi=200, bbox_inches="tight", pad_inches=0.25)
