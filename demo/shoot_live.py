@@ -3,7 +3,7 @@
     uv run --project .. python shoot_live.py OUT --tag q1 --a "The window pattern is the trap" --b "sees all of it" \
         --question "..."
     uv run --project .. python shoot_live.py OUT --tag q2 --parent q_... --a "..." --b "..." --question "What happens when ..."
-    uv run --project .. python shoot_live.py OUT --tag q1 --component mod-engine     # v2 (UX v4): focus -> Ask about it
+    uv run --project .. python shoot_live.py OUT --tag q1 --component mod-engine     # focus a component -> Ask about it
 
 Take A (one Chrome, under alarm 120): with --component, open the component map from the outline, click the
 component (focus mode), press "Ask about this component" and send the prefilled question; otherwise select the passage (on the map, or in the parent question's answer), Ask,

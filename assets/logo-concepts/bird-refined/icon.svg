@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="#8F5A24">
-  <defs><mask id="m"><rect width="96" height="96" fill="#fff"/>
-    <path d="M58.5 20 L69 26 V38 L58.5 44 L48 38 V26 Z" fill="#000" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></mask></defs>
-  <path mask="url(#m)" d="M50 10 C66 10 78 22 79 38 C80 58 72 86 46 87 C38 87 32 85 28 83 C23.5 84.6 17 84 15.6 80.6 C14.6 78 17.4 75.6 20 74 C14 64 14 50 19 38 C25 20 36 10 50 10 Z"/>
-  <path d="M76 29 Q82 31 87 34.5 Q89.5 36.5 87 38.5 Q82 42 76 44 Z"/>
-</svg>

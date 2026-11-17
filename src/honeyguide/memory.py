@@ -1,4 +1,4 @@
-"""Memory and refresh, end to end (T7.5): apply a refresh, retire claims, list claims for the Checker, and the
+"""Memory and refresh, end to end: apply a refresh, retire claims, list claims for the Checker, and the
 memory state the page shows ("Refreshing · N claims being re-checked" / "Up to date at <sha>").
 
 Every write here holds the store's lock once for the whole change, so nothing another writer saves in between

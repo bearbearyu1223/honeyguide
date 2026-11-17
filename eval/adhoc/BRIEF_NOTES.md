@@ -24,9 +24,6 @@ What differs, and why:
 | stale and repaired claims, recording with `verdict set`, page activity, the Never list | left out | E1 records nothing in Honeyguide: the check returns JSON (`check_schema.json`) and the runner saves it |
 | tools Read, Grep, Glob, Bash (honeyguide commands only), Write (INPUTS only) | Read, Grep, Glob | the eval's isolation: no Bash, no writes |
 
-Removed from the first E1 brief (e523906) on review: "The units cite no lines" (answers do cite file:line;
-the brief now says some units name a file or a line, and such a reference is part of the claim); "When unsure
-between supported and anything else, choose the other" (it let an unsure unit become `wrong`; checker.md says
-`not_supported`); `not_a_claim` for "a summary that only repeats units before it" (a summary is judged). The
-review also asked to drop the "so be strict" line as pressure the map Checker lacks; checker.md has that line
-too ("so be strict and say why"), so it is kept for parity, and it now applies to both arms alike.
+Also on purpose: some units name a file or a line, and the brief treats such a reference as part of the claim;
+an unsure unit is `not_supported` (as in checker.md), never `wrong`; and the "so be strict" line stays, as in
+checker.md, so both arms are judged alike.

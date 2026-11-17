@@ -207,7 +207,7 @@ def test_refresh_outcome_and_current_but_false(archive):
 
 
 def test_claim_retired_before_the_refresh_is_not_a_new_claim():
-    """fbd9a6eca (review round 3): plan_refresh skips claims already retired, so the plan does not list them; a
+    """``plan_refresh`` skips claims already retired, so the plan does not list them; a
     claim the build's repair pass (or an earlier refresh apply, which stamps no retired_at) retired is not new."""
     plan = {"target": "t", "claims": [{"id": "c1", "state": "unchanged"}]}
     claims = [
@@ -322,7 +322,7 @@ def test_width_and_no_paths_or_emails(archive):
     assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", out)
 
 
-# ---------------------------------------------------------------- review round 4
+# ---------------------------------------------------------------- the receipt's provenance and edge cases
 
 def test_the_receipt_says_where_the_table_came_from(archive, tmp_path):
     root, runs, _ = archive

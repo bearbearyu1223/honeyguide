@@ -1,4 +1,4 @@
-"""Run Honeyguide's four-way eval (T12): eval map builds, the outline, then every answering run of the plan.
+"""Run Honeyguide's four-way eval: eval map builds, the outline, then every answering run of the plan.
 
     uv run python eval/run/evalrun.py --repo nanochat --size pilot --dry-run      # the plan + exact commands
     uv run python eval/run/evalrun.py --repo nanochat --size pilot --run-id pilot-nanochat [--max-cost 40]
@@ -643,7 +643,7 @@ def dry_run(cfg: dict, plan: dict, archive: Archive, claude_bin: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Run Honeyguide's four-way eval (T12).")
+    ap = argparse.ArgumentParser(description="Run Honeyguide's four-way eval.")
     ap.add_argument("--repo", required=True)
     ap.add_argument("--size", default="pilot")
     ap.add_argument("--run-id", help="the run archive folder (default <size>-<repo>)")

@@ -1,9 +1,9 @@
-# Honeyguide eval (T12): the settings every run of the four-way test reads.
+# Honeyguide eval: the settings every run of the four-way test reads.
 # eval/run/evalrun.py snapshots this file into the run archive's plan.json; a resumed run refuses a changed
 # config (start a new --run-id instead).
 #
 # SMOKE-TEST copy of config.toml (only passes and [sizes.smoke] differ).
-# The author's decisions (2026-11-16): model claude-opus-5-5, effort medium, caps as below.
+# Settings: model claude-opus-5-5, effort medium, caps as below.
 
 model = "claude-opus-5-5"          # full model id, never an alias; no --fallback-model
 effort = "medium"                   # --effort for every run (map builds and answers)
@@ -18,12 +18,12 @@ token_command = ["security", "find-generic-password", "-s", "honeyguide-oauth", 
 seed = 0                           # run order shuffle, bootstrap, blind-sheet shuffle
 concurrency = 1                    # runs at once (1 = sequential)
 timeout_answer_s = 1200           # wall-clock kill per answering run (a killed run is logged as an error)
-timeout_map_s = 5400              # per eval map build (the T7.9 Cartographer runs took 31-39 min)
+timeout_map_s = 5400              # per eval map build (the Cartographer's map builds took 31-39 min)
 # A map that fails the check (maprender.validate_map: structure or draft errors; unresolved anchors alone don't
 # count) gets up to this many fix rounds: a new isolated run with the error list and the previous map. Each round
 # also has timeout_map_s; caps.map_usd covers the build and its fix rounds together.
 map_fix_rounds = 2
-answers_dir = "eval/human/answers" # the human annotator's T5/T6 answers (read only)
+answers_dir = "eval/human/answers" # the annotator's questions and decisions (read only)
 
 [caps]
 answer_usd = 1.5                   # --max-budget-usd per answering run (a capped run counts as wrong)
@@ -45,7 +45,7 @@ whyhow = 0
 
 
 # List prices per million tokens, used for the notional cost without cache (with cache, the CLI's own
-# total_cost_usd is used). Fitted to the 8 T2 pilot results (outputs/pilot_isolation.txt): input 4, cache read
+# total_cost_usd is used). Fitted to the 8 isolation-pilot results (outputs/pilot_isolation.txt): input 4, cache read
 # 0.2, 1-hour cache write 8, output 20 reproduce every total_cost_usd there. The 5-minute write rate never
 # occurred there: 1.25 x input is assumed. The scorer prints how well these rebuild each run's reported cost.
 [prices.claude-opus-5-5]
@@ -57,7 +57,7 @@ output = 20.0
 
 # Planning ranges for --dry-run only (labelled estimates, never results). Sources: map build from
 # outputs/runs.txt (Cartographer run 1 $14.14 / 39 min, run 2 $13.42 / 31 min, both with Bash and the Checker);
-# answers from the T2 pilot ($0.004-0.045 per one-shot run) and the live demo question in demo/README.md
+# answers from the isolation pilot ($0.004-0.045 per one-shot run) and the live demo question in demo/README.md
 # ($2.35 / 5.3 min for Guide + Investigator + Checker + repair, an upper bound for one answer).
 [estimate]
 map_build_usd = [8.0, 15.0]

@@ -811,7 +811,7 @@ def test_review_block_names_the_reviewer_and_counts_from_rows():
 
 
 def test_review_block_splits_the_counts_by_arm():
-    """ff73b70f0 (review round 3): the 'supported' items came from both arms; the block says how many from each."""
+    """The 'supported' items came from both arms; the block says how many from each."""
     import adhoc_report as R
     rev = {"reviewer": "GPT-6", "how": "sheet", "items": [
         {"n": 1, "unit": "a#s1", "verdict": "supported", "review": "agree"},

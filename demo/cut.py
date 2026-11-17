@@ -1,4 +1,4 @@
-"""The edit (v2, UX v4): every segment of the demo, in order, with its source times taken from the takes' own logs.
+"""The edit: every segment of the demo, in order, with its source times taken from the takes' own logs.
 
     uv run --project .. --with pillow python cut.py REC_DIR OUT.mp4
     uv run --project .. --with pillow python cut.py REC_DIR poster.png poster
@@ -6,7 +6,7 @@
 
 REC_DIR holds cards/ (cards.py), take/{payoff,nav,flow}/ (shoot_v4.py) and live/q1/ (shoot_live.py --component).
 Prints each segment's output start time and what it covers (the shot list in README.md comes from this), then the
-live run's facts as JSON. The v1 edit is kept as v1/cut_v1.py.
+live run's facts as JSON.
 """
 
 from __future__ import annotations

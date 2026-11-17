@@ -1,11 +1,11 @@
-"""A readability check for the map's prose (T7.13): catches telegraph style, the failure of the first real maps
+"""A readability check for the map's prose: catches telegraph style, the failure of the first real maps
 ("A minimal single-node LLM harness. --depth sets model size.", "GPTConfig; meta init; rotary+QK norm; ...").
 
-Pure functions over plain text; no NLP library. The heuristics are deliberately simple and tuned on two real texts
-(tests/test_t7_readability.py): a RepoRabbit overview written in full sentences must pass, the nanochat telegraph
-overview must fail.
+Pure functions over plain text; no NLP library. The heuristics are deliberately simple and tuned on two kinds of text
+(tests/test_mapdoc.py): an overview written in full sentences must pass, the telegraph-style overview of an early
+nanochat map must fail.
 
-What is checked (``prose`` = a text block, a module's summary or design paragraph (T7.13b), or a list item, in the
+What is checked (``prose`` = a text block, a module's summary or design paragraph, or a list item, in the
 Overview and Modules; flow captions, module titles and facts rows are terse by design and not checked):
 
 - ``short``: a paragraph (text block or module summary) under ``MIN_WORDS`` words; a list item under

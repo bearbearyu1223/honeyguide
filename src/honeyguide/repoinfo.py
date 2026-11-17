@@ -1,4 +1,4 @@
-"""``honeyguide repo-info`` (T7.18): what the map page's repo card shows, gathered at map time.
+"""``honeyguide repo-info``: what the map page's repo card shows, gathered at map time.
 
 From git, at one commit (the map's): the remote as an https link, the default branch, the commit and its date, the
 first and last commit dates, the commit count, languages by share (lines of tracked source, by extension, top 5 +

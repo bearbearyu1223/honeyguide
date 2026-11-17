@@ -1,4 +1,4 @@
-"""The repair pass (T7.15): after the Checker, the Cartographer fixes the map claims it marked ``not_supported``.
+"""The repair pass: after the Checker, the Cartographer fixes the map claims it marked ``not_supported``.
 
 ``claims repair`` takes, per claim, one of three actions:
 
@@ -10,7 +10,7 @@
 - ``retire``: neither fix works (the claim is wrong or overstated past saving). ``reason`` says why; the claim stays
   on the page struck through, as any retired claim.
 
-T7.16: answers get the same pass. With ``response: r_...`` the call repairs that answer's claims (the answering agent,
+Answers get the same pass. With ``response: r_...`` the call repairs that answer's claims (the answering agent,
 Investigator or Tracer, after the Checker), under the same rules; a ``rewrite`` then narrows the answer's spans that
 show the claim, and the answer's text and revision follow. Without it, map claims only.
 

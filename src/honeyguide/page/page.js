@@ -1,4 +1,4 @@
-/* Honeyguide map page (T7.3). Renders whatever the memory store holds, through the page server's /api/*
+/* Honeyguide map page. Renders whatever the memory store holds, through the page server's /api/*
    (docs/design/agent-contract.md). The page never starts Claude: questions and notes are POSTed to the inbox and
    the Claude Code session's `honeyguide watch` picks them up.
 
@@ -86,7 +86,7 @@ function claimsById() {
   for (const r of D.threads.responses) for (const c of r.claims || []) m.set(c.id, c);
   return m;
 }
-/* Claim freshness, as memory.memory_state reads it (T7.5): a stale claim waits for the Checker (check unchecked)
+/* Claim freshness, as memory.memory_state reads it: a stale claim waits for the Checker (check unchecked)
    or failed its re-check (not_supported, stays stale, never served); a supported re-check makes it current again
    with rechecked_at. */
 function lastRefreshAt() { const log = D.state?.refresh_log || []; return log.length ? log[log.length - 1].at : null; }
@@ -100,8 +100,8 @@ function claimState(c) {
 }
 
 /* ---------------------------------------------------------------- plain text and leaves */
-/* a block's text pieces, as mapdoc.block_segments: its spans (if any), a module's design paragraph (T7.13b), then
-   list items, then facts rows (T7.13); joined by one newline in the plain text */
+/* a block's text pieces, as mapdoc.block_segments: its spans (if any), a module's design paragraph, then
+   list items, then facts rows; joined by one newline in the plain text */
 function segsOf(block) {
   const segs = [];
   if (block.spans && block.spans.length) segs.push(block.spans);
@@ -159,14 +159,14 @@ function leaves(text, o) {
   if (last < text.length) html += `<span class="lf" data-o="${pos}">${esc(text.slice(last))}</span>`;
   return html;
 }
-/* T7.15: a map claim the Checker marked not supported is quiet at rest (a faint dotted underline and the dashed
+/* A map claim the Checker marked not supported is quiet at rest (a faint dotted underline and the dashed
    "not supported" mark in place of its evidence shape) and shows its red flag and the Checker's note on hover or
    keyboard focus; the note is also its accessible description. Answers keep the inline "not supported" pill. */
 const unsupported = c => !!c && c.check === "not_supported" && !["stale", "stale_flagged", "retired", "missing"].includes(claimState(c));
 const NS_DEFAULT = "The Checker re-read the cited lines and they don't show all of this.";
 const nsTip = c => `<b class="tflag">Not supported</b> · ${inlineCode(c.check_note || NS_DEFAULT)}`;
 let NSN = 0;   // ids for the hidden descriptions, unique per render
-/* T7.16: where one span ends a sentence and the next starts a word with nothing between them ("window_sizes." +
+/* Where one span ends a sentence and the next starts a word with nothing between them ("window_sizes." +
    "The quarter"), an answer recorded before answer record spaced them shows a space. It is not a leaf, so the
    answer's offsets (and every anchor into it) are unchanged. mapdoc.space_sentences is the same rule. */
 const SENT_END = /[.!?]["')\]`*]*$/, SENT_START = /^[\p{L}\p{N}_"'(\[`*]/u;
@@ -310,7 +310,7 @@ function renderMap() {
         const open = UI.openMods.has(block.id);
         const files = modFiles(block);
         const goneTip = ` data-tip="Every claim about ${files.length > 1 ? "these files" : "this file"} is retired"`;
-        /* T7.13b: a component's heading is its title, its files as chips under it; an older block keeps path + role */
+        /* A component's heading is its title, its files as chips under it; an older block keeps path + role */
         const head = block.title
           ? `<div class="mod-h"><h3 class="mod-t${allGone ? " gone" : ""}"${allGone ? goneTip : ""}>${inlineCode(block.title)}</h3></div><div class="mod-files">${files.map(f => `<code>${esc(f)}</code>`).join("")}${block.entry ? `<span class="mtag">entry point</span>` : ""}</div>`
           : `<div class="mod-h"><code${allGone ? ` class="gone"${goneTip}` : ""}>${esc(block.path)}</code>${block.role ? `<span class="role">${esc(block.role)}</span>` : ""}</div>`;
@@ -364,7 +364,7 @@ function renderMap() {
   applyOverlays();
   renderFigs();
 }
-/* ---------------------------------------------------------------- the repo card (T7.18) */
+/* ---------------------------------------------------------------- the repo card */
 /* document.repo is `honeyguide repo-info`'s output, stored at map time: metadata with its provenance (git at a
    commit, or the GitHub API on a date), not claims. The page never fetches it. */
 const fmtDate = s => (s ? String(s).slice(0, 10) : "");
@@ -410,7 +410,7 @@ function repoCardHTML(doc) {
     + `</dl>`
     + `<div class="rc-mem">${tail}</div></header>`;
 }
-/* T7.13b: a module block's files (a component may span several; an older block has its path), its short name for
+/* A module block's files (a component may span several; an older block has its path), its short name for
    "Related" links (its role without a leading "the", capitalised: "the training loop" -> "Training loop"; else its
    title), and its label in the panel ("train.py + optim.py") */
 function modFiles(b) { return b.files && b.files.length ? b.files : b.path ? [b.path] : []; }
@@ -483,7 +483,7 @@ function renderToc() {
   applyFindFilter();
   spy();
 }
-/* T7.15: "Needs a look (N)" in the sidebar: every map claim the Checker marked not supported, in the order the map
+/* "Needs a look (N)" in the sidebar: every map claim the Checker marked not supported, in the order the map
    shows them, with the phrase the map shows and its section; click one to go to it and read the Checker's note. */
 function needsList() {
   const doc = D.map?.document;
@@ -524,7 +524,7 @@ function goNeeds(id, flow) {
 function blockAt(off) { return MAPTEXT?.blocks.find(b => off >= b.start && off < b.end) || MAPTEXT?.blocks.find(b => off <= b.end) || null; }
 
 /* ---------------------------------------------------------------- Tracer path (map flows and panel answers) */
-/* One rule for the rail and the diagram (v3.1 design choice 1): solid = read in source or seen at runtime (the
+/* One rule for the rail and the diagram: solid = read in source or seen at runtime (the
    evidence shape says which), dashed = inferred (neither read nor seen), dotted = a trace blind spot. */
 const READ_OR_SEEN = new Set(["read_in_source", "asserted_by_test", "seen_at_runtime"]);
 const hopStyle = (h, c) => (h.trace === "blind_spot" ? "dotted" : h.trace === "seen" || READ_OR_SEEN.has(c?.evidence) ? "solid" : "dashed");
@@ -533,14 +533,14 @@ function shownEv(c, panel) {
   if (!c) return null;
   const st = claimState(c);
   if (st === "retired" || st.startsWith("stale")) return null;
-  if (c.check === "not_supported") return null;   /* T7.15: the dashed mark replaces the evidence shape */
+  if (c.check === "not_supported") return null;   /* the dashed mark replaces the evidence shape */
   if (panel && (!c.check || c.check === "unchecked")) return null;
   return c.evidence;
 }
 /* what a hop hands on: [name, shape], the same words on the rail and on the diagram's pill */
 const hopEdge = h => (h.returns && h.data ? [h.returns, h.data] : h.returns ? ["returns", h.returns] : h.data ? ["data", h.data] : null);
 const hopAnchor = c => (!c ? "" : c.evidence === "searched_not_found" ? "searched" : (c.anchors || [])[0] ? anchorText(c.anchors[0]) : c.evidence === "general_knowledge" ? "general knowledge" : "");
-/* T7.16: a path was run only if a runtime trace saw some hop (the contract's `trace: "seen"`). Without one, nothing
+/* A path was run only if a runtime trace saw some hop (the contract's `trace: "seen"`). Without one, nothing
    was run: hops are "read in source, not run", and a blind spot is code a Python trace can't see, not something a
    trace missed. "Trace blind spot" and "not in the runtime trace" are kept for paths that were traced. */
 const traced = p => (p?.hops || []).some(h => h.trace === "seen");
@@ -585,12 +585,12 @@ function pathHTML(p, byId, panel) {
   return `<ol class="path">${hops}</ol>${foot}`;
 }
 
-/* ---------------------------------------------------------------- flow diagrams and the module graph (T7.4) */
+/* ---------------------------------------------------------------- flow diagrams and the module graph */
 /* Models for diagrams.js, built from the contract's records: map flows ("map:<flow id>"), Tracer answers
    ("resp:<response id>") and the module graph ("graph"). Re-rendered only when the width they get changes. */
 const FIGS = new Map();
 const EVNAMES = Object.fromEntries(Object.entries(EV).map(([k, [n]]) => [k, n.toLowerCase()]));
-/* T7.15: the Modules components, for the module graph (one box each) and the lanes' subtitles: a path maps to the
+/* The Modules components, for the module graph (one box each) and the lanes' subtitles: a path maps to the
    component listing it, or to the one whose directory holds it (diagrams.js resolver) */
 function components(doc) {
   const out = [];
@@ -664,10 +664,10 @@ function figSVG(key, w) {
   if (!m) return "";
   return key === "graph" ? HGD.renderMap(graphLayout(w), UI.gall ? "all" : "main") : HGD.renderSeq(HGD.layoutSeq(m, w), m);
 }
-/* v3.1 design choice 7: with the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
+/* With the panel open, a flow whose diagram would scale below 0.85 shows its steps instead
    (readable text over a shrunken picture); "Show the diagram" or View as diagram overrides that for the flow. */
 const MIN_SCALE = 0.85;
-/* T7.16: the overlay is as wide as its diagram, up to its own width (the map area beside the panel) less margins,
+/* The overlay is as wide as its diagram, up to its own width (the map area beside the panel) less margins,
    not the reading column's 1000px; the diagram then scales down to MIN_SCALE at most, and pans past that */
 const OV_MARGIN = 32;
 function ovWidth(key) {
@@ -708,7 +708,7 @@ function renderFigs(force) {
     applyZoom(fig);
   }
 }
-/* ---------------------------------------------------------------- diagram viewer: zoom, pan, fit, full screen (T7.17) */
+/* ---------------------------------------------------------------- diagram viewer: zoom, pan, fit, full screen */
 /* Every diagram (component map, flow swimlanes, the Tracer overlay) sits in a viewport (.dgwrap) under a quiet
    toolbar. Its scale is "fit" until the reader zooms: fit = the box's width (full screen: width and height), never
    above 1 inline and never below the floor that keeps its text readable (MIN_SCALE for swimlanes, as before; the
@@ -855,7 +855,7 @@ const endPan = e => {
 document.addEventListener("pointerup", endPan);
 document.addEventListener("pointercancel", endPan);
 
-/* ---------------------------------------------------------------- the component map: views, focus, expand (T7.17) */
+/* ---------------------------------------------------------------- the component map: views, focus, expand */
 /* "Main paths" (default) or every call; a component in focus keeps its callers and callees, the rest fade; its focus
    card lists its calls with code chips, "Ask about this component" and "Open its module". Esc or a click on empty
    space in the map resets it. */
@@ -907,7 +907,7 @@ function callChips(c) {
   return `<code>${esc(c.fn)}</code>${h.chip !== null && h.chip !== undefined ? `<button class="chip" data-claim="${esc(h.claim)}" data-i="${h.chip}" aria-label="Show ${esc(h.a)}">${esc(h.a)}</button>` : ""}<span class="gf-in">${inlineCode(m.title)}, hop ${c.hop + 1}</span>`;
 }
 /* a component in the focus card is named as its box is: its first file, and "+N files" when it groups more (listed on
-   hover). Review r2: without the badge, "chat_sft.py" read as the caller of a call made in chat_rl.py, a file the same
+   hover). Without the badge, "chat_sft.py" read as the caller of a call made in chat_rl.py, a file the same
    component holds */
 function compLabelHTML(id) {
   const n = GL.G.N[id], files = FIGS.get("graph")?.comps.find(x => x.id === id)?.files || [];
@@ -1200,8 +1200,8 @@ function layout() {
   let last = -99, shift = 0;
   for (const [el, top] of items) { shift = Math.abs(top - last) < 20 ? shift + 24 : 0; el.style.top = top + "px"; el.style.marginLeft = shift + "px"; last = top; }
 }
-/* an anchor in an answer: as asked while the answer's text is unchanged; after a repair narrowed one of its spans
-   (T7.16), re-found by its quote, as on a regenerated map (several hits or none: unmarked, never guessed) */
+/* an anchor in an answer: as asked while the answer's text is unchanged; after a repair narrowed one of its spans,
+   re-found by its quote, as on a regenerated map (several hits or none: unmarked, never guessed) */
 function resolveAnswerAnchor(a, r) {
   if (!r) return null;
   if (!a.revision || !r.revision || a.revision === r.revision) return [a.start, a.end];
@@ -1271,7 +1271,7 @@ function renderHeader() {
   } else {
     h = `<span class="mem-i">${ICON.ok}</span><span data-tip="The map is at <code>${esc(short(m.head))}</code>, which is HEAD, and no claim waits for a re-check.">${headline}</span>`;
   }
-  /* review r2: the count covers answers too, so it says which is which ("260 claims on the map, 22 in answers"); a
+  /* the count covers answers too, so it says which is which ("260 claims on the map, 22 in answers"); a
      reader comparing it with the map's own count otherwise sees two numbers */
   const live = (fr.current || 0) + (fr.stale || 0);
   const onMap = mapClaims.filter(c => c.freshness === "current" || c.freshness === "stale").length;

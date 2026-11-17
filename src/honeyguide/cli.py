@@ -160,7 +160,7 @@ AGENT_COMMANDS = {
 }
 
 
-# Plain flags for the common inputs (T7.15), so an agent never pipes quoted JSON into a command: a pipe or a heredoc
+# Plain flags for the common inputs, so an agent never pipes quoted JSON into a command: a pipe or a heredoc
 # is a compound command, which the permission rule ``Bash(honeyguide:*)`` refuses. Anything larger goes in a file
 # (``--input FILE``) written with the Write tool into ``honeyguide drafts dir``.
 # (group, name): [(flag, input key, kind)]; kind: str, int, "list" (repeatable, comma-separated), "flag" (true when
@@ -310,7 +310,7 @@ def cmd_map_ingest(args) -> int:
         if not checked["valid"]:
             raise ContractError("validation_failed", f"{len(checked['errors'])} problem(s); nothing was saved "
                                 "(run map check, fix every error, then ingest again)", checked["errors"])
-        # T7.18: the repo card's facts, gathered at map time (git, and gh when signed in); refreshed on every ingest
+        # The repo card's facts, gathered at map time (git, and gh when signed in); refreshed on every ingest
         if isinstance(data.get("document"), dict):
             data["document"]["repo"] = repo_info(repo, claims.commit_of(repo, data.get("commit")))
         saved = claims.save_claims(store, repo, data)

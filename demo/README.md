@@ -1,18 +1,14 @@
-# Honeyguide demo video (v2, UX v4)
+# Honeyguide demo video
 
 - `honeyguide-demo.mp4`: 114.4 s, 1920x1200, 30 fps, H.264 (yuv420p, faststart), 8.7 MB.
 - `honeyguide-demo.gif`: 23.6 s of the focus -> Ask -> answer loop (click `gpt.py` on the component map, focus mode, "Ask
   about this component", send; the session answers at x40; the answer lands; the Checker and repair at x60; 18 of 18
   pass), 960 px, 10 fps, 4.2 MB. Rendered by `cut.py ... gif` from the same take as the video.
-- `poster.png`: the live answer just landed in the panel beside the focused component map, the real session in the
-  corner (no caption).
-- `STORYBOARD.md`: the plan this was recorded from. The previous cut (T7.14, UX v3, 117.8 s) is in `v1/` with its
-  README, storyboard and edit script (`v1/cut_v1.py`).
 
-Everything on screen is real: the UX v4 page (commit 398c248) served by `honeyguide serve` on port 8782 on the real
-nanochat map (karpathy/nanochat at `92d63d4`, the Cartographer v2 map after its repair pass and the compute-rule
+Everything on screen is real: the map page (commit 398c248) served by `honeyguide serve` on port 8782 on the real
+nanochat map (karpathy/nanochat at `92d63d4`, the Cartographer's map after its repair pass and the compute-rule
 re-check, with its repo card saved), real clicks, keys and wheel events sent to it over the Chrome DevTools
-Protocol, and one answer written by a real Claude Code session (the frozen plugin copy `honeyguide-run` at
+Protocol, and one answer written by a real Claude Code session (the plugin from a checkout of this repo at
 398c248). Headless Chrome has no cursor, so the cursor and click ripples are drawn into the frames from the logged
 pointer events.
 
@@ -33,6 +29,8 @@ pointer events.
 | 90.6 | a flow swimlane ("What happens when you type a message into scripts/chat_cli.py"): open it, Expand to full screen, + (106%), Ctrl+scroll at the pointer (128%), drag to pan into the engine and model lanes, Fit (85%), Esc | x1 | `shoot_v4.py --only flow` |
 | 109.4 | closing card: logo, install, github.com/bearbearyu1223/honeyguide (public soon) | - | `cards.py` |
 
+The closing card says "(public soon)" because the video was recorded before this repo went public.
+
 Sped-up stretches carry a yellow "xN" badge in the top right, and the terminal shows the same badge. The claim
 count on the last live caption is read from the saved answer by `cut.py` (`honeyguide claims list`); the run
 minutes and costs on the clock card are parsed from `outputs/runs.txt` by `cards.py`.
@@ -41,13 +39,13 @@ minutes and costs on the clock card are parsed from `outputs/runs.txt` by `cards
 
 | run | what | wall clock | cost (API list price, on a subscription) |
 |---|---|---|---|
-| explore (earlier, not replayed) | run 2: `claude -p "/honeyguide:honeyguide start over …"`, Cartographer v2 + Checker | 31.1 min | $13.42 |
+| explore (earlier, not replayed) | run 2: `claude -p "/honeyguide:honeyguide start over …"`, Cartographer + Checker | 31.1 min | $13.42 |
 | repair (earlier, not replayed) | repair pass, 2 rounds | 15.3 min | $6.92 |
 | re-check (earlier, not replayed) | compute-rule re-check of 117 value claims, then repair | 19.7 min | $9.19 |
 | live `q_1a900486f311` | "What does gpt.py do, and how do the components around it use it?" (prefilled by "Ask about this component" on `gpt.py`), Guide -> **Investigator** -> answer `r_17a6293056b8` (18 claims) -> Checker: 14 supported, 4 not supported -> repair round 1 by the Investigator (4 claims changed, none retired) -> Checker re-check: 4 of 4 supported; 18 of 18 pass | 5.3 min (316 s, 19 turns) | $2.35 |
 
 The first three rows are quoted from `outputs/runs.txt`. Map claims (`honeyguide status --json`, before the live
-question): 260 map claims, 282 claims in all (map + the two v1 answers), 268 supported, 14 not supported. After it:
+question): 260 map claims, 282 claims in all (map + two earlier answers), 268 supported, 14 not supported. After it:
 260 map claims, 300 in all, 286 supported, 14 not supported. The repo card in the payoff shot was recorded before
 the live question, so it says 282.
 
@@ -68,9 +66,10 @@ since the session started. One real error shows in red: the Investigator's first
 
 ## Reproduce
 
-Needs: the nanochat map served (`honeyguide serve --repo ~/Documents/GitHub/honeyguide-targets/nanochat --port 8782`),
-its repo card saved (`honeyguide repo-info --repo … --save`), the frozen plugin copy at `~/Documents/GitHub/honeyguide-run`
-(398c248), Chrome, ffmpeg, uv. Keep the Mac awake while recording (`caffeinate -ims`): idle maintenance sleep froze
+Needs: a nanochat clone at 92d63d4 with its map built and served (`honeyguide serve --repo <clone> --port 8782`),
+its repo card saved (`honeyguide repo-info --repo <clone> --save`), a checkout of this repo at 398c248 for the
+plugin and the CLI, Chrome, ffmpeg, uv. `answer.sh`, `cut.py` and `shoot_live.py` name the two paths at the top;
+set them to yours. Keep the Mac awake while recording (`caffeinate -ims`): idle maintenance sleep froze
 two early takes for 15 minutes each. From `demo/`, with `REC` a scratch folder (the raw takes are about 1 GB of
 2880x1800 JPEGs):
 
@@ -80,7 +79,6 @@ uv run --project .. python shoot_v4.py $REC/take                     # payoff, n
 uv run --project .. python shoot_live.py $REC/live --tag q1 --component mod-gpt --dry   # rehearsal, sends nothing
 uv run --project .. python shoot_live.py $REC/live --tag q1 --component mod-gpt         # the live take (a real run)
 uv run --project .. --with pillow python cut.py $REC honeyguide-demo.mp4
-uv run --project .. --with pillow python cut.py $REC poster.png poster
 uv run --project .. --with pillow python cut.py $REC $REC/gif-source.mp4 gif
 ffmpeg -i $REC/gif-source.mp4 -vf "fps=10,scale=960:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" $REC/pal.png
 ffmpeg -i $REC/gif-source.mp4 -i $REC/pal.png -lavfi "fps=10,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" honeyguide-demo.gif
@@ -93,9 +91,8 @@ B03, each reopened on the same thread at the same scroll position, ~2 s apart. T
 stretches; the focus mode does not survive a reopen, so after the first gap the map behind the panel is unfocused.
 
 Files: `rec.py` (CDP screencast recorder, eased pointer, text selection by phrase), `shoot_v4.py` (payoff, nav,
-flow), `shoot_live.py` (the live take; `--component` is the v2 path), `answer.sh` (the batch session), `term.py`
-(the PiP), `cards.py`, `compose.py` (frames, cursor, captions, badge, ffmpeg), `cut.py` (the v2 edit).
-`shoot_tour.py`, `shoot_answer.py` and `shoot_followup.py` are the v1 takes, kept so `v1/` can be reproduced.
+flow), `shoot_live.py` (the live take), `answer.sh` (the batch session), `term.py`
+(the PiP), `cards.py`, `compose.py` (frames, cursor, captions, badge, ffmpeg), `cut.py` (the edit).
 
 ## Cut or not shown live
 
@@ -110,6 +107,6 @@ flow), `shoot_live.py` (the live take; `--component` is the v2 path), `answer.sh
   and the pointer is parked over `tokenizer.py`, so its hover card shows; the cut draws the parked pointer there.
 - The payoff's repo card says 282 claims: it was recorded before the live question added 18.
 - Light theme only.
-- Found while recording, not fixed here (src/ was out of scope): "Ask about this component" on a component with
-  several files prefills its name with the "+N files" badge text, e.g. "What does engine.py +1 do, …". The demo
-  uses `gpt.py` (one file), whose question reads correctly.
+- Found while recording, and fixed since (commit dd38ce9): "Ask about this component" on a component with several
+  files prefilled its name with the "+N files" badge text, e.g. "What does engine.py +1 do, …"; it now reads
+  "engine.py (and 1 more file)". The demo uses `gpt.py` (one file), whose question read correctly.

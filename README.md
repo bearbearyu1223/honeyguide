@@ -43,8 +43,8 @@ marked on screen.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screens/ux4/nanochat-top-dark.png">
-    <img src="docs/screens/ux4/nanochat-top-light.png" alt="The top of the nanochat map: the outline with Find on the left, and the repo card with link, languages, licence, contributors, history and the map's commit" width="900">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nanochat-top-dark.png">
+    <img src="docs/images/nanochat-top-light.png" alt="The top of the nanochat map: the outline with Find on the left, and the repo card with link, languages, licence, contributors, history and the map's commit" width="900">
   </picture>
 </p>
 
@@ -323,25 +323,32 @@ code goes only to Claude, through your own Claude Code session.
 
 ## For contributors
 
-### What's built
+### What works
 
-| piece | status |
-|---|---|
-| memory, anchors, refresh classifier, retrieval (`docs/design/memory-and-anchors.md`) | built |
-| the `honeyguide` CLI, question inbox, page server, watcher (`docs/design/agent-contract.md`) | built |
-| the plugin: the Guide skill and four subagents (`skills/`, `agents/`) | built; run end to end on nanochat and waku-agent |
-| the map page, flow swimlanes, component map | built |
-| refresh applied to saved memory (`refresh apply`, stale re-check, `claims retire`) | built |
-| Honey and the agent avatars | built |
-| Overview topics, component modules, draft files, readability check | built |
-| repair pass for map claims and answers (`claims repair`, `claims repair-pass`, two rounds per pass), "Needs a look" (T7.15, T7.16) | built |
-| Checker "compute, don't quote"; one `honeyguide` command per Bash call (T7.16) | built |
-| UX v4: repo card (`repo-info`), outline + Find, component map with focus and Ask, diagram zoom / pan / full screen (T7.17, T7.18, `docs/design/ux-v4.md`) | built |
-| demo video on UX v4 (T7.19, `demo/README.md`) | built |
-| runtime confirmation of flow hops in the product | not built; `eval/trace/` is the eval's trace |
-| sharing the map with a team (a static export of the page) | not built; the map is local to one machine |
+- The memory store, code anchors, the refresh classifier and retrieval (`docs/design/memory-and-anchors.md`).
+- The `honeyguide` CLI, the question inbox, the page server and the watcher (`docs/design/agent-contract.md`).
+- The plugin: the Guide skill and four subagents (`skills/`, `agents/`), run end to end on nanochat and waku-agent.
+- The map as draft files, checked before it is saved, including a readability check.
+- The repair pass for map claims and for answers (two rounds per pass), and "Needs a look".
+- The Checker's "compute, don't quote" rule, and one `honeyguide` command per Bash call.
+- Refresh applied to the saved map: `refresh apply`, the stale re-check, `claims retire`.
+- The map page: repo card (`repo-info`), outline and Find, Overview topics, component modules, the component map
+  with focus and Ask, flow swimlanes, and zoom, pan and full screen on every diagram (`docs/design/ux-v4.md`).
+- Honey and the agent avatars, and the demo video (`demo/README.md`).
 
-Run the tests with `uv run pytest -q --ignore=tests/review` (611 tests).
+### Not built yet
+
+- Runtime confirmation of flow hops in the product. `eval/trace/` is the eval's own trace, not part of the plugin.
+- Sharing a map with a team (a static export of the page). The map is local to one machine.
+
+### Tests
+
+```bash
+uv run pytest -q
+```
+
+The browser tests need Google Chrome and skip without it. Tests that need the eval's target clones or run archives
+skip when those aren't present.
 
 ### The eval
 
@@ -350,7 +357,14 @@ current costs. `eval/pilot/` isolates a Claude Code run from your settings and m
 the question sets and answer keys for nanochat and waku-agent, and `eval/trace/` captures runtime traces of
 their flows. `eval/adhoc/` checks ad-hoc answers and a sample of map claims with the same Checker.
 `eval/refresh/` captures two refreshes and compares their cost with a rebuild. `eval/runs/` reads the saved
-records of the map builds, the Checker and the repair passes. Target repos are cloned outside this repo.
+records of the map builds, the Checker and the repair passes. `eval/run/` is the runner for the four-way test (no
+access, explore, outline, map), and `eval/score/` is the scorer that prints `outputs/eval_pilot_nanochat.txt`.
+`eval/human/answers/` holds the annotator's decisions that the scorer reads (disputed callers, flow hops, and the
+why/how questions with their rubrics). `eval/cutoff/` counts the answer keys' lines last changed in June 2026, the
+model's training-cutoff month, and `eval/figures/` draws the post's figures from the files in `outputs/`.
+
+Target repos are cloned outside this repo. Regenerating `outputs/` needs those clones and the run archives (the
+saved transcripts, maps and results of each run), which aren't in the repo.
 
 Captured output is in `outputs/`. The results files behind [What I found](#what-i-found):
 
@@ -364,5 +378,9 @@ Captured output is in `outputs/`. The results files behind [What I found](#what-
 ### Folders
 
 `.claude-plugin/`, `skills/`, `agents/` (the plugin), `src/honeyguide/` (the CLI and page server),
-`docs/design/` (data model, contract, UX v4), `docs/screens/` (screenshots), `assets/` (logo, Honey, avatars),
-`demo/` (the demo video and how it was made), `mockup/` (static UX mockup), `eval/`, `outputs/`, `tests/`.
+`docs/design/` (data model, contract, UX v4), `docs/images/` (screenshots), `assets/` (logo, Honey, avatars),
+`demo/` (the demo video and how it was made), `eval/`, `outputs/`, `tests/`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

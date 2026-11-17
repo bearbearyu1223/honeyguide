@@ -3,12 +3,12 @@
 Pure functions over plain JSON. A document is sections -> blocks -> spans; a span with ``claim`` is that claim's
 rendered text. Flows are path records (ordered hops between lanes). See docs/design/agent-contract.md.
 
-T7.13: a block's text is one or more *segments* (lists of spans), joined by one newline in the plain text: its own
+A block's text is one or more *segments* (lists of spans), joined by one newline in the plain text: its own
 ``spans`` (a paragraph, a module's summary, a list's lead-in), then each ``items[]`` entry of a ``list`` block, then
-each ``rows[]`` entry of a ``facts`` block (or each ``facts[]`` row of a ``module`` block). Old blocks have one segment,
-so their plain text, offsets and revisions are unchanged. Overview blocks may carry a ``topic``.
+each ``rows[]`` entry of a ``facts`` block (or each ``facts[]`` row of a ``module`` block). Blocks with only spans have
+one segment, so their plain text, offsets and revisions are unchanged. Overview blocks may carry a ``topic``.
 
-T7.13b: a module block is a *component*: ``files`` (one or more repo paths; ``path`` stays, = ``files[0]``), a role
+A module block is a *component*: ``files`` (one or more repo paths; ``path`` stays, = ``files[0]``), a role
 ``title`` ("train.py and optim.py: the loop and its optimizer"), optional ``related`` (other module block ids) and an
 optional ``design`` paragraph (spans: the why, or the sharp edge met first), which is the segment after the summary.
 The document may carry ``coverage`` (what the map read in full, skimmed and left out, each with a reason); it is not
@@ -25,12 +25,12 @@ from typing import Any, Iterator
 
 SECTION_KINDS = ("overview", "modules", "flows", "other")
 BLOCK_TYPES = ("text", "module", "flow", "list", "facts")
-# The Overview's topic groups (T7.13), in page order, with the page's quiet headings.
+# The Overview's topic groups, in page order, with the page's quiet headings.
 OVERVIEW_TOPICS = ("purpose", "users", "capabilities", "commands", "entry-points", "components", "start-here")
 TOPIC_TITLES = {"purpose": "Purpose", "users": "Who it's for", "capabilities": "What it can do",
                 "commands": "Commands", "entry-points": "Entry points", "components": "Components",
                 "start-here": "Start here"}
-# A module block's facts rows (T7.13), in page order, with the page's labels. Rows that don't apply are left out.
+# A module block's facts rows, in page order, with the page's labels. Rows that don't apply are left out.
 MODULE_FACTS = ("responsibility", "key_files", "key_symbols", "interfaces", "io", "callers", "dependencies",
                 "external", "errors", "tests", "debug")
 FACT_LABELS = {"responsibility": "Responsibility", "key_files": "Key files", "key_symbols": "Key symbols",
@@ -58,7 +58,7 @@ def spans_text(spans: list[dict]) -> str:
     return "".join(s.get("text", "") for s in spans)
 
 
-# A sentence that ends one span and a sentence that starts the next, with nothing between them (T7.16: the Tracer
+# A sentence that ends one span and a sentence that starts the next, with nothing between them (the Tracer once
 # wrote "... self.window_sizes." and "The quarter ..." as two claim spans and the answer read "window_sizes.The").
 _SENTENCE_END = re.compile(r"[.!?][\"')\]`*]*$")
 _SENTENCE_START = re.compile(r"^[\w\"'(\[`*]")
@@ -269,7 +269,8 @@ def _check_topics(section: dict, where: str, errors: list[str], strict: bool) ->
 
 
 def module_files(block: dict) -> list[str]:
-    """The repo paths a module block covers: its ``files``, else its ``path`` (a pre-T7.13b block)."""
+    """The repo paths a module block covers: its ``files``, else its ``path`` (a block saved before components
+    existed)."""
     files = block.get("files")
     if isinstance(files, list) and files:
         return [f for f in files if isinstance(f, str)]
@@ -372,7 +373,7 @@ def check_document(document: Any, strict: bool = False) -> tuple[list[str], list
 
     ``strict`` (drafts, ``map check``): the Overview must have every topic group, every module block a title, a
     summary, ``MIN_FACTS`` facts rows starting with its responsibility and a design paragraph or debug row, and the
-    document its coverage. Saved maps, including pre-T7.13 ones without topics or facts, are checked without it.
+    document its coverage. Saved maps, including ones saved before topics and facts existed, are checked without it.
     The module count needs the repo's size: ``check_module_count``.
     """
     errors: list[str] = []
@@ -461,7 +462,7 @@ def check_document(document: Any, strict: bool = False) -> tuple[list[str], list
                 _check_rows(block.get("rows"), at, errors, module=False)
             elif kind == "module" and block.get("facts") is not None:
                 _check_rows(block["facts"], at, errors, module=True)
-            # spans: required on text, module (pre-T7.13) and flow blocks; on a list or facts block they are an
+            # spans: required on text, module (without facts) and flow blocks; on a list or facts block they are an
             # optional lead-in, and on a module block with facts, its optional summary
             optional = kind in ("list", "facts") or (kind == "module" and block.get("facts") is not None)
             if not optional or block.get("spans") is not None:

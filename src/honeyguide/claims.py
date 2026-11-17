@@ -258,12 +258,12 @@ def check_saved_claim(repo: Repo, claim: dict, where: str) -> tuple[list[str], l
 
 def validate_map(repo: Repo, layer: dict, strict: bool = False) -> dict:
     """``map validate``: structure, every claim anchored or labelled, hashes, secrets, references; plus the
-    readability report (T7.13).
+    readability report.
 
     ``strict`` (drafts: ``map check``, ``map ingest``, ``map validate --strict``): the Overview's topic groups, the
     module titles and facts and the coverage are required, every module's files must exist and the module count
-    must suit the repo's size (T7.13b), and readability errors are errors. Without it (a saved map, which may predate
-    T7.13), readability is reported in ``readability`` only and never makes the map invalid.
+    must suit the repo's size, and readability errors are errors. Without it (a saved map, which may predate the
+    readability check), readability is reported in ``readability`` only and never makes the map invalid.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -301,7 +301,7 @@ def validate_map(repo: Repo, layer: dict, strict: bool = False) -> dict:
 
 
 def check_repo_modules(repo: Repo, doc: dict, rev: Any) -> list[str]:
-    """Draft rules that need the repo (T7.13b): every module's files exist at the map's commit (a file, or a
+    """Draft rules that need the repo: every module's files exist at the map's commit (a file, or a
     directory holding files), and the module count suits the repo's size."""
     try:
         commit = commit_of(repo, rev)

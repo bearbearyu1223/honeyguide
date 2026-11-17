@@ -1,4 +1,4 @@
-"""Blind grading of the why/how answers (T13): a sheet with every finished answer shuffled per question and the
+"""Blind grading of the why/how answers: a sheet with every finished answer shuffled per question and the
 condition hidden, the annotator's rubric and grading policy beside it; the annotator's grades are read back later.
 
 Pure apart from the caller's file writes. The blind key (blind id -> run id) is written to its own file so the sheet

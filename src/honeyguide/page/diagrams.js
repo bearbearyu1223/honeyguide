@@ -1,4 +1,4 @@
-/* Flow diagrams (T7.4, from mockup v3.1): (A) a swimlane sequence diagram per flow, (C) one module graph per map.
+/* Flow diagrams: (A) a swimlane sequence diagram per flow, (C) one module graph per map.
    Pure functions, no DOM: layout(model, width) -> plain geometry, render(geometry) -> an SVG string. Text width is
    estimated from character counts (mono 0.6 x size, sans 0.56 x size, deliberately generous), so the same input
    gives the same picture anywhere. Served under the page's CSP: no style attributes (classes and presentation
@@ -39,8 +39,8 @@ const HGD = (() => {
     return ids.map(id => { const l = M.lanes[id] || { name: id, sub: "" }; return { id, name: l.name, sub: l.sub || "", file: l.file || null }; });
   }
   /* where a hop's data goes: on a self-call, or when the callee makes the next hop, it stays in the callee's lane as a
-     pill ("data"); otherwise it returns to the hop's own caller ("ret"), never to a lane that merely acts next (review
-     r2: a nested call, engine -> tokenizer, followed by a call from the root lane drew its return to the root lane) */
+     pill ("data"); otherwise it returns to the hop's own caller ("ret"), never to a lane that merely acts next (fixed:
+     a nested call, engine -> tokenizer, followed by a call from the root lane drew its return to the root lane) */
   function edgeOf(P, i) {
     const h = P[i];
     if (!h.edge) return null;
@@ -267,7 +267,7 @@ const HGD = (() => {
   }
 
   /* ------------------------------------------------------------------------------------------ (C) module graph */
-  /* T7.15: one box per Modules component. comps: [{id, name, role, files, entry, module, title}] (a component's files
+  /* One box per Modules component. comps: [{id, name, role, files, entry, module, title}] (a component's files
      may be directories, "tasks/"); a map whose modules are single files gives one component per file. resolver(comps)
      maps a repo path to its component: the component listing the file, else the one whose directory holds it (the
      deepest), else null. */
@@ -317,8 +317,8 @@ const HGD = (() => {
   const base = f => (f.endsWith("/") ? f : f.split("/").pop());
   const compName = c => c.name || base((c.files || [])[0] || c.id) + ((c.files || []).length > 1 ? ` +${c.files.length - 1}` : "");
 
-  /* ------------------------------------------------------------------- (C) the component map (T7.17, UX v4) */
-  /* The T7.16 module graph was hard to read and to navigate. The component map:
+  /* ------------------------------------------------------------------- (C) the component map (UX v4) */
+  /* The earlier module graph was hard to read and to navigate. The component map:
      - three bands derived from the graph, top to bottom: ENTRY POINTS (no traced call reaches them), STAGES (called
        and calling; one row per longest-path step) and LEAVES (call nothing traced); captions in a left gutter, so
        no line ever runs under a caption;

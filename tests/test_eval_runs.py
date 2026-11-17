@@ -188,7 +188,7 @@ def test_recheck_helpers():
 
 
 def test_recheck_summary_counts_the_tries_of_claims_left_not_supported():
-    """f65924889 (review round 3): a claim repaired in an earlier pass may get one try in this one (the old cap
+    """A claim repaired in an earlier pass may get one try in this one (the old cap
     counted every repair a claim ever had); the summary says how many each leftover claim got, and before."""
     t0, t1, t2 = "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z", "2026-01-02T00:05:00Z"
     old = rep(1, "anchor", "t", [], t0)

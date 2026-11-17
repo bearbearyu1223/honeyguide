@@ -1,8 +1,8 @@
-# Memory and anchors (T7a design note)
+# Memory and anchors (design note)
 
 The foundation under the Honeyguide agents and map page: what a claim is, how it points at code, where it is
-saved, and what happens to it when the code changes. Implements plan section 3b ("Data model", "Source links",
-"Memory and refresh"). Standard library only; everything exact is a script, never an agent.
+saved, and what happens to it when the code changes: the data model, source links, and memory and refresh. Standard
+library only; everything exact is a script, never an agent.
 
 ## Data model
 
@@ -107,7 +107,7 @@ new lines; stale claims keep the old anchor (what was checked) plus the candidat
 candidate lines), and reset `check` to `unchecked`, except a claim already stale whose candidates are identical
 (it keeps the Checker's re-check verdict, so an unrelated commit doesn't re-queue it).
 
-**Applying it (T7.5)**: `honeyguide refresh apply` plans and applies in one hold of the store's lock, from the
+**Applying it**: `honeyguide refresh apply` plans and applies in one hold of the store's lock, from the
 claims as saved at that moment, advances the map's commit to B, and logs `{base, target, counts}` in the
 session; the map is written after the answers, so a crash leaves it behind HEAD and a re-run finishes. The
 Checker then re-checks each stale claim at HEAD: still true -> `verdict set` with new anchors, and the claim is
@@ -129,7 +129,7 @@ anchor matches. Returns map claims and answers (with the matching claims). Exclu
 claims, claims the Checker marked `not_supported`, and every note not marked `share_with_agents`. With
 `include_stale=True`, stale/retired claims come back marked, never mixed in silently. A shared note is returned
 when it is tied to a retrieved claim (`claim_ids`), sits on a retrieved answer, or shares keywords with the
-question. `retrieve()` is the agent-facing call and the filter lives there; T7's briefs must hand agents notes only
+question. `retrieve()` is the agent-facing call and the filter lives there; the agents' briefs hand them notes only
 through it (the store itself will load any layer for the page).
 
 ## Concurrency and crash safety
@@ -146,7 +146,7 @@ One JSON file (`schema: honeyguide/export`): identity + the three layers. Notes 
 unless `--include-private-notes` (export is for sharing). Import checks the repo id (`--force` to cross forks),
 merges by record id, keeps the local record on a clash and reports counts.
 
-## Out of scope (v1)
+## Out of scope
 
 Embeddings; non-Python outlines (other files are refreshed by hash and anchor text only); following code moved
 *between* files without a git rename (it shows as retired + uncovered); refresh of the working tree's uncommitted

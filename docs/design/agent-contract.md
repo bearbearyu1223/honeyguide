@@ -1,16 +1,17 @@
-# Agent contract (T7.1; memory and refresh: T7.5; map v2 and drafts: T7.13; repair and flags: T7.15; answer repair: T7.16)
+# Agent contract
 
 What the agents (Guide, Cartographer, Investigator, Tracer, Checker) and the map page call, and the records they
-read and write. Built on the T7a foundation (`memory-and-anchors.md`); standard library only. Exact work is a
+read and write. Built on the memory store and anchors (`memory-and-anchors.md`); standard library only. Exact work is a
 script: agents quote text, the script resolves lines, hashes, ids, links and timestamps.
 
 ## Calling convention
 
 Every agent command reads **one JSON object** on stdin (or `--input FILE`; on `map validate`, `--input` implies
 `--stdin`) and prints **one JSON object** on
-stdout. `--repo PATH` (default `.`) picks the checkout; memory is `$HONEYGUIDE_HOME/<repo-id>/` as in T7a.
+stdout. `--repo PATH` (default `.`) picks the checkout; memory is `$HONEYGUIDE_HOME/<repo-id>/`
+(`memory-and-anchors.md`).
 
-**Plain flags (T7.15).** The common inputs also take flags, which build the same JSON object: `question
+**Plain flags.** The common inputs also take flags, which build the same JSON object: `question
 show|claim|fail|release|reopen --id [--agent] [--reason]`, `activity start --agent --status [--question]`,
 `activity update --id --status`, `activity finish --id --state [--status]`, `verdict set --id --verdict [--note |
 --note-file FILE]`, `claims list --scope --check --freshness --ids --responses --spans [--json]` (list flags repeat or
@@ -72,7 +73,7 @@ Rules, all checked before anything is written:
 | `map validate` | none (the saved map), or `--stdin` / `--input FILE` with a `claims save` input; `--strict` applies the draft rules | `{valid, errors: [...], warnings: [...], readability: {errors, warnings}}` |
 | `map draft-dir` | none; `--fresh` empties it of `.json` drafts first | `{dir}`: `<memory>/drafts/map/`, created |
 | `map check DIR` | the draft files in `DIR` (below) | `map validate --strict`'s result + `{files, claims, blocks, flows, overview_words}`; saves nothing |
-| `map ingest DIR` | the draft files in `DIR` | the same check, then `claims save`'s result + `readability`; on any error, `validation_failed` and nothing written. Stores `repo-info` (at the map's commit) as `document.repo` (T7.18) |
+| `map ingest DIR` | the draft files in `DIR` | the same check, then `claims save`'s result + `readability`; on any error, `validation_failed` and nothing written. Stores `repo-info` (at the map's commit) as `document.repo` |
 | `repo-info` | none; `[--commit C] [--save] [--no-gh]` | the repo card's facts (below, "Repo info"); `--save` also stores them as the saved map's `document.repo` |
 | `verdict set` | `{claim, verdict, note?, anchors?, commit?}` or `{verdicts: [...]}` | `{set: n, current_again: [id]}` |
 | `inbox` | none | `{open: [question], investigating: [question]}` |
@@ -104,7 +105,7 @@ is the claim's `id, key, text, evidence, anchors, check, check_note, checked_at,
 candidates, searched, rechecked_at, retired_at` (those present) plus `response` (null for a map claim).
 `check` and `freshness` take one value or a list; `responses` implies answers.
 
-`claims repair` (T7.15, the repair pass after the Checker): map claims that are `current` and `not_supported`
+`claims repair` (the repair pass after the Checker): map claims that are `current` and `not_supported`
 only. `anchor` replaces the claim's anchor list (resolved at `commit`, default the map's commit, under the
 draft rules); `rewrite` replaces its `text`, optionally its anchors, and, through `span`, the text of every span
 showing it (required when any span does; the document's revision is recomputed); `retire` retires it with
@@ -119,13 +120,13 @@ never use up a new pass's rounds. All items are
 checked before anything is written. `claims list` rows carry `repairs`, and `spans: true` adds `shown_as` (the
 span texts) to map claims.
 
-With `response: "r_..."` (T7.16) the same pass runs on that answer's claims instead (the answering agent, after the
+With `response: "r_..."` the same pass runs on that answer's claims instead (the answering agent, after the
 Checker flagged some): only claims of that answer are taken, anchors resolve at the answer's commit by default, and a
 `rewrite` with `span` replaces the text of the answer's spans showing the claim; the answer's `text` (its spans
 joined) and `revision` follow. A follow-up anchored in the old text keeps its quote, and the page re-finds it by the
 quote when the revision differs (as on a regenerated map); several hits or none leave it unmarked, never guessed.
 
-`answer record` (T7.16) inserts a one-space glue span wherever one span ends a sentence (`.`, `!` or `?`, maybe a
+`answer record` inserts a one-space glue span wherever one span ends a sentence (`.`, `!` or `?`, maybe a
 closing quote or bracket after it) and the next starts a word, so two claim spans written as two sentences never
 read "self.window_sizes.The"; the stored `text` is the spans joined, so offsets stay exact.
 
@@ -161,14 +162,14 @@ States: `open` -> `investigating` -> `answered` | `failed`. Allowed moves:
 | failed | open (retry from the page; `reopens` += 1) |
 | answered | none. A follow-up is a new question. |
 
-Question record (in `answers.json`, extends T7a's): `id, kind: "question", text, anchor (DocumentAnchor | null),
+Question record (in `answers.json`, extends the stored one): `id, kind: "question", text, anchor (DocumentAnchor | null),
 author, created_at, parent_response, status, agent (who claimed it), claimed_at, answered_at, response,
 failed_at, error, reopens`. A follow-up has `parent_response` and an anchor on `answer:<parent_response>`.
-Records saved before T7 have no `status`; they read as `open` until answered.
+Records saved before questions had a status have no `status`; they read as `open` until answered.
 
 ## Map document
 
-`map.json`'s `document` (opaque in T7a) is:
+`map.json`'s `document` (opaque to the memory store) is:
 
 ```json
 {"title": "nanochat", "revision": "<12 hex>",
@@ -180,30 +181,30 @@ Records saved before T7 have no `status`; they read as `open` until answered.
 ```
 
 - `section.kind`: `overview`, `modules`, `flows`, `other`. `block.type`: `text`, `module` (adds `path`, the
-  file it describes), `flow` (adds `flow`, a path record id; its spans are the caption), and (T7.13) `list`
+  file it describes), `flow` (adds `flow`, a path record id; its spans are the caption), `list`
   (`items: [{spans}]`, optional `ordered: true`) and `facts` (`rows: [{key, label?, spans}]`, keys unique in the
   block, <= 40 chars; the page shows `label`, else the key). On `list` and `facts`, `spans` is an optional
   lead-in. Ids match `[a-z0-9][a-z0-9-]*`, unique per document.
-- **Overview topics (T7.13)**: Overview blocks carry `topic`, one of `purpose`, `users`, `capabilities`,
+- **Overview topics**: Overview blocks carry `topic`, one of `purpose`, `users`, `capabilities`,
   `commands`, `entry-points`, `components`, `start-here` (page headings: Purpose, Who it's for, What it can do,
   Commands, Entry points, Components, Start here). Once any Overview block has a topic, every one must; each
   topic's blocks are contiguous, in that order, and all seven are present (a topic the repo lacks is a block
   citing a `searched_not_found` claim). `topic` on a block outside the Overview is an error. An Overview with no
-  topics at all is a pre-T7.13 map: valid, except under the draft rules. The page draws the module graph after
+  topics at all is an older map: valid, except under the draft rules. The page draws the module graph after
   the `components` group (after the first block in an old Overview).
-- **Module facts (T7.13)**: a `module` block may carry `facts: [{key, label?, spans}]`, keys from
+- **Module facts**: a `module` block may carry `facts: [{key, label?, spans}]`, keys from
   `responsibility`, `key_files`, `key_symbols`, `interfaces`, `io`, `callers`, `dependencies`, `external`,
   `errors`, `tests`, `debug`, unique, `responsibility` first when present. With `facts`, the block's `spans`
   (its summary) are optional. The page shows the summary and the responsibility row, and folds the other rows
   under "More" (a module whose folded rows hold a discussion or note opens by itself).
-- **Component modules (T7.13b)**: a `module` block may carry `files` (a non-empty list of repo-relative paths,
+- **Component modules**: a `module` block may carry `files` (a non-empty list of repo-relative paths,
   each once; `path`, kept for older readers, must then be `files[0]` or left out, and saving fills it in),
   `title` (one line, <= 100 chars, `"<files>: <role in a few words>"`; the page's heading), `related` (ids of
   other module blocks, each once, not itself; every id must exist: an error even on a saved map) and `design`
   (spans: why the component is built this way, or the sharp edge met first; the segment right after the
   summary). `files`, `title`, `related` and `design` on any other block are errors. A block with neither
   `files` nor `path` is an error.
-- **Coverage (T7.13b)**: `document.coverage` (from `meta.json`'s `coverage`) is `{deep?, scanned?, skipped?}`,
+- **Coverage**: `document.coverage` (from `meta.json`'s `coverage`) is `{deep?, scanned?, skipped?}`,
   each a list of `{area, why}` strings, at least one area in all. Not plain text and not in the revision; the
   page shows it as "What this map covers" at the end of the Modules section (of the Overview when there is none).
 - **Draft rules** (`map check`, `map ingest`, `map validate --strict`): all seven topics; every `module` block
@@ -212,7 +213,7 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   directory holding one); a repo over 3,000 lines of source (`Repo.source_lines`: text files with code
   extensions, `gitio.SOURCE_GLOBS`) has 6-15 module blocks, and no repo more than 15; readability errors are
   errors. `map check` reports `modules`, the module count.
-- Optional on a `module` block (T7.4): `role`, the file's one-line role (a string, one line, <= 80 chars; shown
+- Optional on a `module` block: `role`, the file's one-line role (a string, one line, <= 80 chars; shown
   after the path in the Modules heading, as the subtitle of that file's lanes in flow diagrams, and in the module
   graph), and `entry: true` on the module that is the repo's entry point (the module graph tags it ENTRY POINT).
   Neither is part of the plain text, so neither moves annotation offsets.
@@ -220,16 +221,16 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   rewrites it to the id. A claim may back several spans; a claim no span shows is a warning.
 - **Plain text** (what DocumentAnchor offsets index): section title, blank line, then each block's text,
   blocks separated by a blank line, sections separated by a blank line (`mapdoc.plain_text`). A block's text is
-  its segments joined by one newline: its own `spans` (when present), a module's `design` (when present,
-  T7.13b), then each `items[]` entry, then each
+  its segments joined by one newline: its own `spans` (when present), a module's `design` (when present),
+  then each `items[]` entry, then each
   `rows[]` (or a module's `facts[]`) entry, each segment its spans joined (`mapdoc.block_segments`). Topic
-  headings and facts labels are not plain text. A pre-T7.13 block has one segment, so its text and the
+  headings and facts labels are not plain text. A block with only `spans` has one segment, so its text and the
   document's revision are unchanged.
   `revision` = first 12 hex of sha256 of the plain text plus the flows' JSON, set by the script; annotations on
   the map re-anchor when it changes.
 - Answers use the same `spans` (or plain `text`); `answer:<id>` plain text is the spans joined.
 
-## Repo info (T7.18)
+## Repo info
 
 `honeyguide repo-info --repo REPO` prints one JSON object (stdlib, git only; `gh` only as below):
 
@@ -263,7 +264,7 @@ Records saved before T7 have no `status`; they read as `open` until answered.
   an agent that uses them in prose cites them as `docs` claims.
 - **The page never fetches** any of it (the CSP stays offline): it renders what the map document holds.
 
-## Readability (T7.13)
+## Readability
 
 `map validate` reports `readability: {errors, warnings}` for the Overview and Modules (`readability.py`). Checked
 prose: text blocks, module summaries and module design paragraphs ("paragraphs"; a design paragraph is judged
@@ -280,9 +281,9 @@ as its own block) and list items; flow captions, module titles and facts rows ar
 
 **Errors**: a block with 2+ distinct kinds (telegraph style), or a section where 40% or more of the prose blocks,
 and at least 3, have a kind other than `abbreviation`. Errors make a draft invalid; on a saved map they are
-only reported (`valid` stays structural, so maps saved before T7.13 still validate).
+only reported (`valid` stays structural, so maps saved before the readability check still validate).
 
-## Draft files (T7.13)
+## Draft files
 
 The Cartographer writes the map as files with the Write tool, in `map draft-dir`'s directory
 (`$HONEYGUIDE_HOME/<repo-id>/drafts/map/`), so the map never passes through a shell command line:
@@ -316,16 +317,16 @@ One per flow (in `document.flows`) or per Tracer answer (`response.path`):
 Hops are in call order. `from`/`to` name lanes; `loop` (optional) names a loop frame; `trace` is `seen` (in the
 runtime trace), `unseen` (read or inferred only), or `blind_spot` (where the trace can't see, e.g. C++ backward).
 `claim` is required: every hop is a claim and obeys the claim rules, so it is anchor-cited or labelled. `returns`,
-`data`, `label` and (T7.4) `note` are optional strings; `note` says what a blind spot hides or why an unseen hop is
+`data`, `label` and `note` are optional strings; `note` says what a blind spot hides or why an unseen hop is
 inferred ("autograd runs in C++, so the trace sees this call but not its walk back"). Loops with no hop are a
 warning.
 
-How the page draws a path (T7.4: the Steps rail and the swimlane diagram, from the same record):
-- Line style (v3.1 design choice 1): **dotted** = `blind_spot`; **solid** = `seen`, or `unseen` whose claim is read in
+How the page draws a path (the Steps rail and the swimlane diagram, from the same record):
+- Line style (rail and diagram alike): **dotted** = `blind_spot`; **solid** = `seen`, or `unseen` whose claim is read in
   source / asserted by a test / seen at runtime (the evidence shape says which); **dashed** = everything else
   (inferred: neither read nor seen). Dashed and dotted hops carry a note under the arrow (`note`, else `label`).
 - Lanes: in order of first use in the hops; header = the lane's `label`, subtitle = the `role` of the module block
-  whose `files` (or `path`) include the lane's `path` (T7.13b: without a `role`, the part of its `title` after
+  whose `files` (or `path`) include the lane's `path` (without a `role`, the part of its `title` after
   ": "). The flow starts in the first hop's `from` lane (a start dot); there is no
   separate entry hop.
 - Data: `returns` + `data` show as one pill, `[returns, data]` (`["returns", returns]` or `["data", data]` when only
@@ -347,7 +348,7 @@ updated_at, ended_at}`. The page shows `working` entries as animated avatars bes
 `session.json`: `{schema: "honeyguide/session", version: 1, last_visit, previous_visit, refresh_log: [{at, base,
 target, counts, uncovered, note}]}`. The page posts a visit on load.
 
-## Memory state (the page header, T7.5)
+## Memory state (the page header)
 
 `memory state` (and `status --json`'s `memory_state`; the page server should return it as `memory` in `GET
 /api/state`):
@@ -362,7 +363,7 @@ target, counts, uncovered, note}]}`. The page posts a visit on load.
 | `stale_not_supported` | stale claims the Checker found no longer hold (flagged; the Cartographer rewrites map ones) |
 | `previous_visit`, `last_visit` | from the session |
 | `rechecked_since_visit` | claims with `rechecked_at > previous_visit`: "N claims re-checked since your last visit" |
-| `checked_since_visit` | claims with any verdict since `previous_visit` (what `rechecked_since_visit` counted before T7.5) |
+| `checked_since_visit` | claims with any verdict since `previous_visit` (what `rechecked_since_visit` used to count) |
 | `last_refresh` | the newest refresh-log entry, or null |
 
 Page rules: a claim with `freshness: "stale"` loses its evidence mark and check mark and is shown as stale (with
@@ -380,8 +381,8 @@ land in the inbox and the session's `watch` wakes the Guide.
 
 | method, path | body / query | result |
 |---|---|---|
-| GET `/` | | the map page (T7.3), with `/page.css`, `/page.js`, `/boot.js`, `/diagrams.js` (T7.4), `/favicon.svg` |
-| GET `/api/state` | | repo id, HEAD, map commit, counts, `previous_visit`, `rechecked_since_visit` (legacy: counts any verdict since the visit; the header uses `memory`'s), refresh log; plus `memory` (the memory state above, added in T7.4; the page header shows it) |
+| GET `/` | | the map page, with `/page.css`, `/page.js`, `/boot.js`, `/diagrams.js`, `/favicon.svg` |
+| GET `/api/state` | | repo id, HEAD, map commit, counts, `previous_visit`, `rechecked_since_visit` (legacy: counts any verdict since the visit; the header uses `memory`'s), refresh log; plus `memory` (the memory state above; the page header shows it) |
 | GET `/api/map` | | the map layer |
 | GET `/api/threads` | | questions (with status) and responses |
 | GET `/api/notes` | | notes |

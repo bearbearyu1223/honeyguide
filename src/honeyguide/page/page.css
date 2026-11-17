@@ -1,4 +1,4 @@
-/* Honeyguide map page (T7.3). The visual system of mockup v3 (5fde9df) plus the designer's v3 fixes:
+/* Honeyguide map page. The base visual system (UX v3), with these choices:
    body text 16px, larger evidence shapes, brand honey brown and reader amber kept apart in dark mode, honey-brown
    focus ring, stale claims without their evidence mark, a resizable discussion panel, a collapsible contents rail.
    Colour roles: --amber = the reader's selections and notes; --ai (indigo) = AI-generated content and
@@ -89,7 +89,7 @@ svg.i{width:16px;height:16px;flex:none}
 .layer input:checked+.sw::after{transform:translateX(10px)}
 .layer input:focus-visible+.sw{outline:2px solid var(--brand);outline-offset:2px}
 .layer .n{font-size:11px;color:var(--amber-ink);font-weight:600}
-/* T7.15: "Needs a look (N)": the map's not-supported claims, folded under one quiet item */
+/* "Needs a look (N)": the map's not-supported claims, folded under one quiet item */
 .needs{margin-top:16px;font-size:13px;min-height:0;display:flex;flex-direction:column}
 .needs:empty{display:none}
 .nd-h{display:flex;align-items:center;gap:8px;width:100%;color:var(--muted);font-weight:500;padding:6px 8px 6px 12px;border-radius:6px;white-space:nowrap;transition:background var(--t),color var(--t)}
@@ -142,7 +142,7 @@ h2{font-size:20px;line-height:1.3;letter-spacing:-.02em;color:var(--ink);font-we
 .mod-h .role{font-size:13.5px;color:var(--muted)}
 .mod-h code.gone{text-decoration:line-through;color:var(--faint)}
 .mod p{margin-bottom:8px}
-/* T7.13b: a component module. Its title is the heading, its files small code chips under it; the design paragraph
+/* A component module. Its title is the heading, its files small code chips under it; the design paragraph
    (why it is built this way, or the sharp edge met first) sits under a quiet label; related modules are small links
    beside "More". The coverage note closes the section in the same quiet register as the topic headings. */
 .mod.comp{padding-top:28px}
@@ -169,7 +169,7 @@ h3.mod-t.gone{text-decoration:line-through;color:var(--faint)}
 .covl .cv:last-child{margin-bottom:0}
 .covl .ca{color:var(--soft);font-weight:500}
 .covl code{font-size:.9em}
-/* T7.13: the Overview's topic groups, lists, and facts (a compact two-column definition list; in a module, every
+/* The Overview's topic groups, lists, and facts (a compact two-column definition list; in a module, every
    row but the responsibility is folded until "More") */
 h3.topic{font-size:11.5px;line-height:1.4;text-transform:uppercase;letter-spacing:.09em;font-weight:650;color:var(--faint);margin:28px 0 8px}
 h2 + h3.topic{margin-top:4px}
@@ -190,7 +190,7 @@ h2 + h3.topic{margin-top:4px}
 .more:hover .mt{text-decoration:underline;text-underline-offset:3px}
 .unres{font-size:13px;color:var(--muted);border-left:2px dashed var(--line2);padding-left:10px;margin:0 0 12px}
 
-/* ---------- flow diagrams and the module graph (T7.4; inline SVG from diagrams.js) ----------
+/* ---------- flow diagrams and the module graph (inline SVG from diagrams.js) ----------
    Wide figures break out of the text column to --fw (the map area's width, 560-1000px), centred on it. The SVG
    carries no style attributes (the page's CSP): fonts, colours and dashes are these classes; line weights in the
    module graph are presentation attributes, so no rule here sets .gw's stroke-width. */
@@ -205,7 +205,7 @@ h2 + h3.topic{margin-top:4px}
 .figcap{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 24px}
 .figcap a{color:var(--brand);text-underline-offset:3px}
 .figcap.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:0 4px;box-sizing:border-box}
-/* T7.15: components no traced flow passes through, one quiet line under the module graph */
+/* Components no traced flow passes through, one quiet line under the module graph */
 .figiso{font-size:12.5px;color:var(--muted);line-height:1.6;margin:-4px 0 8px}
 .figiso.wide{width:var(--fw);margin-left:calc((100% - var(--fw)) / 2);padding:0 4px;box-sizing:border-box}
 .figiso .fi-l{color:var(--faint)}
@@ -311,7 +311,7 @@ h2 + h3.topic{margin-top:4px}
   background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(2px)}
 body.popen .dgov{right:var(--pw)}
 .dgov.on{display:flex}
-/* T7.16: as wide as its diagram, up to the overlay's own width less its margins (page.js ovWidth) */
+/* As wide as its diagram, up to the overlay's own width less its margins (page.js ovWidth) */
 .dgov-c{width:var(--ovw,var(--fw));max-width:calc(100% - 2 * var(--ovm,32px))}
 .dgov-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:8px}
 .dgov-t{font-weight:600;font-size:15px}
@@ -358,7 +358,7 @@ body.popen .dgov{right:var(--pw)}
 .flashed{animation:flash 1.4s ease-out}
 @keyframes flash{from{background:var(--sunken)}to{background:transparent}}
 
-/* evidence shapes, a little larger than v3 */
+/* evidence shapes, a little larger than at first */
 .dot{display:inline-block;width:9px;height:9px;margin:0 3px 0 6px;vertical-align:.06em;cursor:default}
 .ev-read_in_source,.ev-asserted_by_test,.ev-seen_at_runtime{--ev:var(--e1)} .ev-docs{--ev:var(--e2)} .ev-inferred{--ev:var(--e3)} .ev-searched_not_found,.ev-general_knowledge{--ev:var(--e4)}
 .dot.ev-read_in_source{background:var(--e1);border-radius:50%}
@@ -378,7 +378,7 @@ body.popen .dgov{right:var(--pw)}
 .claim.gk{color:var(--muted)}
 .cite{white-space:nowrap}
 .claim.flagged{text-decoration:underline dotted var(--flag);text-underline-offset:4px;text-decoration-thickness:1px}
-/* T7.15: on the map a not-supported claim is quiet at rest (faint dotted underline, the dashed mark in place of its
+/* On the map a not-supported claim is quiet at rest (faint dotted underline, the dashed mark in place of its
    evidence shape) and shows its red flag on hover or focus, with the Checker's note in the tooltip */
 .claim.flagged.quiet{text-decoration-color:var(--faint);cursor:help;border-radius:3px;transition:text-decoration-color var(--t),background var(--t)}
 .claim.flagged.quiet:hover,.claim.flagged.quiet:focus-visible{text-decoration-color:var(--flag);background:var(--flag-soft);outline:none}
@@ -492,7 +492,7 @@ body.resizing .main,body.resizing .panel{transition:none}
 .by .via{color:var(--faint)}
 .ans{border-left:2px solid var(--ai-line);padding-left:12px;margin-left:9px;color:var(--soft);white-space:pre-line}
 .ans .cite,.ans .stag,.ans .flag{white-space:nowrap}
-/* T7.16: in the panel a claim's cite may wrap between its marks (two long chips and a "not supported" flag ran past
+/* In the panel a claim's cite may wrap between its marks (two long chips and a "not supported" flag ran past
    the panel's right edge at 408px); each mark stays whole, and a chip longer than the line is cut with an ellipsis */
 .ans .cite{white-space:normal}
 .ans .cite>*{white-space:nowrap}
@@ -695,7 +695,7 @@ body.resizing .main,body.resizing .panel{transition:none}
 }
 
 /* =====================================================================================================================
-   UX v4 (T7.17 + T7.18; docs/design/ux-v4.md): NotebookLM's feel in Honeyguide's palette. Three calm areas on a
+   UX v4 (docs/design/ux-v4.md): NotebookLM's feel in Honeyguide's palette. Three calm areas on a
    tonal canvas (contents | map of cards | discussion), rounded surfaces, 8px spacing, the 28/20/16/14/12 type scale,
    quiet chrome; a repo card; a contents outline with sub-sections, scroll-spy and Find; a diagram viewer (zoom, pan,
    fit, full screen) for every diagram; the component map. These rules override the v3 ones above.

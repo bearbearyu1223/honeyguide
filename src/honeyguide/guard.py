@@ -67,7 +67,7 @@ def check_secret(path: str, lines: list[str] | None = None, first: int = 1) -> s
 
 
 def draft_dir_problem(path: str | Path, drafts_root: str | Path) -> str | None:
-    """Why ``path`` may not be read as a map draft (T7.13), or None. Map drafts live only in the memory store's
+    """Why ``path`` may not be read as a map draft, or None. Map drafts live only in the memory store's
     ``drafts/map/`` directory, the one place the Cartographer writes them; anything else (the target repo, a
     symlink out of the store, another repo's drafts, the drafts root, another agent's ``drafts/<agent>/``) is
     refused, so ingesting can't pick up files it didn't write."""

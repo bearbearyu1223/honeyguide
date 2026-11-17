@@ -25,7 +25,7 @@ def run_git(repo: Path | str, *args: str, check: bool = True) -> str:
     return proc.stdout
 
 
-# What counts as source for the map's module-count rule (T7.13b): code, not docs, data or lockfiles.
+# What counts as source for the map's module-count rule: code, not docs, data or lockfiles.
 SOURCE_GLOBS = tuple(f"*.{ext}" for ext in (
     "py", "pyx", "js", "mjs", "cjs", "ts", "tsx", "jsx", "go", "rs", "c", "cc", "cpp", "cxx", "h", "hh", "hpp", "cu",
     "cuh", "java", "kt", "kts", "scala", "swift", "m", "mm", "rb", "php", "cs", "fs", "lua", "jl", "r", "R", "zig",

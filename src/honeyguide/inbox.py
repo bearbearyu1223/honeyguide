@@ -32,7 +32,7 @@ MAX_TEXT = 4000
 
 
 def status_of(question: dict, answered_ids: set[str] | None = None) -> str:
-    """Records from before T7 carry no status: answered if a response points at them, else open."""
+    """Records saved before questions had a status carry none: answered if a response points at them, else open."""
     status = question.get("status")
     if status in STATES:
         return status

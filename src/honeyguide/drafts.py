@@ -1,11 +1,11 @@
-"""The map as draft files (T7.13): the Cartographer writes one JSON file per section, plus its claims, into the
+"""The map as draft files: the Cartographer writes one JSON file per section, plus its claims, into the
 memory store's drafts directory; ``map check`` validates them (structure, claims, readability) and ``map ingest``
 saves them. Nothing passes through a shell command line, so the map's size has no limit.
 
 Files in the drafts directory (``honeyguide map draft-dir`` prints and creates it):
 
 - ``meta.json``: ``{"title": ..., "coverage": {deep|scanned|skipped: [{area, why}]}, "commit"?: rev,
-  "mode"?: "replace" | "add", "retire"?: [{claim, reason}]}``; ``coverage`` becomes ``document.coverage`` (T7.13b)
+  "mode"?: "replace" | "add", "retire"?: [{claim, reason}]}``; ``coverage`` becomes ``document.coverage``
 - ``overview.json``, ``modules.json``, ``flows.json``: one section object each (``{id, kind, title, blocks}``);
   ``flows.json`` also holds the path records as ``"flows": [...]``. Other sections: ``section-<name>.json``.
 - ``claims.json``, or several ``claims-<name>.json``: a list of claim drafts (or ``{"claims": [...]}``).
@@ -48,7 +48,7 @@ AGENT_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
 def agent_draft_dir(store: Store, agent: str, name: str | None = None, fresh: bool = False) -> Path:
-    """A scratch directory for one agent's input files (T7.15): ``drafts/<agent>/[<name>/]``, created if missing.
+    """A scratch directory for one agent's input files: ``drafts/<agent>/[<name>/]``, created if missing.
 
     Agents write a command's JSON input here with the Write tool and pass ``--input FILE``, so no command line ever
     carries quoted JSON (a pipe or heredoc is a compound command the permission rules refuse). ``name`` keeps

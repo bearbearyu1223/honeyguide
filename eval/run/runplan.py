@@ -2,8 +2,8 @@
 prompts and their exact command lines.
 
 Pure apart from reading the brief files. Command lines come from eval/pilot/isolate.py's build_run (the isolation
-verified in T2: allowlisted env, fresh CLAUDE_CONFIG_DIR and HOME, --setting-sources "", --strict-mcp-config,
---no-session-persistence, --exclude-dynamic-system-prompt-sections, --restricted, --tools).
+verified in the isolation pilot: allowlisted env, fresh CLAUDE_CONFIG_DIR and HOME, --setting-sources "",
+--strict-mcp-config, --no-session-persistence, --exclude-dynamic-system-prompt-sections, --restricted, --tools).
 
 How the map or outline reaches a run: appended to the prompt, as a "Notes" block, with the same wording for both.
 The explore, outline and map conditions therefore run the byte-identical command line apart from the prompt

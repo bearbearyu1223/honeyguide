@@ -1,8 +1,10 @@
 [project]
 name = "honeyguide"
-version = "0.0.1"
+version = "0.1.0"
 description = "Claude Code subagents that learn a codebase into an interactive map, and an eval of whether the map pays off"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = []   # the product's scripts are standard library only
 
 [project.scripts]
@@ -12,7 +14,7 @@ honeyguide = "honeyguide.cli:main"
 dev = ["pytest>=8"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

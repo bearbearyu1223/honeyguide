@@ -249,7 +249,7 @@ def test_grader_label_reads_the_grades_file():
 
 
 def test_cost_per_exact_answer_has_three_decimals_and_the_gap(scored, capsys):
-    """Review round 4: '$0.17' for both outline and map hid the gap the break-even divides by. Costs per exact
+    """'$0.17' for both outline and map hid the gap the break-even divides by. Costs per exact
     answer print to a tenth of a cent, and a finite break-even prints the per-answer gap it comes from."""
     out = run_score(scored, capsys)
     block = out[out.index("cost per exact answer"):]

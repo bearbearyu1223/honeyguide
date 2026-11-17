@@ -30,11 +30,11 @@ from .store import Store, StoreError, all_claims
 MAX_BODY = 1_000_000
 TOKEN_HEADER = "X-Honeyguide-Token"
 PAGE_DIR = Path(__file__).parent / "page"
-# The map page's own files (T7.3), served by name only: nothing else on disk is reachable.
+# The map page's own files, served by name only: nothing else on disk is reachable.
 PAGE_FILES = {"/page.css": "text/css; charset=utf-8", "/page.js": "text/javascript; charset=utf-8",
               "/boot.js": "text/javascript; charset=utf-8",
               "/diagrams.js": "text/javascript; charset=utf-8", "/favicon.svg": "image/svg+xml",
-              # the agent avatars (T7.12): copies of assets/avatars/hg-avatars.js and avatars.css
+              # the agent avatars: copies of assets/avatars/hg-avatars.js and avatars.css
               "/hg-avatars.js": "text/javascript; charset=utf-8", "/avatars.css": "text/css; charset=utf-8"}
 # Scripts, styles and fetches from this server only; no frames, no forms posting elsewhere.
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
@@ -46,7 +46,7 @@ PLACEHOLDER = """<!doctype html>
 <style>body{font:16px/1.7 system-ui,sans-serif;margin:2rem auto;max-width:720px;color:#2b2621}
 code{font:13px ui-monospace,monospace}</style></head>
 <body><h1>Honeyguide</h1>
-<p>Placeholder page (the map page arrives in T7.3). Memory for <code>__REPO__</code>.</p>
+<p>Placeholder page (the map page's files are not installed). Memory for <code>__REPO__</code>.</p>
 <pre id="state">loading...</pre>
 <script>
 const token = document.querySelector('meta[name="honeyguide-token"]').content;

@@ -1,4 +1,4 @@
-"""Isolated headless Claude Code runs for the Honeyguide eval (task T2, the isolation pilot).
+"""Isolated headless Claude Code runs for the Honeyguide eval, checked first in the isolation pilot.
 
 Standard library only. `build_run` is pure: given one run's settings it returns the exact argv and the exact
 environment for `claude -p`, built from an allowlist (nothing of the caller's environment is inherited except
@@ -51,7 +51,7 @@ def _personal_strings() -> tuple[str, ...]:
 
 
 LEAK_STRINGS = (*_personal_strings(), "MEMORY", "CLAUDE.md", "AGENTS.md", "git status", "gitStatus",
-                "Documents/GitHub", "research-content-assistant", "honeyguide")
+                "Documents/GitHub", "honeyguide")
 CANARIES = {
     "CLAUDE.md": "CANARY-CLAUDEMD-7Q4X",
     "AGENTS.md": "CANARY-AGENTSMD-9K2M",
