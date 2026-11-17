@@ -114,7 +114,11 @@ def test_stopped_on_yield_rule():
 def test_trace_json_has_no_platform_or_wall_times():
     """f24f50fcf: the JSON the question sets checksum drops what an OS update
     or a slower machine changes; the .txt capture keeps them."""
-    from capture import stable_json
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("eval_trace_capture", TRACE / "capture.py")   # not bare 'capture'
+    cap = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cap)
+    stable_json = cap.stable_json
     run = {"python": "3.12", "platform": "macOS-x", "setup_seconds": 0.1,
            "phases": [{"name": "p", "description": "d", "seconds": 1.5}], "events": []}
     assert stable_json(run) == {"python": "3.12", "phases": [{"name": "p", "description": "d"}],

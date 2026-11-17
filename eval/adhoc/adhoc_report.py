@@ -626,9 +626,18 @@ def capture(data: dict, evidence: list[dict], runs_txt: str | None, map_data: di
     return text
 
 
-def review_block(review: dict | None) -> list[str]:
+def review_arms(data: dict, map_data: dict | None = None) -> dict[str, str]:
+    """{unit: the arm whose spot-check sample it is in}, from the same samples as spot_check.md and the capture."""
+    seed = data["plan"]["seed"]
+    out = {r["unit"]: "ad-hoc answers" for r in sample(data["rows"], seed)}
+    if map_data:
+        out.update({r["unit"]: "map claims" for r in sample(map_data["rows"], seed, MAP_SAMPLE)})
+    return out
+
+
+def review_block(review: dict | None, arms: dict[str, str] | None = None) -> list[str]:
     """The spot-check review (spot_check_review.json in the answers archive): who reviewed, how, and agreement per
-    verdict, counted from its per-item rows."""
+    verdict, counted from its per-item rows; with ``arms`` (review_arms), the same counts per arm too."""
     L = rule("spot-check review of the Checker's verdicts")
     if not review:
         return L + ["  not recorded (no spot_check_review.json)"]
@@ -645,6 +654,16 @@ def review_block(review: dict | None) -> list[str]:
             L.append(f"  {v:<16}{len(vs):>6}" + "".join(
                 f"{sum(1 for i in vs if i.get('review') == k):>{w}}" for k, w in (("agree", 7), ("change", 8),
                                                                                   ("borderline", 12))))
+    if arms is not None:
+        L.append("  by arm (the spot-check sample each item came from):")
+        L.append(f"  {'arm':<16}{'verdict':<16}{'items':>6}{'agree':>7}{'change':>8}{'borderline':>12}")
+        for arm in ("ad-hoc answers", "map claims", "not recorded"):
+            for v in ("supported", "not_supported", "wrong", "not_a_claim"):
+                vs = [i for i in items if i.get("verdict") == v and arms.get(i.get("unit"), "not recorded") == arm]
+                if vs:
+                    L.append(f"  {arm:<16}{v:<16}{len(vs):>6}" + "".join(
+                        f"{sum(1 for i in vs if i.get('review') == k):>{w}}"
+                        for k, w in (("agree", 7), ("change", 8), ("borderline", 12))))
     for i in items:
         if i.get("review") != "agree":
             L += wrap(f"#{i['n']} {i['verdict']} ({i['review']}): {i.get('note', '')}", 2, 6)
@@ -671,5 +690,5 @@ def main_report(cfg: dict, archive, runs_txt: Path, *, spot_check: bool = False,
     rp = archive.root / "spot_check_review.json"
     review = json.loads(rp.read_text()) if rp.exists() else None
     sys.stdout.write(capture(data, evidence, text, map_data, map_ev, repeat)
-                     + "\n".join([""] + review_block(review)) + "\n")
+                     + "\n".join([""] + review_block(review, review_arms(data, map_data))) + "\n")
     return 0

@@ -5,7 +5,9 @@
 The models' training cutoff is given only as a month, June 2026, so a key line
 changed during June could fall on either side of it. This prints, per repo,
 how the key lines the cutoff tags count split into before June 2026, June 2026
-and after 2026-06-30.
+and after 2026-06-30. It also prints each repo's Python at the pinned commit:
+every .py file, and the .py files in the questions' key scope (eval/common/
+pylines.py, the method the refresh capture uses too).
 
 Read only. The questions come from the frozen eval/questions/<repo>.json, the
 key lines from generate.py's key_ranges (the one builder the tags use), and the
@@ -21,13 +23,17 @@ import argparse
 import datetime as dt
 import json
 import sys
+import textwrap
 from pathlib import Path
 
 QUESTIONS = Path(__file__).resolve().parents[1] / "questions"
 sys.path.insert(0, str(QUESTIONS))
+sys.path.insert(0, str(QUESTIONS.parent / "common"))
 
 from generate import key_ranges  # noqa: E402
-from repo import Repo  # noqa: E402
+from pylines import METHOD as PY_LINES_METHOD  # noqa: E402
+from pylines import py_lines  # noqa: E402
+from repo import Repo, in_scope  # noqa: E402
 
 WIDTH = 74
 REPOS = ("nanochat", "waku-agent")
@@ -88,9 +94,34 @@ def check_repo(name, clone=None):
         total = add(total, per_q)
     frozen_counted = sum(q["cutoff"]["lines_counted"] for q in data["questions"])
     frozen_after = sum(q["cutoff"]["lines_after"] for q in data["questions"])
-    return {"questions": len(data["questions"]), "split": total, "authored_in": authored.get("in", 0),
-            "with_june": with_june, "frozen_counted": frozen_counted, "frozen_after": frozen_after,
-            "commit": repo.commit, "cutoff": data["cutoff"]}
+    result = {"questions": len(data["questions"]), "split": total, "authored_in": authored.get("in", 0),
+              "with_june": with_june, "frozen_counted": frozen_counted, "frozen_after": frozen_after,
+              "commit": repo.commit, "cutoff": data["cutoff"],
+              "py_all": py_lines(repo.clone, repo.commit),
+              "py_scope": py_lines(repo.clone, repo.commit, lambda path: in_scope(path, repo.code_dirs)),
+              "scope_text": repo.scope_text}
+    if result["py_scope"] is not None and result["py_scope"][0] != len(repo.py_files()):
+        raise SystemExit(f"{name}: key-scope .py count differs from Repo.py_files()")
+    return result
+
+
+def python_lines(results):
+    """The 'Python at the pinned commit' lines: every .py file, and the questions' key scope."""
+    def cell(v, i):
+        return "not recorded" if v is None else f"{v[i]:,}"
+    out = textwrap.wrap(f"Python at the pinned commit: {PY_LINES_METHOD}; key scope = the .py files the "
+                        "questions' keys may cite (below).", WIDTH, initial_indent="  ", subsequent_indent="  ")
+    out.append(f"  {'':<20}{'every .py file':>22}{'in key scope':>23}")
+    out.append(f"  {'repo':<12}{'commit':<8}{'files':>11}{'lines':>11}{'files':>12}{'lines':>11}")
+    for name, r in results:
+        a, k = r["py_all"], r["py_scope"]
+        out.append(f"  {name:<12}{r['commit'][:7]:<8}{cell(a, 0):>11}{cell(a, 1):>11}{cell(k, 0):>12}"
+                   f"{cell(k, 1):>11}")
+    out.append("  key scope:")
+    for name, r in results:
+        out += textwrap.wrap(f"{name}: {r['scope_text']}", WIDTH, initial_indent="    ",
+                             subsequent_indent="      ", break_on_hyphens=False)
+    return out
 
 
 def render(results):
@@ -125,6 +156,8 @@ def render(results):
               and r["cutoff"] == f"{MONTH}-30")
         out.append(f"    {name:<12}counted {r['frozen_counted']}, after {r['cutoff']} {r['frozen_after']}: "
                    + ("match" if ok else "MISMATCH"))
+    out.append("")
+    out += python_lines(results)
     return "\n".join(line.rstrip() for line in out) + "\n"
 
 

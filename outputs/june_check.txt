@@ -20,3 +20,15 @@ Eval key lines last changed in June 2026
   check against the frozen JSON (sums of lines_counted, lines_after):
     nanochat    counted 1366, after 2026-06-30 209: match
     waku-agent  counted 2421, after 2026-06-30 2421: match
+
+  Python at the pinned commit: every .py file in the commit's tree (git
+  ls-tree -r), lines counted as wc -l counts them; key scope = the .py
+  files the questions' keys may cite (below).
+                              every .py file           in key scope
+  repo        commit        files      lines       files      lines
+  nanochat    92d63d4          36      7,775          30      6,715
+  waku-agent  2c7e7e6         386     87,084          99     21,564
+  key scope:
+    nanochat: every tracked .py outside tests/, test/, examples/, docs/
+    waku-agent: every tracked .py under waku/ (hosted/, evals/, lab/,
+      scripts/, examples/, docs/ excluded)

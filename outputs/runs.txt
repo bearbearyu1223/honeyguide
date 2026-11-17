@@ -149,8 +149,8 @@ means not supported after round r-1.
   nanochat            260         117               39                4
   waku-agent          266          36               13                1
   newly not supported = re-checked claims the re-check found not supported
-  (before repair); still not supported = of those, not supported after
-  repair round 2.
+  (before repair); still not supported = of those, not supported when this
+  pass's repair ended (tries each got: the last table below).
 
   Re-checked claims by state:
   repo        stage                  supported not supp. unchecked retired
@@ -167,6 +167,14 @@ means not supported after round r-1.
   nanochat        2                 0          3        0
   waku-agent      1                 3         10        0
   waku-agent      2                 4          1        0
+
+  Still not supported when this pass ended, by the repairs each claim got
+  (one repair = one try): in this pass (entries it added) and in earlier
+  passes (entries saved before it).
+  repo         tries in this pass    tries before it  claims
+  nanochat                      2                  0       2
+  nanochat                      1                  1       2
+  waku-agent                    2                  0       1
 
 readability
 --------------------------------------------------------------------------

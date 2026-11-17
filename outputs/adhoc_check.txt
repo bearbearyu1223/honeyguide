@@ -498,6 +498,14 @@ spot-check review of the Checker's verdicts
   not_supported        6      2       0           4
   wrong                5      3       2           0
   not_a_claim          5      5       0           0
+  by arm (the spot-check sample each item came from):
+  arm             verdict          items  agree  change  borderline
+  ad-hoc answers  supported            5      5       0           0
+  ad-hoc answers  not_supported        5      2       0           3
+  ad-hoc answers  wrong                5      3       2           0
+  ad-hoc answers  not_a_claim          5      5       0           0
+  map claims      supported            9      9       0           0
+  map claims      not_supported        1      0       0           1
   #6 not_supported (borderline): reasonable inference, presented as
       rationale
   #10 not_supported (borderline): reasonable inference; the mechanism is

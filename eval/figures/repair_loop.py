@@ -169,7 +169,7 @@ def draw(loop: RepairLoop, theme: Theme, path: Path) -> Path:
              size=9.5)
 
         # no -> the Cartographer repairs it
-        ry, rw, rh = 1.75, 8.1, 2.3
+        ry, rw, rh = 1.75, 8.9, 2.3
         rcx = dx
         top = ry + rh / 2
         arrow((dx, dy - hh), (dx, top), theme.no, lw=2.2)
@@ -184,8 +184,8 @@ def draw(loop: RepairLoop, theme: Theme, path: Path) -> Path:
         for i, yy in ((0, ry - 0.2), (1, ry - 0.68)):
             more = (f" (all {m[i]} cite more lines)" if m[i] == a[i] else f" ({m[i]} cite more lines)") if i == 0 else ""
             note(x0, yy, f"round {i + 1}", color=theme.no, bold=True, ha="left")
-            note(x0 + 0.95, yy, f"{a[i]} re-cited{more}, {w[i]} narrowed, {r[i]} retired", color=theme.ink,
-                 ha="left")
+            note(x0 + 0.95, yy, f"{a[i]} anchors replaced{more}, {w[i]} rewritten, {r[i]} retired",
+                 color=theme.ink, ha="left")
 
         # back to the Checker: only the claims that changed, at most two rounds per pass
         arrow((rcx - rw / 2, ry), (5.9, y - 0.65), theme.no, rad=-0.3, lw=1.8)

@@ -206,6 +206,61 @@ def test_refresh_outcome_and_current_but_false(archive):
     assert m == {"new": (1, 1), "changed": (0, 1)}
 
 
+def test_claim_retired_before_the_refresh_is_not_a_new_claim():
+    """fbd9a6eca (review round 3): plan_refresh skips claims already retired, so the plan does not list them; a
+    claim the build's repair pass (or an earlier refresh apply, which stamps no retired_at) retired is not new."""
+    plan = {"target": "t", "claims": [{"id": "c1", "state": "unchanged"}]}
+    claims = [
+        claim("c1", "t"),
+        claim("old", "t", freshness="retired", retired_at=BUILD_AT, repairs=[rep(1, "retire", BUILD_AT)]),
+        claim("old_apply", "t", freshness="retired"),                       # retired by an earlier refresh apply
+        claim("new_then_retired", "t", freshness="retired", retired_at=LATER, checked_at=LATER),
+        claim("new", "t", checked_at=LATER),
+    ]
+    out = cap.refresh_outcome(plan, claims, START)
+    assert out["new"] == 2 and out["retired_before"] == 2
+    assert [c["id"] for c in cap.new_claims(plan, claims, START)] == ["new_then_retired", "new"]
+    assert out["remap_by_class"]["new"] == 1
+    v = cap.new_claim_verdicts(plan, claims, START)
+    assert sum(v["first"].values()) == 2
+
+
+def test_parse_reflog_and_head_at():
+    text = ("bbbbbbb1\tHEAD@{2026-11-16T15:23:33-08:00}\n"
+            "aaaaaaa1\tHEAD@{2026-11-16T00:20:17-08:00}\n"
+            "not a reflog line\n")
+    entries = cap.parse_reflog(text)
+    assert [s for _, s in entries] == ["bbbbbbb1", "aaaaaaa1"]
+    sha_, since = cap.head_at(entries, "2026-11-16T23:23:49Z")             # 16 s after the move to bbbbbbb1
+    assert sha_ == "bbbbbbb1" and since.strftime("%Y-%m-%d %H:%M:%S") == "2026-11-16 23:23:33"
+    assert cap.head_at(entries, "2026-11-16T23:23:32Z")[0] == "aaaaaaa1"   # one second before it
+    assert cap.head_at(entries, "2026-11-16T08:20:16Z") is None             # before the first entry
+    assert cap.head_at(entries, None) is None and cap.parse_reflog(None) == []
+
+
+def test_run_commits_from_the_worktree_reflog(archive, tmp_path):
+    root, runs, _ = archive
+    wt = tmp_path / "honeyguide-run"
+    wt.mkdir()
+    env = {**os.environ, "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@example.com",
+           "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
+
+    def g(*args, date):
+        return subprocess.run(["git", "-C", str(wt), *args], check=True, capture_output=True, text=True,
+                              env=dict(env, GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)).stdout.strip()
+    g("init", "-q", date="2025-12-31T00:00:00+00:00")
+    g("commit", "-q", "--allow-empty", "-m", "one", date="2025-12-31T00:00:00+00:00")
+    first = g("rev-parse", "HEAD", date="2025-12-31T00:00:00+00:00")
+    g("commit", "-q", "--allow-empty", "-m", "two", date="2026-01-03T00:00:00+00:00")   # after E2's runs
+    out = cap.render(root, runs, wt)
+    commits = section(out, "commits")
+    assert f"    E2 build              2026-01-01 00:00:00 {first[:7]}  2025-12-31 00:00:00" in commits
+    assert f"    E2 refresh            2026-01-02 00:00:00 {first[:7]}  2025-12-31 00:00:00" in commits
+    assert "runs started on the same commit" not in commits                 # E3 ran after the second commit
+    assert f"(same Honeyguide commit as the refresh, {first[:7]}, by the reflog;" in " ".join(
+        section(out, "cost").split())
+
+
 def test_retired_by_repair_is_not_a_remap():
     c = claim("c", "t", freshness="retired", retired_at=LATER, repairs=[rep(1, "retire", LATER)])
     assert cap.retired_by_repair(c)
@@ -225,6 +280,8 @@ def test_render_reads_git_store_and_runs_txt(archive):
     assert "commits in between  2" in commits
     assert ".py files changed   2 (+4 / -0 lines)" in commits
     assert "all files changed   3 (+5 / -1 lines)" in commits
+    assert ".py lines at base   1 in 1 files" in commits
+    assert ".py lines at target 5 in 2 files" in commits
     cost = section(out, "cost")
     assert "$20.00" in cost and "$5.00" in cost
     assert "refresh / rebuild:  $ 0.25, wall minutes 0.50" in cost
@@ -241,8 +298,9 @@ def test_missing_values_print_not_recorded(archive):
     e3 = commits[commits.index("E3"):]
     assert "base                not recorded" in e3                      # no plan, no checkout
     assert "commits in between  not recorded" in e3
-    assert "Honeyguide code for E2's build and refresh and E3's refresh: not recorded" in " ".join(
-        commits.split())
+    assert "    E2 build              2026-01-01 00:00:00 not recorded" in commits   # no worktree, no reflog
+    assert "same commit" not in commits
+    assert "(Honeyguide commit not recorded; full Explore" in " ".join(section(out, "cost").split())
     cost = section(out, "cost")
     assert "refresh, attempt 2: $ list not recorded, wall min 10.0, session not recorded" in " ".join(
         cost.split())

@@ -6,7 +6,8 @@
 claims not supported or wrong in each, and the difference's 95% CI spans zero.
 
 Left: the share not supported + wrong per arm, with its counts. Right: the difference (ad-hoc minus map) with its
-95% CI. A note gives the spot-check review of the Checker's own verdicts. Every number is parsed from
+95% CI. A note gives the spot-check review of the Checker's own verdicts, with the 'supported' items split by the
+arm they came from. Every number is parsed from
 ``outputs/adhoc_check.txt`` (the comparison block and the spot-check review block); none is typed here. Light and
 dark, in the house style of the series' figures (llm-architectures-refresher's plotting.py), with the post's
 condition colours: the ad-hoc answers are the explore condition's (blue), the map claims the map's (orange).
@@ -46,20 +47,30 @@ class Arm:
         return self.not_supported + self.wrong
 
 
+VERDICTS = ("supported", "not_supported", "wrong", "not_a_claim")
+ARMS = ("ad-hoc answers", "map claims")
+NONE = (0, 0, 0, 0)
+
+
 @dataclass(frozen=True)
 class Review:
-    """The spot-check review of the Checker's verdicts: per verdict, items and how many the reviewer agreed with."""
+    """The spot-check review of the Checker's verdicts: per verdict, items and how many the reviewer agreed with,
+    in total and per arm (the spot-check sample each item came from)."""
 
     reviewer: str
     rows: dict[str, tuple[int, int, int, int]]     # verdict -> items, agree, change, borderline
+    arms: dict[str, dict[str, tuple[int, int, int, int]]]     # arm -> verdict -> the same
+
+    def arm(self, arm: str, verdict: str) -> tuple[int, int, int, int]:
+        return self.arms.get(arm, {}).get(verdict, NONE)
 
     @property
-    def strict(self) -> bool:
-        """Every disagreement (change or borderline) is on a verdict that faults the claim, none on 'supported'."""
+    def none_lenient(self) -> bool:
+        """No disagreement (change or borderline) says the Checker was too lenient: the reviewer agreed with every
+        'supported' verdict and with every 'not_a_claim', so each one is on a verdict that faults the claim."""
         items, agree, change, border = self.rows["supported"]
-        faulted = sum(self.rows[v][2] + self.rows[v][3] for v in ("not_supported", "wrong"))
-        nac = self.rows.get("not_a_claim", (0, 0, 0, 0))
-        return agree == items and change == border == 0 and nac[2] == nac[3] == 0 and faulted > 0
+        nac = self.rows.get("not_a_claim", NONE)
+        return agree == items > 0 and change == border == 0 and nac[2] == nac[3] == 0
 
 
 @dataclass(frozen=True)
@@ -115,12 +126,21 @@ def parse(text: str) -> AdhocCheck:
     r = re.search(r"reviewer: ChatGPT \(([^)]+)\)", body)
     if not r:
         raise ValueError("spot-check review: no reviewer")
-    rows = {v: tuple(int(x) for x in m.groups()) for v in ("supported", "not_supported", "wrong", "not_a_claim")
+    rows = {v: tuple(int(x) for x in m.groups()) for v in VERDICTS
             for m in [re.search(rf"^\s+{v}\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$", body, re.M)] if m}
     if len(rows) != 4:
         raise ValueError(f"spot-check review: verdict rows {sorted(rows)}")
+    by_arm: dict[str, dict[str, tuple[int, int, int, int]]] = {}
+    for arm, v, *nums in re.findall(rf"^\s+({'|'.join(map(re.escape, ARMS))})\s+(\S+){COUNT * 4}\s*$", body, re.M):
+        by_arm.setdefault(arm, {})[v] = tuple(int(x) for x in nums)
+    if not by_arm:
+        raise ValueError("spot-check review: no per-arm rows")
+    for v in VERDICTS:
+        summed = tuple(sum(xs) for xs in zip(*(by_arm.get(a, {}).get(v, NONE) for a in ARMS), strict=True))
+        if summed != rows[v]:
+            raise ValueError(f"spot-check review: {v}: the arms sum to {summed}, the total row says {rows[v]}")
     return AdhocCheck(arms["ad-hoc answers"], arms["map claims"], diff, lo, hi, int(a.group(1)),
-                      Review(r.group(1), rows))
+                      Review(r.group(1), rows, by_arm))
 
 
 def takeaway(c: AdhocCheck) -> str:
@@ -130,13 +150,21 @@ def takeaway(c: AdhocCheck) -> str:
     return "Ad-hoc answers and unchecked map claims are about equally accurate"
 
 
-def strict_note(c: AdhocCheck) -> str:
-    """The note on the Checker, checked: it says 'errs strict' only if the reviewer agreed with every 'supported'."""
-    if not c.review.strict:
-        raise ValueError(f"the spot-check review does not show a strict Checker: {c.review.rows}")
-    items, agree, _, _ = c.review.rows["supported"]
-    return (f"A second model ({c.review.reviewer}) agreed with {agree}/{items} 'supported' verdicts; "
-            f"every disagreement said the Checker was too strict")
+def review_note(c: AdhocCheck) -> str:
+    """The note on the Checker's own verdicts, checked: it says no disagreement called the Checker too lenient only
+    when that holds (Review.none_lenient), and gives the 'supported' items per arm, since they came from both."""
+    rv = c.review
+    if not rv.none_lenient:
+        raise ValueError(f"the spot-check review has a disagreement on a 'supported' or 'not_a_claim' verdict: "
+                         f"{rv.rows}")
+    items, agree, _, _ = rv.rows["supported"]
+    adhoc, mapc = (rv.arm(a, "supported")[0] for a in ARMS)
+    w_items, _, w_change, _ = rv.rows["wrong"]
+    n_items, _, _, n_border = rv.rows["not_supported"]
+    return (f"Spot check by a second model ({rv.reviewer}), from a sheet without the source: it agreed with "
+            f"{agree} of {items} 'supported' verdicts ({adhoc} ad-hoc, {mapc} map),\nso no disagreement said the "
+            f"Checker was too lenient; it would change {w_change} of {w_items} 'wrong' verdicts and called "
+            f"{n_border} of {n_items} 'not supported' borderline")
 
 
 # -- the figure --------------------------------------------------------------------------------------------------------
@@ -185,7 +213,7 @@ def draw(c: AdhocCheck, theme: Theme, path: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    title, note = takeaway(c), strict_note(c)
+    title, note = takeaway(c), review_note(c)
     with plt.rc_context(style(theme)):
         fig, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6.0), gridspec_kw={"width_ratios": [1.25, 1], "wspace": 0.35})
         fig.subplots_adjust(top=0.84, bottom=0.24)

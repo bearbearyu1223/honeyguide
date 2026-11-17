@@ -7,7 +7,9 @@ commits
 --------------------------------------------------------------------------
 Base and target are the refresh plan's; dates are git committer dates;
 commits in between from git rev-list --count base..target; files from git
-diff --numstat base target, in each experiment's checkout.
+diff --numstat base target; Python lines: every .py file in the commit's
+tree (git ls-tree -r), lines counted as wc -l counts them; all in each
+experiment's checkout.
   E2  nanochat: nanochat across its July rewrite
     base                dc54a1a  2026-05-05 03:17 UTC
     target              92d63d4  2026-07-03 22:54 UTC
@@ -15,6 +17,8 @@ diff --numstat base target, in each experiment's checkout.
     commits in between  60
     .py files changed   33 (+1070 / -2498 lines)
     all files changed   42 (+1194 / -4079 lines)
+    .py lines at base   9,203 in 36 files
+    .py lines at target 7,775 in 36 files
   E3  waku-agent: waku-agent, an ordinary day
     base                2c7e7e6  2026-11-15 05:09 UTC
     target              21dcd56  2026-11-16 23:08 UTC
@@ -22,11 +26,19 @@ diff --numstat base target, in each experiment's checkout.
     commits in between  2
     .py files changed   3 (+155 / -5 lines)
     all files changed   3 (+155 / -5 lines)
+    .py lines at base   87,084 in 386 files
+    .py lines at target 87,234 in 387 files
 
-  Honeyguide code for E2's build and refresh and E3's refresh: e855908
-  (git rev-parse HEAD in the honeyguide-run worktree, read when this
-  capture ran: the HEAD now, not a commit the archive recorded at run
-  time).
+  Honeyguide code at each run's start: the commit the honeyguide-run
+  worktree's HEAD was on (its reflog, git reflog --date=iso-strict) at the
+  time in the run's start file. The reflog records HEAD moves, not
+  uncommitted edits.
+    run                   start (UTC)         commit   HEAD on it since
+    E2 build              2026-11-16 23:34:10 e855908  2026-11-16 23:23:33
+    E2 refresh            2026-11-17 00:55:27 e855908  2026-11-16 23:23:33
+    E3 refresh, attempt 1 2026-11-16 23:23:49 e855908  2026-11-16 23:23:33
+    E3 refresh, attempt 2 2026-11-16 23:25:19 e855908  2026-11-16 23:23:33
+    all 4 runs started on the same commit, e855908
 
 plan
 --------------------------------------------------------------------------
@@ -84,8 +96,9 @@ minutes.
       subagents cartographer 2, checker 3; result success; permission
       denials 1 (Bash 1)
 
-    rebuild: the build above (same Honeyguide code, full Explore + Checker
-    + repair at the base commit).
+    rebuild: the build above (same Honeyguide commit as the refresh,
+    e855908, by the reflog; full Explore + Checker + repair at the base
+    commit).
     refresh / rebuild:  $ 0.51, wall minutes 0.48
   E3  waku-agent: waku-agent, an ordinary day
     run                      $ list  wall min  session  turns  exit
@@ -123,10 +136,12 @@ refresh
 --------------------------------------------------------------------------
 What the refresh did, from the store saved after it and the plan taken
 before it (never the agent's prose). Refresh start = the first refresh
-run's start. New claims: ids the plan does not list. Retired by refresh
-apply: classed retired by the plan. Retired by the re-map: a retired_at in
-the refresh, not a repair's retire. Verdicts: each claim's saved check; a
-repair at round r in the refresh means not supported after round r-1.
+run's start. New claims: ids the plan does not list, less any already
+retired before the refresh (the plan skips retired claims). Retired by
+refresh apply: classed retired by the plan. Retired by the re-map: a
+retired_at in the refresh, not a repair's retire. Verdicts: each claim's
+saved check; a repair at round r in the refresh means not supported after
+round r-1.
   E2  nanochat: nanochat across its July rewrite
     map commit after    92d63d4 (= target)
     claims after        397: current 319, stale 0, retired 78

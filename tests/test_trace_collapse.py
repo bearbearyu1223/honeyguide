@@ -1,13 +1,20 @@
 """Pure views of a kept path: tree, folding, depth limit, rendering, diffing,
 and the capture's anchor and coverage helpers."""
 
+import importlib.util
 import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval" / "trace"))
-from capture import coverage, resolve_anchor  # noqa: E402
+TRACE = Path(__file__).resolve().parents[1] / "eval" / "trace"
+sys.path.insert(0, str(TRACE))
+# By path under its own name: eval/runs and eval/refresh have a capture.py too, and a bare
+# `import capture` gets whichever one another test module put in sys.modules first.
+_spec = importlib.util.spec_from_file_location("eval_trace_capture", TRACE / "capture.py")
+_cap = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_cap)
+coverage, resolve_anchor = _cap.coverage, _cap.resolve_anchor
 from tracer import (  # noqa: E402
     build_tree, collapse, first_difference, fold, path_key, render_rows,
 )

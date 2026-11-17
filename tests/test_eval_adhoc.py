@@ -808,3 +808,33 @@ def test_review_block_names_the_reviewer_and_counts_from_rows():
     assert "#2 wrong (change): minor" in out
     assert all(len(x) <= 74 for x in out.splitlines())
     assert "not recorded (no spot_check_review.json)" in "\n".join(R.review_block(None))
+
+
+def test_review_block_splits_the_counts_by_arm():
+    """ff73b70f0 (review round 3): the 'supported' items came from both arms; the block says how many from each."""
+    import adhoc_report as R
+    rev = {"reviewer": "GPT-6", "how": "sheet", "items": [
+        {"n": 1, "unit": "a#s1", "verdict": "supported", "review": "agree"},
+        {"n": 2, "unit": "a#s2", "verdict": "not_supported", "review": "borderline", "note": "x"},
+        {"n": 3, "unit": "map-b01#s1", "verdict": "supported", "review": "agree"},
+        {"n": 4, "unit": "map-b01#s2", "verdict": "supported", "review": "agree"},
+        {"n": 5, "unit": "lost#s1", "verdict": "wrong", "review": "agree"}]}
+    arms = {"a#s1": "ad-hoc answers", "a#s2": "ad-hoc answers", "map-b01#s1": "map claims",
+            "map-b01#s2": "map claims"}
+    out = R.review_block(rev, arms)
+    assert "  ad-hoc answers  supported            1      1       0           0" in out
+    assert "  ad-hoc answers  not_supported        1      0       0           1" in out
+    assert "  map claims      supported            2      2       0           0" in out
+    assert "  not recorded    wrong                1      1       0           0" in out
+    assert all(len(x) <= 74 for x in out)
+    assert not any(x.startswith("  by arm") for x in R.review_block(rev))     # no arms: the old block
+
+
+def test_review_arms_are_the_spot_check_samples():
+    import adhoc_report as R
+    rows = [{"unit": f"u{i}", "verdict": v} for i, v in enumerate(["supported", "wrong", "not_supported"] * 3)]
+    mrows = [{"unit": f"m{i}", "verdict": "supported"} for i in range(12)]
+    data, mdata = {"plan": {"seed": 7}, "rows": rows}, {"rows": mrows}
+    arms = R.review_arms(data, mdata)
+    assert {u for u, a in arms.items() if a == "ad-hoc answers"} == {r["unit"] for r in R.sample(rows, 7)}
+    assert {u for u, a in arms.items() if a == "map claims"} == {r["unit"] for r in R.sample(mrows, 7, R.MAP_SAMPLE)}

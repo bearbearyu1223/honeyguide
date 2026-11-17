@@ -46,6 +46,8 @@ class Experiment:
     ratio_min: float
     attempts: int                        # refresh runs summed into refresh_*
     rebuild_passes: tuple[str, ...]      # separate runs summed into rebuild_*; () if one build run
+    same_code: bool = False              # the receipt says (from the run worktree's reflog) the rebuild ran on the
+                                         # same Honeyguide commit as the refresh
 
     @property
     def fraction(self) -> int:
@@ -113,7 +115,8 @@ def parse(text: str) -> tuple[Experiment, ...]:
             if f"{got:.2f}" != f"{want:.2f}":
                 raise ValueError(f"cost: {key}'s refresh / rebuild in {unit} is {got:.3f}, the receipt says {want}")
         out.append(Experiment(key, repo, what, float(d.group(1)), int(n.group(1)), rebuild[0], rebuild[1],
-                              refresh[0], refresh[1], ratio_usd, ratio_min, attempts, passes))
+                              refresh[0], refresh[1], ratio_usd, ratio_min, attempts, passes,
+                              "same Honeyguide commit as the refresh" in " ".join(cb.split())))
     return tuple(sorted(out, key=lambda e: e.commits))
 
 
@@ -133,8 +136,10 @@ def footnote(exps: tuple[Experiment, ...]) -> str:
             names = ", ".join(re.sub(r"^run \d+$", "build", x) for x in e.rebuild_passes)
             lines.append(f"{e.repo}'s rebuild ran earlier, on older Honeyguide code, as {len(e.rebuild_passes)} "
                          f"separate runs ({names})")
-        else:
+        elif e.same_code:
             lines.append(f"{e.repo}'s rebuild is the full build at the older commit, on the same Honeyguide code")
+        else:
+            raise ValueError(f"{e.key}: the receipt does not say its rebuild ran on the refresh's Honeyguide commit")
         if e.attempts > 1:
             lines[-1] += f"; its refresh took {e.attempts} attempts, both counted"
     return ".\n".join(lines) + "."

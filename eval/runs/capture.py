@@ -185,7 +185,8 @@ def one_pass(claims, key):
 
 def recheck_summary(before_claims, after_claims):
     """The re-check pass from two map snapshots: claims re-checked, their state before repair and after each
-    round of this pass (from the repairs it added, renumbered by pass_rounds), and its actions per round."""
+    round of this pass (from the repairs it added, renumbered by pass_rounds), its actions per round, and for
+    the claims still not supported at its end, {(repairs this pass added, repairs saved before it): claims}."""
     before = {c["id"]: c for c in before_claims}
     ids = set(rechecked_ids(before_claims, after_claims))
     added = {c["id"]: new_repairs(before[c["id"]], c) for c in after_claims if c["id"] in ids}
@@ -197,8 +198,11 @@ def recheck_summary(before_claims, after_claims):
         for r in c["repairs"]:
             row = rounds.setdefault(r.get("round", 0), {"anchor": 0, "rewrite": 0, "retire": 0})
             row[r.get("action")] = row.get(r.get("action"), 0) + 1
+    left = Counter((len(c["repairs"]), len(before[c["id"]].get("repairs") or [])) for c in pruned
+                   if claim_state(c, 2) == "not_supported")
     return {"claims": len(after_claims), "rechecked": len(pruned),
-            "stages": {k: stage_counts(pruned, k) for k in (0, 1, 2)}, "rounds": rounds}
+            "stages": {k: stage_counts(pruned, k) for k in (0, 1, 2)}, "rounds": rounds,
+            "left_tries": dict(sorted(left.items(), reverse=True))}
 
 
 def map_stats(layer):
@@ -452,7 +456,8 @@ def block_recheck(a):
         lines.append(f"  {repo:<12}{s['claims']:>11}{s['rechecked']:>12}{s['stages'][0]['not_supported']:>17}"
                      f"{s['stages'][2]['not_supported']:>17}")
     lines += wrap("newly not supported = re-checked claims the re-check found not supported (before repair); "
-                  "still not supported = of those, not supported after repair round 2.", "  ")
+                  "still not supported = of those, not supported when this pass's repair ended (tries each "
+                  "got: the last table below).", "  ")
     lines.append("")
     lines.append("  Re-checked claims by state:")
     lines.append(f"  {'repo':<12}{'stage':<22}{'supported':>10}{'not supp.':>10}{'unchecked':>10}{'retired':>8}")
@@ -472,6 +477,16 @@ def block_recheck(a):
         for rnd in sorted(s["rounds"]):
             r = s["rounds"][rnd]
             lines.append(f"  {repo:<12}{rnd:>5}{r['anchor']:>18}{r['rewrite']:>11}{r['retire']:>9}")
+    lines.append("")
+    lines += wrap("Still not supported when this pass ended, by the repairs each claim got (one repair = one "
+                  "try): in this pass (entries it added) and in earlier passes (entries saved before it).", "  ")
+    lines.append(f"  {'repo':<12}{'tries in this pass':>19}{'tries before it':>19}{'claims':>8}")
+    for repo in a["repos"]:
+        s = sums.get(repo)
+        if s is None:
+            continue
+        for (now, before), n in s["left_tries"].items():
+            lines.append(f"  {repo:<12}{now:>19}{before:>19}{n:>8}")
     return lines
 
 

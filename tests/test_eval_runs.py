@@ -187,6 +187,23 @@ def test_recheck_helpers():
     assert [r["round"] for r in cap.pass_rounds(reps)] == [1, 1, 2]
 
 
+def test_recheck_summary_counts_the_tries_of_claims_left_not_supported():
+    """f65924889 (review round 3): a claim repaired in an earlier pass may get one try in this one (the old cap
+    counted every repair a claim ever had); the summary says how many each leftover claim got, and before."""
+    t0, t1, t2 = "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z", "2026-01-02T00:05:00Z"
+    old = rep(1, "anchor", "t", [], t0)
+    before = [dict(claim("two"), checked_at=t0), dict(claim("one", repairs=[old]), checked_at=t0),
+              dict(claim("fixed"), checked_at=t0)]
+    after = [dict(claim("two", check="not_supported", repairs=[rep(1, "rewrite", "t", [], t1),
+                                                                rep(2, "rewrite", "t", [], t2)]), checked_at=t2),
+             dict(claim("one", check="not_supported", repairs=[old, rep(2, "rewrite", "t", [], t1)]), checked_at=t1),
+             dict(claim("fixed", repairs=[rep(1, "anchor", "t", [], t1)]), checked_at=t1)]
+    s = cap.recheck_summary(before, after)
+    assert s["stages"][2]["not_supported"] == 2
+    assert s["left_tries"] == {(2, 0): 1, (1, 1): 1}
+    assert list(s["left_tries"]) == [(2, 0), (1, 1)]          # most tries first
+
+
 def test_pass_rounds_use_the_recorded_pass_and_round():
     """Entries that record their pass and round keep them: one round split over two seconds stays one round.
     Legacy entries in the same list are still numbered by their own timestamps."""

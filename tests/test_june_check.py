@@ -31,6 +31,17 @@ def test_split_lines_counts_non_blank_lines_by_window():
     assert jc.add({"in": 1}, {"in": 2, "after": 3}) == {"in": 3, "after": 3}
 
 
+def test_python_lines_block_fits_and_marks_missing():
+    results = [("nanochat", {"commit": "92d63d4e8bb4", "py_all": (36, 7775), "py_scope": (30, 6715),
+                             "scope_text": "every tracked .py"}),
+               ("waku-agent", {"commit": "2c7e7e68d3d6", "py_all": None, "py_scope": None,
+                               "scope_text": "every tracked .py under waku/"})]
+    out = jc.python_lines(results)
+    assert all(len(line) <= jc.WIDTH for line in out)
+    assert "  nanochat    92d63d4          36      7,775          30      6,715" in out
+    assert "not recorded" in next(line for line in out if line.startswith("  waku-agent"))
+
+
 @pytest.mark.skipif(not all((TARGETS / r).exists() for r in jc.REPOS), reason="target clones not present")
 def test_receipt_matches_the_frozen_tags_and_is_saved():
     out = subprocess.run([sys.executable, str(SRC)], capture_output=True, text=True, check=True).stdout

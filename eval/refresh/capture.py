@@ -4,11 +4,12 @@ ordinary day).
     uv run python eval/refresh/capture.py > outputs/refresh.txt 2> outputs/refresh.err
 
 Reads the refresh archive (default ~/Documents/GitHub/honeyguide-targets/_refresh, or --archive DIR), the runs
-receipt (outputs/runs.txt, for E3's rebuild) and the honeyguide-run worktree's HEAD; never writes to any of them.
+receipt (outputs/runs.txt, for E3's rebuild) and the honeyguide-run worktree's HEAD reflog (which commit it was on
+when each run started); never writes to any of them.
 Prints six labelled blocks: commits, plan, cost, refresh, current-but-false, build. Every number is read from
 the archive, git or runs.txt; a value none of them holds prints as "not recorded". Nothing is read from an agent's
 prose (its ``result`` text, activity statuses, retire reasons). Repos are printed by name, never by path.
-Standard library only, plus honeyguide's own constants.
+Standard library only, plus honeyguide's own constants and eval/common/pylines.py.
 """
 
 import argparse
@@ -21,6 +22,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "common"))
+from pylines import METHOD as PY_LINES_METHOD  # noqa: E402
+from pylines import py_lines  # noqa: E402
+
 try:
     from honeyguide.refresh import CLAIM_STATES
     from honeyguide.store import FRESHNESS
@@ -38,15 +43,18 @@ DEFAULT_RUN_WORKTREE = GITHUB / "honeyguide-run"
 SHORT = 7
 CURRENT_CLASSES = ("unchanged", "moved")   # the plan's "still current" classes
 
-# What each experiment's archive holds. ``runs``: (label, subdir) in order; ``refresh``: the subdirs that make up
+# What each experiment's archive holds. ``runs``: (label, subdir) in order (label: as the cost block prints it;
+# short: as the commits block's run table prints it); ``refresh``: the subdirs that make up
 # the refresh (the first one's start is the refresh's start); ``rebuild``: a subdir of this archive, or
 # ("runs.txt", repo, passes) for a pipeline read from the runs receipt.
 EXPERIMENTS = (
     {"name": "E2", "title": "nanochat across its July rewrite", "dir": "e2", "checkout": "nanochat",
-     "runs": (("build", "build"), ("refresh", "refresh")), "refresh": ("refresh",), "rebuild": "build",
+     "runs": (("build", "build", "E2 build"), ("refresh", "refresh", "E2 refresh")), "refresh": ("refresh",),
+     "rebuild": "build",
      "build_block": True},
     {"name": "E3", "title": "waku-agent, an ordinary day", "dir": "e3", "checkout": "waku-agent",
-     "runs": (("refresh, attempt 1", "run"), ("refresh, attempt 2", "run2")), "refresh": ("run", "run2"),
+     "runs": (("refresh, attempt 1", "run", "E3 refresh, attempt 1"),
+              ("refresh, attempt 2", "run2", "E3 refresh, attempt 2")), "refresh": ("run", "run2"),
      "rebuild": ("runs.txt", "waku-agent", ("run 2", "repair", "re-check")), "build_block": False},
 )
 
@@ -84,6 +92,33 @@ def days_between(a, b):
 
 def ratio(num, den):
     return None if num is None or not den else num / den
+
+
+def parse_reflog(text):
+    """[(UTC datetime, full sha)] from ``git reflog --date=iso-strict --format=%H%x09%gd``, newest first."""
+    out = []
+    for line in (text or "").splitlines():
+        if "\t" not in line:
+            continue
+        sha_, sel = line.split("\t", 1)
+        if "@{" not in sel:
+            continue
+        stamp = sel[sel.index("@{") + 2:sel.rindex("}")]
+        out.append((datetime.fromisoformat(stamp).astimezone(timezone.utc), sha_))
+    return out
+
+
+def head_at(entries, when):
+    """(sha, since) for the reflog entry in force at ``when`` (an ISO-Z string): the latest one at or before it.
+    None when ``when`` is missing or the reflog holds nothing that early."""
+    if not when:
+        return None
+    t = parse_time(when).replace(tzinfo=timezone.utc)
+    found = [(at, s) for at, s in entries if at <= t]
+    if not found:
+        return None
+    at, s = max(found)
+    return s, at
 
 
 def run_summary(result):
@@ -140,16 +175,30 @@ def retired_by_repair(claim):
     return bool(at) and any(r.get("action") == "retire" and r.get("at") == at for r in claim.get("repairs") or [])
 
 
+def retired_before(claim, start):
+    """True when the claim was already retired when the refresh started: retired, with a retired_at before
+    ``start`` or none at all (refresh apply stamps none, so a claim an earlier refresh retired has none)."""
+    return claim.get("freshness") == "retired" and (claim.get("retired_at") or "") < start
+
+
+def new_claims(plan, claims, start):
+    """The claims the refresh added: ids the plan does not list, less claims already retired before ``start``.
+    The plan lists every claim saved before the refresh except the retired ones (plan_refresh skips them), so
+    a claim a build's repair pass retired is missing from the plan without being new."""
+    classes = plan_classes(plan)
+    return [c for c in claims if c["id"] not in classes and not retired_before(c, start)]
+
+
 def refresh_outcome(plan, claims, start):
     """What the refresh did, from the plan taken before it and the store saved after it.
 
-    ``start`` is the refresh's start (ISO-Z). New claims are the store's claims whose ids the plan does not list
-    (the plan lists every claim saved before the refresh). Retired by refresh apply: the plan classed it retired
-    and it is retired now (apply_result stamps no retired_at). Retired later in the refresh: a retired_at at or
-    after ``start``; split into the repair pass's ``retire`` and the re-map's (claims save / claims retire)."""
+    ``start`` is the refresh's start (ISO-Z). New claims: see new_claims. Retired by refresh apply: the plan
+    classed it retired and it is retired now (apply_result stamps no retired_at). Retired later in the refresh:
+    a retired_at at or after ``start``; split into the repair pass's ``retire`` and the re-map's (claims save /
+    claims retire)."""
     classes = plan_classes(plan)
     by_id = {c["id"]: c for c in claims}
-    new = [c for c in claims if c["id"] not in classes]
+    new = new_claims(plan, claims, start)
     later = [c for c in claims if (c.get("retired_at") or "") >= start and c.get("freshness") == "retired"]
     remap = [c for c in later if not retired_by_repair(c)]
     by_class = Counter(classes.get(c["id"], "new") for c in remap)
@@ -160,6 +209,7 @@ def refresh_outcome(plan, claims, start):
     return {
         "after": freshness_counts(claims), "total": len(claims),
         "missing_from_store": sum(1 for i in classes if i not in by_id),
+        "retired_before": sum(1 for c in claims if c["id"] not in classes and retired_before(c, start)),
         "retired_by_apply": sum(1 for i, s in classes.items()
                                 if s == "retired" and (by_id.get(i) or {}).get("freshness") == "retired"),
         "retired_by_remap": len(remap), "retired_by_repair": len(later) - len(remap),
@@ -206,7 +256,7 @@ def rounds_summary(claims, start, before=False):
 
 def new_claim_verdicts(plan, claims, start):
     classes = plan_classes(plan)
-    new = [c for c in claims if c["id"] not in classes]
+    new = new_claims(plan, claims, start)
     old_repaired = sum(1 for c in claims if c["id"] in classes and repairs_in(c, start))
     passes = {r.get("pass") for c in claims for r in repairs_in(c, start)}
     return {"first": stage_verdicts(new, start, 0), "after": {k: stage_verdicts(new, start, k) for k in (1, 2)},
@@ -336,9 +386,9 @@ def load_experiment(archive, spec, runs_txt):
     edir = archive / spec["dir"]
     e = dict(spec)
     e["runs_data"] = []
-    for label, sub in spec["runs"]:
+    for label, sub, short in spec["runs"]:
         d = edir / sub
-        e["runs_data"].append({"label": label, "sub": sub, "start": read_text(d / "start"),
+        e["runs_data"].append({"label": label, "sub": sub, "short": short, "start": read_text(d / "start"),
                                "end": read_text(d / "end"), "exit": read_text(d / "exit"),
                                "result": read_json(d / "result.json")})
     e["refresh_start"] = next((r["start"] for r in e["runs_data"] if r["sub"] == spec["refresh"][0]), None)
@@ -358,6 +408,7 @@ def load_experiment(archive, spec, runs_txt):
         "base_date": commit_date(co, base), "target_date": commit_date(co, target),
         "count": git(co, "rev-list", "--count", f"{base}..{target}") if base and target else None,
         "py": diff_stat(co, base, target, "*.py"), "all": diff_stat(co, base, target),
+        "py_base": py_lines(co, base), "py_target": py_lines(co, target),
     }
     rb = spec["rebuild"]
     if isinstance(rb, tuple):
@@ -420,10 +471,15 @@ def exp_title(e):
     return f"  {e['name']}  {e['repo']}: {e['title']}"
 
 
-def block_commits(exps, honeyguide_sha):
+def run_commits(exps, reflog):
+    """[(short label, start, (sha, since) or None)] for every run, from the worktree's reflog."""
+    return [(r["short"], r["start"], head_at(reflog, r["start"])) for e in exps for r in e["runs_data"]]
+
+
+def block_commits(exps, reflog):
     lines = header("commits", "Base and target are the refresh plan's; dates are git committer dates; commits "
                               "in between from git rev-list --count base..target; files from git diff --numstat "
-                              "base target, in each experiment's checkout.")
+                              f"base target; Python lines: {PY_LINES_METHOD}; all in each experiment's checkout.")
     for e in exps:
         g = e["git"]
         lines.append(exp_title(e))
@@ -434,10 +490,22 @@ def block_commits(exps, honeyguide_sha):
         for label, st in ((".py files changed", g["py"]), ("all files changed", g["all"])):
             v = NOT_RECORDED if st is None else f"{st[0]} (+{st[1]} / -{st[2]} lines)"
             lines.append(f"    {label:<20}{v}")
+        for label, pl in ((".py lines at base", g["py_base"]), (".py lines at target", g["py_target"])):
+            v = NOT_RECORDED if pl is None else f"{pl[1]:,} in {pl[0]} files"
+            lines.append(f"    {label:<20}{v}")
     lines.append("")
-    lines += wrap(f"Honeyguide code for E2's build and refresh and E3's refresh: {honeyguide_sha or NOT_RECORDED} "
-                  "(git rev-parse HEAD in the honeyguide-run worktree, read when this capture ran: the HEAD now, "
-                  "not a commit the archive recorded at run time).", "  ")
+    lines += wrap("Honeyguide code at each run's start: the commit the honeyguide-run worktree's HEAD was on "
+                  "(its reflog, git reflog --date=iso-strict) at the time in the run's start file. The reflog "
+                  "records HEAD moves, not uncommitted edits.", "  ")
+    lines.append(f"    {'run':<22}{'start (UTC)':<20}{'commit':<9}{'HEAD on it since'}")
+    rows = run_commits(exps, reflog)
+    for short, start, at in rows:
+        st = parse_time(start).strftime("%Y-%m-%d %H:%M:%S") if start else NOT_RECORDED
+        lines.append(f"    {short:<22}{st:<20}" + (f"{sha(at[0]):<9}{at[1].strftime('%Y-%m-%d %H:%M:%S')}"
+                                                     if at else NOT_RECORDED))
+    shas = {at[0] for _, _, at in rows if at}
+    if rows and len(shas) == 1 and all(at for _, _, at in rows):
+        lines.append(f"    all {len(rows)} runs started on the same commit, {sha(next(iter(shas)))}")
     return lines
 
 
@@ -477,7 +545,7 @@ def run_rows(e):
     return rows
 
 
-def block_cost(exps):
+def block_cost(exps, reflog=()):
     lines = header("cost", "Each run on its own line. $ = total_cost_usd from claude -p's JSON result (API list "
                            "price; subscription runs). wall = the launcher's end - start; session = duration_ms. "
                            "Tokens and models from modelUsage (the whole session, subagents included). "
@@ -514,7 +582,7 @@ def block_cost(exps):
                              if s["denials"] else ""), "      ")
         lines += denial_lines(e)
         lines.append("")
-        lines += rebuild_lines(e, rows)
+        lines += rebuild_lines(e, rows, reflog)
     if any(s["partial"] for e in exps for _, s, _, _, _ in run_rows(e)):
         lines += wrap("* result_index > 0: turns and session minutes cover the last result segment only.", "  ")
     return lines
@@ -535,7 +603,7 @@ def denial_lines(e):
     return out
 
 
-def rebuild_lines(e, rows):
+def rebuild_lines(e, rows, reflog=()):
     rb = e["rebuild"]
     refresh = [(s, w) for (_, s, w, _, _), r in zip(rows, e["runs_data"], strict=True) if r["sub"] in e["refresh"]]
     r_cost, r_wall = add(s["cost"] for s, _ in refresh), add(w for _, w in refresh)
@@ -555,8 +623,16 @@ def rebuild_lines(e, rows):
         lines.append(f"    {'rebuild tokens':<22}{NOT_RECORDED} (runs.txt holds none)")
         lines.append("    (* in runs.txt: turns of the last result segment only)")
     else:
-        lines += wrap(f"rebuild: the {rb['source']} above (same Honeyguide code, full Explore + Checker + "
-                      "repair at the base commit).", "    ")
+        at = {r["sub"]: head_at(reflog, r["start"]) for r in e["runs_data"]}
+        mine = [at.get(sub) for sub in (rb["source"], *e["refresh"])]
+        if all(mine) and len({m[0] for m in mine}) == 1:
+            code = f"same Honeyguide commit as the refresh, {sha(mine[0][0])}, by the reflog"
+        elif all(mine):
+            code = "a different Honeyguide commit from the refresh, by the reflog"
+        else:
+            code = f"Honeyguide commit {NOT_RECORDED}"
+        lines += wrap(f"rebuild: the {rb['source']} above ({code}; full Explore + Checker + repair at the base "
+                      "commit).", "    ")
         s, w = next(((s, w) for (_, s, w, _, _), r in zip(rows, e["runs_data"], strict=True) if r["sub"] == rb["source"]),
                     (run_summary(None), None))
         b_cost, b_wall = s["cost"], w
@@ -573,7 +649,8 @@ def rebuild_lines(e, rows):
 def block_refresh(exps):
     lines = header("refresh", "What the refresh did, from the store saved after it and the plan taken before "
                               "it (never the agent's prose). Refresh start = the first refresh run's start. "
-                              "New claims: ids the plan does not list. Retired by refresh apply: classed "
+                              "New claims: ids the plan does not list, less any already retired before the "
+                              "refresh (the plan skips retired claims). Retired by refresh apply: classed "
                               "retired by the plan. Retired by the re-map: a retired_at in the refresh, not a "
                               "repair's retire. Verdicts: each claim's saved check; a repair at round r in the "
                               "refresh means not supported after round r-1.")
@@ -590,6 +667,8 @@ def block_refresh(exps):
         lines.append(f"    claims after        {o['total']}: " + ", ".join(f"{k} {v}" for k, v in o["after"].items()))
         if o["missing_from_store"]:
             lines.append(f"    plan claims missing from the store  {o['missing_from_store']}")
+        if o["retired_before"]:
+            lines.append(f"    retired before the refresh (not in the plan)  {o['retired_before']}")
         lines.append(f"    retired in the refresh  {o['retired_by_apply'] + o['retired_by_remap'] + o['retired_by_repair']}")
         lines.append(f"      by refresh apply (plan: retired)    {o['retired_by_apply']:>4}")
         lines.append(f"      by the re-map                       {o['retired_by_remap']:>4}")
@@ -598,7 +677,7 @@ def block_refresh(exps):
         lines += wrap("re-map retirements by plan class: " + ", ".join(f"{k} {bc[k]}" for k in bc), "      ",
                       "        ")
         lines.append(f"    new claims          {o['new']}")
-        for label, ids in (("by a new claim", {c["id"] for c in claims} - set(plan_classes(plan))),
+        for label, ids in (("by a new claim", {c["id"] for c in new_claims(plan, claims, start)}),
                            ("by any current claim", None)):
             m = uncovered_mapped(plan, claims, ids)
             parts = ", ".join(f"{k} {m[k][0]} of {m[k][1]}" for k in ("new", "changed") if k in m)
@@ -682,14 +761,15 @@ def block_build(exps):
 def render(archive, runs_txt_path=DEFAULT_RUNS_TXT, run_worktree=DEFAULT_RUN_WORKTREE):
     runs_txt = read_text(runs_txt_path) if runs_txt_path else None
     exps = [load_experiment(archive, spec, runs_txt) for spec in EXPERIMENTS]
-    hg = git(run_worktree, "rev-parse", "HEAD") if run_worktree else None
+    reflog = parse_reflog(git(run_worktree, "reflog", "--date=iso-strict", "--format=%H%x09%gd")
+                          if run_worktree else None)
     status(f"experiments: {', '.join(e['name'] + ' ' + e['repo'] for e in exps)}; runs.txt "
            f"{'found' if runs_txt else 'missing'}")
     lines = ["Honeyguide refresh: receipts", rule("="),
              f"  archive   {archive.parent.name}/{archive.name} (read only)",
              "  " + "; ".join(f"{e['name']} {e['repo']}" for e in exps)]
-    for block, args in ((block_commits, (exps, hg[:SHORT] if hg else None)), (block_plan, (exps,)),
-                        (block_cost, (exps,)), (block_refresh, (exps,)), (block_current_but_false, (exps,)),
+    for block, args in ((block_commits, (exps, reflog)), (block_plan, (exps,)),
+                        (block_cost, (exps, reflog)), (block_refresh, (exps,)), (block_current_but_false, (exps,)),
                         (block_build, (exps,))):
         status(f"block {block.__name__[6:]}")
         lines += block(*args)

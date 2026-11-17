@@ -95,15 +95,29 @@ def test_adhoc_parses_the_real_receipt():
     assert (c.map.bad, c.map.claims, c.map.share) == (1, 100, 0.010)
     assert (c.diff, c.lo, c.hi) == (0.010, -0.016, 0.033)
     assert c.answers == 18 and c.review.reviewer == "GPT-6"
-    assert c.review.rows["supported"] == (14, 14, 0, 0) and c.review.strict
-    assert av.strict_note(c).endswith("every disagreement said the Checker was too strict")
+    assert c.review.rows["supported"] == (14, 14, 0, 0) and c.review.none_lenient
+    assert c.review.arm("ad-hoc answers", "supported") == (5, 5, 0, 0)
+    assert c.review.arm("map claims", "supported") == (9, 9, 0, 0)
+    note = " ".join(av.review_note(c).split())
+    assert "agreed with 14 of 14 'supported' verdicts (5 ad-hoc, 9 map), so no disagreement said" in note
+    assert "would change 2 of 5 'wrong' verdicts and called 4 of 6 'not supported' borderline" in note
+    assert "too strict" not in note
     assert av.takeaway(c).startswith("Ad-hoc answers and unchecked map claims are about equally")
 
 
 def test_adhoc_follows_the_receipt():
     text = receipt("adhoc_check.txt")
-    c = av.parse(text.replace("supported           14     14", "supported           13     13"))
-    assert "13/13" in av.strict_note(c)
+    c = av.parse(text.replace("supported           14     14", "supported           13     13")
+                 .replace("map claims      supported            9      9", "map claims      supported            8      8"))
+    assert "13 of 13 'supported' verdicts (5 ad-hoc, 8 map)" in av.review_note(c)
+    # arms that don't sum to the total row are refused
+    with pytest.raises(ValueError, match="the arms sum to"):
+        av.parse(text.replace("map claims      supported            9      9", "map claims      supported            8      8"))
+    # a disagreement on a 'supported' verdict would say the Checker was too lenient: the note refuses
+    c = av.parse(text.replace("supported           14     14       0", "supported           14     13       1")
+                 .replace("map claims      supported            9      9       0", "map claims      supported            9      8       1"))
+    with pytest.raises(ValueError, match="disagreement on a 'supported'"):
+        av.review_note(c)
     # counts that don't give the printed share are refused
     with pytest.raises(ValueError, match="is not the printed"):
         av.parse(text.replace("479         5     5          0   0.020", "479         5     5          0   0.030"))
