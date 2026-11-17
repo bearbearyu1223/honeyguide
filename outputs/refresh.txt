@@ -1,0 +1,225 @@
+Honeyguide refresh: receipts
+==========================================================================
+  archive   honeyguide-targets/_refresh (read only)
+  E2 nanochat; E3 waku-agent
+
+commits
+--------------------------------------------------------------------------
+Base and target are the refresh plan's; dates are git committer dates;
+commits in between from git rev-list --count base..target; files from git
+diff --numstat base target, in each experiment's checkout.
+  E2  nanochat: nanochat across its July rewrite
+    base                dc54a1a  2026-05-05 03:17 UTC
+    target              92d63d4  2026-07-03 22:54 UTC
+    days apart          59.8
+    commits in between  60
+    .py files changed   33 (+1070 / -2498 lines)
+    all files changed   42 (+1194 / -4079 lines)
+  E3  waku-agent: waku-agent, an ordinary day
+    base                2c7e7e6  2026-11-15 05:09 UTC
+    target              21dcd56  2026-11-16 23:08 UTC
+    days apart          1.7
+    commits in between  2
+    .py files changed   3 (+155 / -5 lines)
+    all files changed   3 (+155 / -5 lines)
+
+  Honeyguide code for E2's build and refresh and E3's refresh: e855908
+  (git rev-parse HEAD in the honeyguide-run worktree, read when this
+  capture ran: the HEAD now, not a commit the archive recorded at run
+  time).
+
+plan
+--------------------------------------------------------------------------
+honeyguide refresh-plan --json, taken before each refresh: every saved
+claim's class from its anchors (unanchored: no code anchors, left as it
+is) and the new or changed Python units no live claim cites. 'applied'
+rows are the store's session refresh_log.
+  E2  nanochat: nanochat across its July rewrite
+    plan                dc54a1a -> 92d63d4
+    claims              310
+      unchanged            88
+      moved               128
+      stale                50
+      retired              32
+      unanchored           12
+    uncovered units     60 (new 54, changed 6)
+    changed files with no outline (not Python)  7
+    applied 2026-11-17T00:55:37Z: dc54a1a -> 92d63d4; unchanged 88, moved
+      128, stale 50, retired 32, unanchored 12; uncovered 60
+  E3  waku-agent: waku-agent, an ordinary day
+    plan                2c7e7e6 -> 21dcd56
+    claims              266
+      unchanged           258
+      moved                 7
+      stale                 1
+      retired               0
+      unanchored            0
+    uncovered units     12 (new 11, changed 1)
+    changed files with no outline (not Python)  1
+    applied 2026-11-16T23:23:58Z: 2c7e7e6 -> 21dcd56; unchanged 258, moved
+      7, stale 1, retired 0, unanchored 0; uncovered 12
+    applied 2026-11-16T23:25:32Z: 21dcd56 -> 21dcd56; unchanged 265, moved
+      0, stale 1, retired 0, unanchored 0; uncovered 0
+
+cost
+--------------------------------------------------------------------------
+Each run on its own line. $ = total_cost_usd from claude -p's JSON result
+(API list price; subscription runs). wall = the launcher's end - start;
+session = duration_ms. Tokens and models from modelUsage (the whole
+session, subagents included). Ratios are refresh / rebuild on $ and wall
+minutes.
+  E2  nanochat: nanochat across its July rewrite
+    run                      $ list  wall min  session  turns  exit
+    build                    $21.03      52.5     52.5     27     0
+    refresh                  $10.69      25.2     25.2     28     0
+
+    tokens                    input   cache read  cache write     output
+    build                       434   33,908,276    1,265,160    389,268
+    refresh                     298   16,803,122      719,709    180,164
+
+    build: models claude-opus-5-5 ($21.03)
+      subagents cartographer 3, checker 3; result success; permission
+      denials 0
+    refresh: models claude-opus-5-5 ($10.69)
+      subagents cartographer 2, checker 3; result success; permission
+      denials 1 (Bash 1)
+
+    rebuild: the build above (same Honeyguide code, full Explore + Checker
+    + repair at the base commit).
+    refresh / rebuild:  $ 0.51, wall minutes 0.48
+  E3  waku-agent: waku-agent, an ordinary day
+    run                      $ list  wall min  session  turns  exit
+    refresh, attempt 1        $0.67       1.3      1.3     16     0
+    refresh, attempt 2        $3.25       8.4      8.4     27     0
+    refresh total             $3.92       9.7      9.7
+
+    tokens                    input   cache read  cache write     output
+    refresh, attempt 1           42      637,196       57,864      7,769
+    refresh, attempt 2          150    3,096,300      256,770     60,533
+
+    refresh, attempt 1: models claude-opus-5-5 ($0.67)
+      subagents checker 1; result success; permission denials 3 (Write 3)
+    refresh, attempt 2: models claude-opus-5-5 ($3.25)
+      subagents cartographer 2, checker 3; result success; permission
+      denials 0
+    refresh, attempt 1: denied writes into the store:
+      drafts/checker/stale-1.json x2, drafts/guide/stale-1.json x1
+
+    rebuild: the waku-agent full pipeline at its pin, from runs.txt's runs
+    block (run 2 + repair + re-check). It ran on older Honeyguide code
+    (runs.txt does not record which commit) and was a different
+    invocation: three separate claude -p passes, not one.
+    rebuild pass             $ list  wall min  turns
+    run 2                    $12.43      35.2     2*
+    repair                    $2.76       6.3     19
+    re-check                  $4.20      10.2     21
+    rebuild total            $19.39      51.7
+    rebuild tokens        not recorded (runs.txt holds none)
+    (* in runs.txt: turns of the last result segment only)
+    refresh (both attempts) / rebuild:  $ 0.20, wall minutes 0.19
+    last attempt only / rebuild:  $ 0.17, wall minutes 0.16
+
+refresh
+--------------------------------------------------------------------------
+What the refresh did, from the store saved after it and the plan taken
+before it (never the agent's prose). Refresh start = the first refresh
+run's start. New claims: ids the plan does not list. Retired by refresh
+apply: classed retired by the plan. Retired by the re-map: a retired_at in
+the refresh, not a repair's retire. Verdicts: each claim's saved check; a
+repair at round r in the refresh means not supported after round r-1.
+  E2  nanochat: nanochat across its July rewrite
+    map commit after    92d63d4 (= target)
+    claims after        397: current 319, stale 0, retired 78
+    retired in the refresh  78
+      by refresh apply (plan: retired)      32
+      by the re-map                         46
+      by the repair pass (retire)            0
+      re-map retirements by plan class: unchanged 0, moved 3, stale 37,
+        retired 0, unanchored 6, new 0
+    new claims          87
+    uncovered units cited by a new claim (anchor at target, lines
+      overlap): 43 of 60 (new 37 of 54, changed 6 of 6)
+    uncovered units cited by any current claim (anchor at target, lines
+      overlap): 44 of 60 (new 38 of 54, changed 6 of 6)
+    stale claims        50, re-checked in the refresh 50
+      Checker on re-check              claims  then re-map retired
+      still held (supported)               15                    2
+      no longer held (not supported)       35                   35
+      left stale after the refresh          0
+    new claims, Checker    supported  not supp.   other
+      first check                 83          4       0
+      after round 1               87          0       0
+      after round 2               87          0       0
+    repair in the refresh: 1 pass(es), 1 round(s)
+      round 1: anchor 3, rewrite 1
+    older claims repaired in the refresh  0
+  E3  waku-agent: waku-agent, an ordinary day
+    map commit after    21dcd56 (= target)
+    claims after        272: current 272, stale 0, retired 0
+    retired in the refresh  0
+      by refresh apply (plan: retired)       0
+      by the re-map                          0
+      by the repair pass (retire)            0
+      re-map retirements by plan class: unchanged 0, moved 0, stale 0,
+        retired 0, unanchored 0, new 0
+    new claims          6
+    uncovered units cited by a new claim (anchor at target, lines
+      overlap): 10 of 12 (new 9 of 11, changed 1 of 1)
+    uncovered units cited by any current claim (anchor at target, lines
+      overlap): 10 of 12 (new 9 of 11, changed 1 of 1)
+    stale claims        1, re-checked in the refresh 1
+      Checker on re-check              claims  then re-map retired
+      still held (supported)                1                    0
+      no longer held (not supported)        0                    0
+      left stale after the refresh          0
+    new claims, Checker    supported  not supp.   other
+      first check                  4          2       0
+      after round 1                6          0       0
+      after round 2                6          0       0
+    repair in the refresh: 1 pass(es), 1 round(s)
+      round 1: anchor 2, rewrite 1
+    older claims repaired in the refresh  1
+
+current-but-false
+--------------------------------------------------------------------------
+Claims the refresh plan classed unchanged or moved (their cited lines hash
+the same, so the refresh keeps them current) that the re-map then retired.
+Other classes for contrast. Replacement is not separate: the store keeps
+no link from a retired claim to a new one, and why it was retired is the
+agent's text, which this capture does not read.
+  E2  nanochat: nanochat across its July rewrite
+    plan class           retired by re-map    of
+    unchanged                            0    88
+    moved                                3   128
+    stale                               37    50
+    retired                              0    32
+    unanchored                           6    12
+    current but false   3 of 216 (unchanged + moved)
+    replaced (linked to a new claim)  not recorded
+  E3  waku-agent: waku-agent, an ordinary day
+    plan class           retired by re-map    of
+    unchanged                            0   258
+    moved                                0     7
+    stale                                0     1
+    retired                              0     0
+    unanchored                           0     0
+    current but false   0 of 265 (unchanged + moved)
+    replaced (linked to a new claim)  not recorded
+
+build
+--------------------------------------------------------------------------
+E2's build at the base commit: its first check and repair rounds, from the
+repairs history saved before the refresh (a repair at round r = not
+supported after round r-1). Verdicts the refresh re-checked were
+overwritten, so they print as not recorded.
+  E2  nanochat: nanochat across its July rewrite
+    claims built                         310
+    not supported at first check          57   (repaired in round 1)
+    not supported after round 1            3   (repaired in round 2)
+    never repaired                       253
+      first verdict kept: supported 213, not supported 0, not recorded 40
+    after round 2, the 3 round-2 claims: supported 1, not supported 0,
+      not recorded 2
+    repair actions per round:
+      round 1: anchor 52, rewrite 5
+      round 2: anchor 2, rewrite 1
