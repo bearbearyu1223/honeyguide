@@ -112,6 +112,13 @@ def clusters(rows: list[dict]) -> list[tuple[int, int]]:
     return [(tally(v)["bad"], tally(v)["claims"]) for _, v in sorted(by.items())]
 
 
+def claim_clusters(rows: list[dict]) -> list[tuple[int, int]]:
+    """One cluster per claim: the map arm's claims are a seeded random sample, so its batches are arbitrary groups
+    and resampling 4 batches would understate the uncertainty; each claim stands alone."""
+    return [(int(r["verdict"] in ("not_supported", "wrong")), 1) for r in sorted(rows, key=lambda r: r["unit"])
+            if r.get("verdict") in CLAIMS]
+
+
 def bootstrap_diff(a: list[tuple[int, int]], b: list[tuple[int, int]], n_boot: int = PS.B_DEFAULT,
                    seed: int = 0, level: float = 0.95) -> tuple[float, float]:
     """Percentile CI of share(a) - share(b), share = sum(bad) / sum(claims), resampling each arm's clusters with
@@ -470,13 +477,14 @@ def capture(data: dict, evidence: list[dict], runs_txt: str | None, map_data: di
     L += wrap("claims = units judged supported, not supported or wrong; ns+w = (not supported + wrong) / "
               "claims. not_a_claim and no verdict are left out of claims.", 2, 4)
     if tm:
-        ca, cm = clusters(rows), clusters(map_data["rows"])
+        ca, cm = clusters(rows), claim_clusters(map_data["rows"])
         diff = (ta["bad"] / ta["claims"] - tm["bad"] / tm["claims"]) if ta["claims"] and tm["claims"] else None
         lo, hi = bootstrap_diff(ca, cm, seed=0)
         if diff is not None:
             L += wrap(f"difference in ns+w, ad-hoc minus map: {diff:+.3f}, 95% CI [{lo:+.3f}, {hi:+.3f}] "
-                      f"(bootstrap, {PS.B_DEFAULT} resamples of the checks as clusters: {len(ca)} answers, "
-                      f"{len(cm)} batches; seed 0; units without a verdict left out)", 2, 4)
+                      f"(bootstrap, {PS.B_DEFAULT} resamples; ad-hoc units clustered by answer ({len(ca)} answers), "
+                      f"map claims resampled one by one ({len(cm)}; a random sample, so its batches are arbitrary); seed 0; "
+                      f"units without a verdict left out)", 2, 4)
     for name, t in [("ad-hoc answers", ta)] + ([("map claims", tm)] if tm else []):
         hi_b, lo_b = bounds(t)
         L += wrap(f"bounds, {name}: {t['no verdict']} units without a verdict; ns+w with them counted as not "

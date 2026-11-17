@@ -782,7 +782,7 @@ def test_map_arm_repeat_trial_and_side_by_side_capture(ah, capsys, monkeypatch):
     joined = " ".join(cap.split())
     assert "ad-hoc answers 7 5 2 1 2 0 0.600" in flat and "map claims 6 6 2 2 2 0 0.667" in flat
     assert "difference in ns+w, ad-hoc minus map: -0.067, 95% CI [" in joined
-    assert "3 answers, 2 batches; seed 0" in joined
+    assert "(3 answers), map claims resampled one by one (" in joined and "seed 0" in joined
     assert "never checked (the eval map was never Checker-passed)" in joined
     assert "both judged by the same Checker" in joined
     rid = rplan["items"][0]["id"]
