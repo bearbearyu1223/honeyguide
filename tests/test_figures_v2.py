@@ -96,7 +96,7 @@ def test_adhoc_parses_the_real_receipt():
     assert (c.diff, c.lo, c.hi) == (0.010, -0.016, 0.033)
     assert c.answers == 18 and c.review.reviewer == "GPT-6"
     assert c.review.rows["supported"] == (14, 14, 0, 0) and c.review.strict
-    assert av.strict_note(c).endswith("agreed with 14/14 'supported' verdicts")
+    assert av.strict_note(c).endswith("every disagreement said the Checker was too strict")
     assert av.takeaway(c).startswith("Ad-hoc answers and unchecked map claims are about equally")
 
 

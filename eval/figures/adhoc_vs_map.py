@@ -58,7 +58,8 @@ class Review:
         """Every disagreement (change or borderline) is on a verdict that faults the claim, none on 'supported'."""
         items, agree, change, border = self.rows["supported"]
         faulted = sum(self.rows[v][2] + self.rows[v][3] for v in ("not_supported", "wrong"))
-        return agree == items and change == border == 0 and faulted > 0
+        nac = self.rows.get("not_a_claim", (0, 0, 0, 0))
+        return agree == items and change == border == 0 and nac[2] == nac[3] == 0 and faulted > 0
 
 
 @dataclass(frozen=True)
@@ -134,7 +135,8 @@ def strict_note(c: AdhocCheck) -> str:
     if not c.review.strict:
         raise ValueError(f"the spot-check review does not show a strict Checker: {c.review.rows}")
     items, agree, _, _ = c.review.rows["supported"]
-    return f"Checker errs strict: a second model ({c.review.reviewer}) agreed with {agree}/{items} 'supported' verdicts"
+    return (f"A second model ({c.review.reviewer}) agreed with {agree}/{items} 'supported' verdicts; "
+            f"every disagreement said the Checker was too strict")
 
 
 # -- the figure --------------------------------------------------------------------------------------------------------
