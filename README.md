@@ -11,8 +11,8 @@
 
 Coding agents make writing code cheaper. Someone still has to know how the code works, check that what they
 know is true, and keep it current as the code changes. Today most of that understanding lives in private
-chats. Each engineer's agent works out the same code again, nobody checks the answer, and it is gone when the
-chat ends.
+chats. Each engineer's agent works out the same code again, nobody checks the answer, and nobody keeps it
+current.
 
 Honeyguide keeps that understanding as a record you can check. It is a Claude Code plugin with four
 subagents. It builds a map of a repo that you read in your browser and ask questions on:
@@ -29,6 +29,8 @@ verdict), and when to look at it again (each claim is current, stale or retired)
 first hypothesis, that a map makes an agent answer more accurately, was not supported on the repo tested.
 Sharing one map across a team is the aim. It isn't built yet: today Honeyguide is single-user and local.
 Whether it saves a team time is untested.
+
+Honeyguide is a side project I built to learn how to design and build agentic workflows, not a product.
 
 The write-up: [Honeyguide on the blog](https://bearbearyu1223.github.io/)
 <!-- TODO: post URL when published -->
@@ -88,13 +90,12 @@ Limits: one person, one model, two small-to-medium Python repos, and no team stu
 **1. The CLI.** Get a copy of Honeyguide, then install the `honeyguide` command from it:
 
 ```bash
-git clone https://github.com/bearbearyu1223/honeyguide ~/honeyguide   # once the repo is public
+git clone https://github.com/bearbearyu1223/honeyguide ~/honeyguide
 uv tool install --editable ~/honeyguide
 honeyguide --help
 ```
 
-Until the repo is public, use the path of your local copy. With pipx instead of uv:
-`pipx install --editable ~/honeyguide`.
+With pipx instead of uv: `pipx install --editable ~/honeyguide`.
 
 If the command isn't on your PATH, the Guide falls back to `uv run --project <plugin dir> honeyguide`. That
 works, but the permission rule below won't match it, so you'll be asked to approve every call.
@@ -102,18 +103,19 @@ works, but the permission rule below won't match it, so you'll be asked to appro
 **2. The plugin.** The repo is its own plugin marketplace. In Claude Code:
 
 ```
-/plugin marketplace add /absolute/path/to/honeyguide
+/plugin marketplace add bearbearyu1223/honeyguide
 /plugin install honeyguide@honeyguide
 ```
 
-Once the repo is public, `/plugin marketplace add bearbearyu1223/honeyguide` will work too.
+To run the plugin from your clone instead (for example, to try your own changes), add it by path:
+`/plugin marketplace add /absolute/path/to/honeyguide`.
 
 Or add it to `~/.claude/settings.json` yourself, and restart Claude Code:
 
 ```json
 {
   "extraKnownMarketplaces": {
-    "honeyguide": {"source": {"source": "directory", "path": "/absolute/path/to/honeyguide"}}
+    "honeyguide": {"source": {"source": "github", "repo": "bearbearyu1223/honeyguide"}}
   },
   "enabledPlugins": {"honeyguide@honeyguide": true}
 }
