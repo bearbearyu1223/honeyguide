@@ -320,3 +320,31 @@ def test_width_and_no_paths_or_emails(archive):
     assert str(tmp) not in out and str(Path.home()) not in out
     assert not re.search(r"(^|\s)/(Users|home|private|tmp|var)/", out)
     assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", out)
+
+
+# ---------------------------------------------------------------- review round 4
+
+def test_the_receipt_says_where_the_table_came_from(archive, tmp_path):
+    root, runs, _ = archive
+    out = cap.render(root, runs, tmp_path / "no-such-worktree")
+    assert "Read from the live reflog" in " ".join(section(out, "commits").split())
+    rec = {"read_at": "2026-11-17T05:07:22Z", "source": "test",
+           "runs": [{"run": "E2 build", "start": "2026-01-01T00:00:00Z", "commit": "c" * 40,
+                     "since": "2025-12-31T00:00:00Z"},
+                    {"run": "E2 refresh", "start": "2026-01-02T00:00:00Z", "commit": "c" * 40,
+                     "since": "2025-12-31T00:00:00Z"}]}
+    path = tmp_path / "run_commits.json"
+    path.write_text(json.dumps(rec))
+    out = cap.render(root, runs, tmp_path / "no-such-worktree", path)
+    commits = " ".join(section(out, "commits").split())
+    assert "2 of 4 runs read from run_commits.json (frozen from that reflog at 2026-11-17 05:07 UTC)" in commits
+    assert "E2 build 2026-01-01 00:00:00 ccccccc 2025-12-31 00:00:00" in commits
+    assert "(same Honeyguide commit as the refresh, ccccccc, by the reflog;" in " ".join(section(out, "cost").split())
+    for line in out.splitlines():
+        assert len(line) <= cap.WIDTH
+
+
+def test_capture_prints_the_rebuild_less_its_extra_pass(archive):
+    cost = section(render(archive), "cost")
+    assert re.search(r"^    rebuild less re-check\s+\$15\.19\s+41\.5$", cost, re.M)          # 12.43 + 2.76
+    assert "both attempts / rebuild less re-check:" in cost

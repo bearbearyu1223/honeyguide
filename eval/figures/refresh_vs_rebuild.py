@@ -9,7 +9,9 @@ Two panels, $ at list price and wall-clock minutes; in each, one pair of bars (r
 annotated with the commits and days between the map's commit and the new one. Every number is parsed from the
 ``commits`` and ``cost`` blocks of ``outputs/refresh.txt``; none is typed here. Light and dark, in the house style of
 the series' figures (llm-architectures-refresher's plotting.py), in the post's map colour (orange): a rebuild drawn
-hollow, a refresh filled.
+hollow, a refresh filled. When the receipt also prints a ratio against the rebuild less one pass (E3's re-check, a
+pass E2's one-run rebuild has no counterpart for), the title gives both fractions as a range, a dashed line in the
+rebuild bar marks where that pass starts, and the footnote says which ratio is which.
 
     uv run --script eval/figures/refresh_vs_rebuild.py [--refresh outputs/refresh.txt] [--out docs/figures]
 
@@ -48,14 +50,37 @@ class Experiment:
     rebuild_passes: tuple[str, ...]      # separate runs summed into rebuild_*; () if one build run
     same_code: bool = False              # the receipt says (from the run worktree's reflog) the rebuild ran on the
                                          # same Honeyguide commit as the refresh
+    extra: str = ""                      # a rebuild pass the receipt also leaves out ('re-check'), or ''
+    less_usd: float | None = None        # the rebuild less that pass
+    less_min: float | None = None
+    less_ratio_usd: float | None = None  # the receipt's refresh / rebuild less that pass
+    less_ratio_min: float | None = None
 
     @property
     def fraction(self) -> int:
         """The refresh's cost as 1/k of a rebuild, k from $ and minutes alike (raises if they disagree)."""
-        k_usd, k_min = round(1 / self.ratio_usd), round(1 / self.ratio_min)
-        if k_usd != k_min:
-            raise ValueError(f"{self.key}: $ says 1/{k_usd} of a rebuild, minutes say 1/{k_min}")
-        return k_usd
+        return one_in(self.key, self.ratio_usd, self.ratio_min)
+
+    @property
+    def fraction_less(self) -> int | None:
+        """The same against the rebuild less its extra pass, or None when the receipt prints no such ratio."""
+        if not self.extra:
+            return None
+        return one_in(f"{self.key} less {self.extra}", self.less_ratio_usd, self.less_ratio_min)
+
+    @property
+    def fractions(self) -> str:
+        """'1/k', or '1/k to 1/j' when leaving out the extra pass gives a different k (larger fraction last)."""
+        ks = sorted({self.fraction, self.fraction_less or self.fraction}, reverse=True)
+        return " to ".join(f"1/{k}" for k in ks)
+
+
+def one_in(what: str, ratio_usd: float, ratio_min: float) -> int:
+    """k for a refresh that costs about 1/k of a rebuild, from $ and minutes alike (raises if they disagree)."""
+    k_usd, k_min = round(1 / ratio_usd), round(1 / ratio_min)
+    if k_usd != k_min:
+        raise ValueError(f"{what}: $ says 1/{k_usd} of a rebuild, minutes say 1/{k_min}")
+    return k_usd
 
 
 def block(text: str, heading: str) -> str:
@@ -114,9 +139,26 @@ def parse(text: str) -> tuple[Experiment, ...]:
         for got, want, unit in ((refresh[0] / rebuild[0], ratio_usd, "$"), (refresh[1] / rebuild[1], ratio_min, "min")):
             if f"{got:.2f}" != f"{want:.2f}":
                 raise ValueError(f"cost: {key}'s refresh / rebuild in {unit} is {got:.3f}, the receipt says {want}")
+        less = {}
+        lr = re.search(r"^\s+(?:both attempts|refresh) / rebuild less (\S+):\s+\$ ([\d.]+), wall minutes ([\d.]+)",
+                       cb, re.M)
+        if lr:
+            extra = lr.group(1)
+            row = rows.get(f"rebuild less {extra}")
+            if not row or extra not in passes:
+                raise ValueError(f"cost: {key}'s ratio leaves out '{extra}', but no rebuild pass or row is named so")
+            full = dict(zip(passes, re.findall(r"^\s+\S.*?\s+\$([\d.]+)", pb.group(1), re.M), strict=True))
+            if abs(rebuild[0] - float(full[extra]) - row[0]) > 0.011:
+                raise ValueError(f"cost: {key}'s rebuild less {extra} is not the rebuild total less that pass")
+            for got, want, unit in ((refresh[0] / row[0], lr.group(2), "$"), (refresh[1] / row[1], lr.group(3), "min")):
+                if f"{got:.2f}" != f"{float(want):.2f}":
+                    raise ValueError(f"cost: {key}'s refresh / rebuild less {extra} in {unit} is {got:.3f}, the "
+                                     f"receipt says {want}")
+            less = {"extra": extra, "less_usd": row[0], "less_min": row[1], "less_ratio_usd": float(lr.group(2)),
+                    "less_ratio_min": float(lr.group(3))}
         out.append(Experiment(key, repo, what, float(d.group(1)), int(n.group(1)), rebuild[0], rebuild[1],
                               refresh[0], refresh[1], ratio_usd, ratio_min, attempts, passes,
-                              "same Honeyguide commit as the refresh" in " ".join(cb.split())))
+                              "same Honeyguide commit as the refresh" in " ".join(cb.split()), **less))
     return tuple(sorted(out, key=lambda e: e.commits))
 
 
@@ -125,8 +167,8 @@ def takeaway(exps: tuple[Experiment, ...]) -> str:
     if len(exps) != 2:
         raise ValueError(f"the title is written for two experiments, got {len(exps)}")
     day, big = exps
-    return (f"Keeping the map current costs about 1/{day.fraction} of a rebuild for {day.what},\n"
-            f"and about 1/{big.fraction} across a {big.commits}-commit rewrite")
+    return (f"Keeping the map current costs about {day.fractions} of a rebuild for {day.what},\n"
+            f"and about {big.fractions} across a {big.commits}-commit rewrite")
 
 
 def footnote(exps: tuple[Experiment, ...]) -> str:
@@ -142,6 +184,10 @@ def footnote(exps: tuple[Experiment, ...]) -> str:
             raise ValueError(f"{e.key}: the receipt does not say its rebuild ran on the refresh's Honeyguide commit")
         if e.attempts > 1:
             lines[-1] += f"; its refresh took {e.attempts} attempts, both counted"
+        if e.extra:
+            others = " and ".join(f"{o.repo}'s" for o in exps if o is not e and not o.rebuild_passes)
+            lines.append(f"Its {e.extra} (above the dashed line) has no counterpart in {others or 'a'} one-run "
+                         f"rebuild: refresh / rebuild is about 1/{e.fraction} with it, 1/{e.fraction_less} without it")
     return ".\n".join(lines) + "."
 
 
@@ -189,23 +235,29 @@ def draw(exps: tuple[Experiment, ...], theme: Theme, path: Path) -> Path:
 
     title, foot = takeaway(exps), footnote(exps)
     with plt.rc_context(style(theme)):
-        fig, axes = plt.subplots(1, 2, figsize=(12, 6.6), gridspec_kw={"wspace": 0.28})
-        fig.subplots_adjust(top=0.76, bottom=0.3)
+        fig, axes = plt.subplots(1, 2, figsize=(12, 7.0), gridspec_kw={"wspace": 0.28})
+        fig.subplots_adjust(top=0.77, bottom=0.36)
         fig.suptitle(title, x=0.06, ha="left", y=0.995, fontsize=15, fontweight="bold", linespacing=1.3)
         w = 0.36
         panels = (("Cost, $ at list price", lambda e: (e.rebuild_usd, e.refresh_usd), lambda v: f"${v:.2f}",
-                   lambda e: e.ratio_usd),
+                   lambda e: e.ratio_usd, lambda e: e.less_usd, lambda e: e.less_ratio_usd),
                   ("Wall-clock minutes", lambda e: (e.rebuild_min, e.refresh_min), lambda v: f"{v:.1f} min",
-                   lambda e: e.ratio_min))
-        for ax, (name, vals, fmt, ratio) in zip(axes, panels, strict=True):
+                   lambda e: e.ratio_min, lambda e: e.less_min, lambda e: e.less_ratio_min))
+        for ax, (name, vals, fmt, ratio, less, less_ratio) in zip(axes, panels, strict=True):
             top = max(max(vals(e)) for e in exps)
             for i, e in enumerate(exps):
                 rb, rf = vals(e)
                 ax.bar(i - w / 2, rb, width=w, fc=theme.surface, ec=theme.map, lw=2.0, hatch=None, zorder=2)
+                if e.extra:
+                    cut = less(e)
+                    ax.plot([i - w, i], [cut, cut], color=theme.map, lw=1.4, ls=(0, (3, 2)), zorder=3)
+                    ax.text(i - w / 2, (cut + rb) / 2, e.extra, ha="center", va="center", fontsize=10.5,
+                            color=theme.secondary, zorder=3)
                 ax.bar(i + w / 2, rf, width=w, color=theme.map, ec=theme.map, lw=2.0, zorder=2)
                 for x, v in ((i - w / 2, rb), (i + w / 2, rf)):
                     ax.text(x, v + top * 0.02, fmt(v), ha="center", va="bottom", fontsize=11.5)
-                ax.text(i, top * 1.1, f"refresh / rebuild\n{ratio(e):.2f}", ha="center", va="bottom",
+                r = f"{ratio(e):.2f}" + (f" to {less_ratio(e):.2f}" if e.extra else "")
+                ax.text(i, top * 1.1, f"refresh / rebuild\n{r}", ha="center", va="bottom",
                         fontsize=11.5, fontweight="bold", linespacing=1.3)
             ax.set_xticks(range(len(exps)))
             ax.set_xticklabels([f"{e.repo}\n{e.what}\n{e.commits} commits,\n{e.days:g} days apart" for e in exps],

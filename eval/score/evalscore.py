@@ -466,7 +466,7 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
     for c in CONDS:
         if c in per_cond and exact[c]:
             cpc[c] = per_cond[c]["cost"] / exact[c]
-            L.append(f"    {c:<11}{money(cpc[c]):>10}  ({exact[c]} exact of {per_cond[c]['runs']} runs)")
+            L.append(f"    {c:<11}{f'${cpc[c]:.3f}':>10}  ({exact[c]} exact of {per_cond[c]['runs']} runs)")
         else:
             L.append(f"    {c:<11}{'-':>10}  ({exact.get(c, 0)} exact)")
     builds = [metas[f"map-s{s}"]["usage"]["cost_usd"] for s in sorted(arch["maps"]) if f"map-s{s}" in metas]
@@ -478,7 +478,10 @@ def capture(cfg: dict, arch: dict, frozen: dict, human: dict, facts: RepoFacts, 
             if other in cpc:
                 n = S.break_even(build, cpc["map"], cpc[other], acc)
                 L += wrap(f"break-even vs {other}: " + ("never (map answers are not cheaper per exact answer)"
-                                                        if n is None else f"{n:.0f} questions asked"), 4, 6)
+                                                        if n is None else
+                                                        f"{n:.0f} questions asked (map answers "
+                                                        f"${cpc[other] - cpc['map']:.4f} cheaper per exact answer)"),
+                          4, 6)
 
     # --- failures
     L += rule("failed runs by cell (each counts as wrong)")

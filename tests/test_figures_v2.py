@@ -148,8 +148,8 @@ def test_refresh_parses_the_real_receipt():
     assert (big.rebuild_usd, big.rebuild_min, big.refresh_usd, big.refresh_min) == (21.03, 52.5, 10.69, 25.2)
     assert (big.ratio_usd, big.ratio_min, big.attempts, big.rebuild_passes) == (0.51, 0.48, 1, ())
     assert big.fraction == 2
-    assert rr.takeaway((day, big)) == ("Keeping the map current costs about 1/5 of a rebuild for an ordinary day,\n"
-                                       "and about 1/2 across a 60-commit rewrite")
+    assert rr.takeaway((day, big)) == ("Keeping the map current costs about 1/5 to 1/4 of a rebuild for an ordinary "
+                                       "day,\nand about 1/2 across a 60-commit rewrite")
     assert "as 3 separate runs (build, repair, re-check)" in rr.footnote((day, big))
 
 

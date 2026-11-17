@@ -79,14 +79,15 @@ tokens (thousands), time and cost per answering run (means)
   price check: list cost rebuilt from tokens with the config prices is
     within 0.0% of the CLI's total_cost_usd on every run (161 runs)
   cost per exact answer (list, with cache):
-    no-access       $0.08  (9 exact of 20 runs)
-    explore         $0.09  (34 exact of 40 runs)
-    outline         $0.17  (36 exact of 40 runs)
-    map             $0.17  (53 exact of 60 runs)
+    no-access      $0.081  (9 exact of 20 runs)
+    explore        $0.087  (34 exact of 40 runs)
+    outline        $0.171  (36 exact of 40 runs)
+    map            $0.167  (53 exact of 60 runs)
   map build: $7.22 list per map (mean of 1)
     break-even vs explore: never (map answers are not cheaper per exact
       answer)
-    break-even vs outline: 1803 questions asked
+    break-even vs outline: 1803 questions asked (map answers $0.0045
+      cheaper per exact answer)
 
 failed runs by cell (each counts as wrong)
 --------------------------------------------------------------------------

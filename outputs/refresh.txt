@@ -32,7 +32,8 @@ experiment's checkout.
   Honeyguide code at each run's start: the commit the honeyguide-run
   worktree's HEAD was on (its reflog, git reflog --date=iso-strict) at the
   time in the run's start file. The reflog records HEAD moves, not
-  uncommitted edits.
+  uncommitted edits. Read from eval/refresh/run_commits.json, frozen from
+  that reflog at 2026-11-17 05:07 UTC (git expires reflog entries).
     run                   start (UTC)         commit   HEAD on it since
     E2 build              2026-11-16 23:34:10 e855908  2026-11-16 23:23:33
     E2 refresh            2026-11-17 00:55:27 e855908  2026-11-16 23:23:33
@@ -127,10 +128,14 @@ minutes.
     repair                    $2.76       6.3     19
     re-check                  $4.20      10.2     21
     rebuild total            $19.39      51.7
+    rebuild less re-check    $15.19      41.5
     rebuild tokens        not recorded (runs.txt holds none)
     (* in runs.txt: turns of the last result segment only)
     refresh (both attempts) / rebuild:  $ 0.20, wall minutes 0.19
     last attempt only / rebuild:  $ 0.17, wall minutes 0.16
+    The re-check pass has no counterpart in a one-run build (E2's:
+    Explore, Checker, repair); the ratio without it:
+    both attempts / rebuild less re-check:  $ 0.26, wall minutes 0.23
 
 refresh
 --------------------------------------------------------------------------

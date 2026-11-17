@@ -1,0 +1,30 @@
+{
+  "read_at": "2026-11-17T05:07:22Z",
+  "source": "git reflog --date=iso-strict --format=%H%x09%gd in the honeyguide-run worktree",
+  "runs": [
+    {
+      "run": "E2 build",
+      "start": "2026-11-16T23:34:10Z",
+      "commit": "e855908a5599fdfbc4dd7c21aa584759d0b7b5d7",
+      "since": "2026-11-16T23:23:33Z"
+    },
+    {
+      "run": "E2 refresh",
+      "start": "2026-11-17T00:55:27Z",
+      "commit": "e855908a5599fdfbc4dd7c21aa584759d0b7b5d7",
+      "since": "2026-11-16T23:23:33Z"
+    },
+    {
+      "run": "E3 refresh, attempt 1",
+      "start": "2026-11-16T23:23:49Z",
+      "commit": "e855908a5599fdfbc4dd7c21aa584759d0b7b5d7",
+      "since": "2026-11-16T23:23:33Z"
+    },
+    {
+      "run": "E3 refresh, attempt 2",
+      "start": "2026-11-16T23:25:19Z",
+      "commit": "e855908a5599fdfbc4dd7c21aa584759d0b7b5d7",
+      "since": "2026-11-16T23:23:33Z"
+    }
+  ]
+}

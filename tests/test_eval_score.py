@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -245,3 +246,30 @@ def test_grader_label_reads_the_grades_file():
     assert ES.grader_label({"grader": "ChatGPT (GPT-6)", "how": "sheet only"}) == ("ChatGPT (GPT-6)", "sheet only")
     assert ES.grader_label({"grades": {}}) == ("not recorded", "")
     assert ES.grader_label(None) == ("not recorded", "")
+
+
+def test_cost_per_exact_answer_has_three_decimals_and_the_gap(scored, capsys):
+    """Review round 4: '$0.17' for both outline and map hid the gap the break-even divides by. Costs per exact
+    answer print to a tenth of a cent, and a finite break-even prints the per-answer gap it comes from."""
+    out = run_score(scored, capsys)
+    block = out[out.index("cost per exact answer"):]
+    rows = [ln for ln in block.splitlines()[1:5] if "exact of" in ln]
+    assert rows and all(re.search(r"\$\d+\.\d{3}  \(\d+ exact of \d+ runs\)", ln) for ln in rows)
+    flat = " ".join(block.split())
+    for m in re.finditer(r"break-even vs \w+: (\d+) questions asked", flat):
+        assert re.match(r" \(map answers \$\d+\.\d{4} cheaper per exact answer\)", flat[m.end():])
+
+
+def test_real_pilot_break_even_follows_from_the_printed_gap():
+    """The pilot receipt's outline break-even is the build over (map accuracy x the printed gap), to the gap's
+    rounding (half of $0.0001), so a reader can rebuild it from the receipt."""
+    path = Path(__file__).resolve().parents[1] / "outputs" / "eval_pilot_nanochat.txt"
+    if not path.exists():
+        pytest.skip("no outputs/eval_pilot_nanochat.txt")
+    flat = " ".join(path.read_text().split())
+    build = float(re.search(r"map build: \$([\d.]+) list per map", flat).group(1))
+    exact, runs = (int(x) for x in re.search(r"map \$[\d.]+ \((\d+) exact of (\d+) runs\)", flat).groups())
+    n, gap = re.search(r"break-even vs outline: (\d+) questions asked \(map answers \$([\d.]+) cheaper", flat).groups()
+    gap = float(gap)
+    lo, hi = (build / (exact / runs * (gap + d)) for d in (0.00005, -0.00005))
+    assert lo <= int(n) <= hi

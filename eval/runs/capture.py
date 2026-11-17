@@ -149,7 +149,7 @@ def rechecked_ids(before_claims, after_claims):
 
 
 def has_pass(entry):
-    """True for a repair entry that records its own ``pass`` and per-pass ``round`` (saved since a707864)."""
+    """True for a repair entry that records its own ``pass`` and per-pass ``round`` (saved since 74e0c69)."""
     return bool(entry.get("pass")) and isinstance(entry.get("round"), int)
 
 

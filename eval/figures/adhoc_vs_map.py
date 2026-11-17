@@ -6,8 +6,9 @@
 claims not supported or wrong in each, and the difference's 95% CI spans zero.
 
 Left: the share not supported + wrong per arm, with its counts. Right: the difference (ad-hoc minus map) with its
-95% CI. A note gives the spot-check review of the Checker's own verdicts, with the 'supported' items split by the
-arm they came from. Every number is parsed from
+95% CI. The spot-check review of the Checker's own verdicts is not drawn (the post explains it later, beside its
+receipt), but it is still parsed and checked: ``review_note`` is the sentence the post's prose rests on, and it
+refuses to say no disagreement called the Checker too lenient unless that holds. Every number is parsed from
 ``outputs/adhoc_check.txt`` (the comparison block and the spot-check review block); none is typed here. Light and
 dark, in the house style of the series' figures (llm-architectures-refresher's plotting.py), with the post's
 condition colours: the ad-hoc answers are the explore condition's (blue), the map claims the map's (orange).
@@ -66,11 +67,15 @@ class Review:
 
     @property
     def none_lenient(self) -> bool:
-        """No disagreement (change or borderline) says the Checker was too lenient: the reviewer agreed with every
-        'supported' verdict and with every 'not_a_claim', so each one is on a verdict that faults the claim."""
+        """No disagreement says the Checker was too lenient: the reviewer agreed with every 'supported' verdict and
+        with every 'not_a_claim' (no change, nothing borderline), and would change no 'not_supported' verdict (a
+        change there could be toward 'wrong'; the review does not record its direction). What is left is changes
+        of 'wrong' verdicts and 'not_supported' ones called borderline, each on a verdict that already faults the
+        claim."""
         items, agree, change, border = self.rows["supported"]
         nac = self.rows.get("not_a_claim", NONE)
-        return agree == items > 0 and change == border == 0 and nac[2] == nac[3] == 0
+        ns = self.rows.get("not_supported", NONE)
+        return agree == items > 0 and change == border == 0 and nac[2] == nac[3] == 0 and ns[2] == 0
 
 
 @dataclass(frozen=True)
@@ -155,8 +160,8 @@ def review_note(c: AdhocCheck) -> str:
     when that holds (Review.none_lenient), and gives the 'supported' items per arm, since they came from both."""
     rv = c.review
     if not rv.none_lenient:
-        raise ValueError(f"the spot-check review has a disagreement on a 'supported' or 'not_a_claim' verdict: "
-                         f"{rv.rows}")
+        raise ValueError(f"the spot-check review has a disagreement on a 'supported' or 'not_a_claim' verdict, or "
+                         f"a change on a 'not_supported' one: {rv.rows}")
     items, agree, _, _ = rv.rows["supported"]
     adhoc, mapc = (rv.arm(a, "supported")[0] for a in ARMS)
     w_items, _, w_change, _ = rv.rows["wrong"]
@@ -213,10 +218,10 @@ def draw(c: AdhocCheck, theme: Theme, path: Path) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    title, note = takeaway(c), review_note(c)
+    title = takeaway(c)
     with plt.rc_context(style(theme)):
-        fig, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6.0), gridspec_kw={"width_ratios": [1.25, 1], "wspace": 0.35})
-        fig.subplots_adjust(top=0.84, bottom=0.24)
+        fig, (ax, bx) = plt.subplots(1, 2, figsize=(12, 5.4), gridspec_kw={"width_ratios": [1.25, 1], "wspace": 0.35})
+        fig.subplots_adjust(top=0.82, bottom=0.2)
         fig.suptitle(title, x=0.06, ha="left", y=0.995, fontsize=15, fontweight="bold")
 
         # left: the share not supported + wrong, one bar per arm
@@ -265,8 +270,6 @@ def draw(c: AdhocCheck, theme: Theme, path: Path) -> Path:
         bx.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: pct(v / 100)))
         bx.set_xlabel("ad-hoc minus map, percentage points")
         bx.set_title("Difference, 95% CI", loc="left", pad=12)
-
-        fig.text(0.06, 0.035, note, ha="left", va="bottom", fontsize=11, color=theme.secondary, fontstyle="italic")
 
         path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(path, dpi=200, bbox_inches="tight", pad_inches=0.25)

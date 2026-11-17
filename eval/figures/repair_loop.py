@@ -7,7 +7,9 @@ two rounds per pass, and a claim still not supported after that is flagged under
 
 Every number on it is parsed from the ``checker`` block of ``outputs/runs.txt`` (the post's runs-checker receipt),
 nanochat's run 2; none is typed here. Light and dark, in the house style of the series' figures
-(llm-architectures-refresher's plotting.py: the same surfaces, inks and categorical colours).
+(llm-architectures-refresher's plotting.py: the same surfaces and inks). The not-supported path is drawn in a
+status colour (berry) outside the post's four condition colours (blue explore, orange map, green outline, grey no
+access), and the supported path in neutral ink, so orange and green keep meaning the map and the outline.
 
     uv run --script eval/figures/repair_loop.py [--runs outputs/runs.txt] [--repo nanochat] [--out docs/figures]
 
@@ -93,8 +95,8 @@ def parse(text: str, repo: str = "nanochat") -> RepairLoop:
 
 @dataclass(frozen=True)
 class Theme:
-    """Surfaces and inks from llm-architectures-refresher's plotting.py; ``yes`` / ``no`` are its slot 3 (green) and
-    slot 2 (orange), the one colour each for supported and not supported."""
+    """Surfaces and inks from llm-architectures-refresher's plotting.py; ``yes`` is neutral ink (supported) and ``no``
+    the status colour (berry, not supported), neither one a condition colour."""
 
     name: str
     surface: str
@@ -107,9 +109,21 @@ class Theme:
     no: str
 
 
-LIGHT = Theme("light", "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#f1f0ec", "#c3c2b7", "#1baf7a", "#eb6834")
-DARK = Theme("dark", "#1a1a19", "#ffffff", "#c3c2b7", "#898781", "#252524", "#383835", "#199e70", "#d95926")
+LIGHT = Theme("light", "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#f1f0ec", "#c3c2b7", "#0b0b0b", "#9e1f63")
+DARK = Theme("dark", "#1a1a19", "#ffffff", "#c3c2b7", "#898781", "#252524", "#383835", "#ffffff", "#d1609c")
 THEMES = (LIGHT, DARK)
+
+
+def title(loop: RepairLoop) -> str:
+    """Whose claims these are: the repo's run-2 map, from the receipt's rows."""
+    return f"The Checker and the repair pass on {loop.repo}'s map (run 2)"
+
+
+def round_note(loop: RepairLoop, i: int) -> str:
+    """What repair round ``i`` (0-based) did, with how many of its replaced anchors cite more lines."""
+    a, m, w, r = loop.anchors[i], loop.more_lines[i], loop.rewritten[i], loop.retired[i]
+    more = (f" (all {m} cite more lines)" if m == a else f" ({m} cite more lines)") if a else ""
+    return f"{a} anchors replaced{more}, {w} rewritten, {r} retired"
 
 
 def draw(loop: RepairLoop, theme: Theme, path: Path) -> Path:
@@ -123,10 +137,11 @@ def draw(loop: RepairLoop, theme: Theme, path: Path) -> Path:
           "font.family": "sans-serif", "font.sans-serif": ["Helvetica Neue", "Helvetica", "DejaVu Sans"],
           "font.size": 11}
     with plt.rc_context(rc):
-        fig, ax = plt.subplots(figsize=(13.5, 5.6))
+        fig, ax = plt.subplots(figsize=(13.5, 5.3))
         ax.set_xlim(0, 18)
-        ax.set_ylim(0, 7.4)
+        ax.set_ylim(0, 6.75)
         ax.set_axis_off()
+        fig.suptitle(title(loop), x=0.04, ha="left", y=0.99, fontsize=15, fontweight="bold")
 
         def box(cx, cy, w, h, title, sub=None, edge=None, lw=1.2):
             ax.add_patch(FancyBboxPatch((cx - w / 2, cy - h / 2), w, h, boxstyle="round,pad=0,rounding_size=0.18",
@@ -179,13 +194,10 @@ def draw(loop: RepairLoop, theme: Theme, path: Path) -> Path:
                                     fc=theme.box, ec=theme.no, lw=1.8, zorder=2))
         note(rcx, ry + 0.78, "The Cartographer repairs it", color=theme.ink, bold=True, size=12)
         note(rcx, ry + 0.36, "cite more lines  ·  narrow the claim  ·  retire it", size=10.5)
-        a, m, w, r = loop.anchors, loop.more_lines, loop.rewritten, loop.retired
         x0 = rcx - rw / 2 + 0.35
         for i, yy in ((0, ry - 0.2), (1, ry - 0.68)):
-            more = (f" (all {m[i]} cite more lines)" if m[i] == a[i] else f" ({m[i]} cite more lines)") if i == 0 else ""
             note(x0, yy, f"round {i + 1}", color=theme.no, bold=True, ha="left")
-            note(x0 + 0.95, yy, f"{a[i]} anchors replaced{more}, {w[i]} rewritten, {r[i]} retired",
-                 color=theme.ink, ha="left")
+            note(x0 + 0.95, yy, round_note(loop, i), color=theme.ink, ha="left")
 
         # back to the Checker: only the claims that changed, at most two rounds per pass
         arrow((rcx - rw / 2, ry), (5.9, y - 0.65), theme.no, rad=-0.3, lw=1.8)

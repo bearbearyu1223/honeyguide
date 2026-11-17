@@ -74,10 +74,10 @@ def test_refresh_flow_parses_the_real_receipt():
     assert f.after == {"current": 319, "stale": 0, "retired": 78}
     assert (f.by_apply, f.by_remap) == (32, 46)
     assert (f.held, f.held_retired, f.not_held, f.not_held_retired) == (15, 2, 35, 35)
-    assert f.gap == {"moved": 3, "unanchored": 6}
+    assert f.gap == {"unchanged": 0, "moved": 3, "unanchored": 6}
     assert [f.kept(c) for c in rf.CLASSES] == [88, 125, 13, 0, 6]
     assert rf.takeaway(f) == "What a refresh did to nanochat's map across its July rewrite"
-    assert rf.gap_note(f).startswith("the gap: 3 moved + 6 unanchored claims")
+    assert rf.gap_note(f).startswith("The gap (hatched): 3 moved and 6 unanchored claims.")
 
 
 def test_refresh_flow_layout_conserves_claims():
