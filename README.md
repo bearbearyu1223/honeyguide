@@ -32,8 +32,7 @@ Whether it saves a team time is untested.
 
 Honeyguide is a side project I built to learn how to design and build agentic workflows, not a product.
 
-The write-up: [Honeyguide on the blog](https://bearbearyu1223.github.io/)
-<!-- TODO: post URL when published -->
+The write-up: [Honeyguide: who maintains the understanding when agents write the code?](https://bearbearyu1223.github.io/posts/honeyguide-agent-that-learns-a-codebase/)
 
 ![Honeyguide on the nanochat map: click gpt.py on the component map to focus it, choose "Ask about this component", and a live Claude Code session answers beside it; the Checker checks the answer and the repair pass fixes the claims it flagged](demo/honeyguide-demo.gif)
 
